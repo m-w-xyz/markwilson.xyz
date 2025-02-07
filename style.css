@@ -29,13 +29,13 @@ body {
 h1,
 p,
 a {
-    text-align: center;
-    font-family: "antibad-font", Arial, Helvetica, sans-serif;
-    font-size: 26px;
+    text-align: left;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
     font-weight: 400;
     color: #e7e3e1;
     margin: 0;
-    letter-spacing: 0.03rem;
+    letter-spacing: 0.0rem;
     text-decoration: none;
 }
 
