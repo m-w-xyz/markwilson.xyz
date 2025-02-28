@@ -1,39 +1,34 @@
 /* classes */
 
 body {
-    background-color: #141414;
-    padding: 0;
-    margin: 0;
-}
-
-.sketchable {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    /* background-color: blue; */
-    position: absolute;
+    background-color: #000000;
 }
 
 .container {
-    position: absolute;
-    rotate: 1.5deg;
+    display: inline-block;
+}
+
+.name {
+    rotate: -1deg;
+}
+.job {
+    rotate: 1.4deg;
+}
+.email {
+    rotate: -1.2deg;
+}
+.insta {
+    rotate: 1.7deg;
 }
 
 /* text styles */
 
-@font-face {
-    font-family: antibad-font;
-    src: url(https://cdn.jsdelivr.net/gh/antibad/site/fonts/antibad-font-medium.otf);
-}
-
-h1,
 p,
 a {
     text-align: left;
     font-family: Arial, sans-serif;
     font-size: 14px;
-    font-weight: 400;
-    color: #e7e3e1;
+    color: #dbdbdb;
     margin: 0;
     letter-spacing: 0.0rem;
     text-decoration: none;
