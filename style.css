@@ -1,28 +1,33 @@
 /* classes */
 
 body {
-    background-color: #000000;
+    background-color: #141414;
+    padding: 0;
+    margin: 0;
 }
 
-.container {
-    display: inline-block;
+.sketchable {
+    padding:  10px;
 }
 
-.name {
-    rotate: -1deg;
-}
-.job {
-    rotate: 1.4deg;
-}
-.email {
-    rotate: -1.2deg;
-}
-.insta {
-    rotate: 1.7deg;
+.container{
+display:block;
+width: 140px;
 }
 
-/* text styles */
+.a {
+    rotate: 1.5deg;
+}
 
+.b {
+    rotate: 1deg;
+}
+
+.c {
+    rotate: -0.5deg;
+}
+
+h1,
 p,
 a {
     text-align: left;

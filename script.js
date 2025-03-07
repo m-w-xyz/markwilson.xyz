@@ -1,5 +1,5 @@
 
-let COLOURS = white;
+let COLOURS = ["#e7e3e1"];
 let radius = 2;
 
 Sketch.create({
