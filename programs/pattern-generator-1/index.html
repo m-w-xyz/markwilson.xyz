@@ -12,62 +12,76 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: Arial, sans-serif;
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
             color: #ffffff;
             min-height: 100vh;
             display: flex;
             overflow: hidden;
+            font-size: 12px;
         }
         
         .sidebar {
             width: 320px;
-            background: rgba(20, 20, 20, 0.95);
-            backdrop-filter: blur(20px);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 32px 24px;
-            overflow-y: auto;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            transition: transform 0.3s ease, width 0.3s ease;
-            position: relative;
+            background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(10px);
+            border: none;
+            border-radius: 0;
+            padding: 2px;
+            overflow: hidden;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+            position: fixed;
+            top: 20px;
+            left: 20px;
             z-index: 100;
-            height: 100vh;
-            max-height: 100vh;
+            max-height: calc(100vh - 40px);
+            transition: height 0.3s ease;
+        }
+        
+        .sidebar-content {
+            padding: 2px;
+            overflow-y: auto;
+            max-height: calc(100vh - 44px);
+        }
+        
+        .sidebar-drag-handle {
+            cursor: move;
+            padding: 4px;
+            margin-bottom: 2px;
+            user-select: none;
+            min-height: 8px;
+            background: transparent;
+        }
+        
+        .sidebar-drag-handle * {
+            pointer-events: none;
+        }
+        
+        .sidebar.minimized .sidebar-drag-handle {
+            display: none;
+        }
+        
+        .sidebar-drag-handle:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .sidebar .slider {
+            cursor: grab;
+        }
+        
+        .sidebar .slider:active {
+            cursor: grabbing;
+        }
+        
+        .sidebar button,
+        .sidebar .movement-option,
+        .sidebar .color-option,
+        .sidebar .checkbox-wrapper {
+            cursor: pointer;
         }
         
         .sidebar.hidden {
-            transform: translateX(-100%);
-            width: 0;
-            padding: 0;
-        }
-        
-        .sidebar-toggle {
-            position: fixed;
-            top: 32px;
-            left: 32px;
-            width: 48px;
-            height: 48px;
-            background: rgba(20, 20, 20, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            color: white;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            transition: all 0.3s ease;
-            z-index: 200;
-        }
-        
-        .sidebar-toggle:hover {
-            background: rgba(30, 30, 30, 0.95);
-            transform: scale(1.05);
-        }
-        
-        .sidebar-toggle.sidebar-visible {
-            left: 288px;
+            display: none;
         }
         
         .main-content {
@@ -75,34 +89,35 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 32px;
+            padding: 0;
             transition: margin-left 0.3s ease;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
         }
         
         .main-content.sidebar-hidden {
             margin-left: 0;
         }
         
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        
         /* Responsive Design */
         @media (max-width: 1200px) {
             .sidebar {
                 width: 280px;
-                padding: 24px 20px;
-            }
-            
-            .sidebar-toggle.sidebar-visible {
-                left: 248px;
             }
         }
         
         @media (max-width: 900px) {
             .sidebar {
                 width: 260px;
-                padding: 20px 16px;
-            }
-            
-            .sidebar-toggle.sidebar-visible {
-                left: 228px;
             }
             
             .main-content {
@@ -112,18 +127,7 @@
         
         @media (max-width: 768px) {
             .sidebar {
-                position: fixed;
-                left: 0;
-                top: 0;
-                bottom: 0;
                 width: 300px;
-                z-index: 1000;
-                height: 100vh;
-                max-height: 100vh;
-            }
-            
-            .sidebar-toggle.sidebar-visible {
-                left: 268px;
             }
             
             .main-content {
@@ -134,53 +138,18 @@
             .main-content.sidebar-hidden {
                 margin-left: 0;
             }
-            
-            /* Mobile backdrop overlay */
-            .sidebar-backdrop {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                backdrop-filter: blur(2px);
-                z-index: 999;
-                opacity: 0;
-                visibility: hidden;
-                transition: opacity 0.3s ease, visibility 0.3s ease;
-            }
-            
-            .sidebar-backdrop.visible {
-                opacity: 1;
-                visibility: visible;
-            }
         }
         
         @media (max-width: 480px) {
             .sidebar {
                 width: 280px;
-                padding: 16px 12px;
-                height: 100vh;
-                max-height: 100vh;
-            }
-            
-            .sidebar-toggle.sidebar-visible {
-                left: 248px;
-            }
-            
-            .logo {
-                font-size: 20px;
-            }
-            
-            .control-group {
-                margin-bottom: 24px;
             }
         }
         
         .logo {
-            font-size: 24px;
+            font-size: 12px;
             font-weight: 700;
-            margin-bottom: 8px;
+            margin-bottom: 2px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -188,47 +157,52 @@
         }
         
         .subtitle {
-            font-size: 14px;
+            font-size: 12px;
             color: #888;
-            margin-bottom: 32px;
+            margin-bottom: 2px;
             font-weight: 400;
         }
         
         .control-group {
-            margin-bottom: 32px;
+            margin-bottom: 2px;
         }
         
         .group-title {
-            font-size: 16px;
+            font-size: 12px;
             font-weight: 600;
             color: #fff;
-            margin-bottom: 16px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 2px;
+            padding-bottom: 2px;
+            border-bottom: none;
         }
         
         .control-item {
-            margin-bottom: 20px;
+            margin-bottom: 2px;
         }
         
         .control-label {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
-            margin-bottom: 8px;
-            font-size: 14px;
+            gap: 6px;
+            margin-bottom: 2px;
+            font-size: 12px;
             font-weight: 500;
-            color: #ccc;
+            color: #fff;
+        }
+        
+        .control-label .checkbox-wrapper {
+            flex-shrink: 0;
         }
         
         .control-value {
-            font-size: 13px;
+            font-size: 12px;
             color: #667eea;
             font-weight: 600;
-            font-family: 'SF Mono', Monaco, monospace;
+            font-family: Arial, sans-serif;
             cursor: pointer;
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: 0;
             transition: all 0.2s ease;
         }
         
@@ -237,8 +211,8 @@
         }
         
         .control-value-input {
-            background: rgba(102, 126, 234, 0.2);
-            border: 1px solid #667eea;
+            background: rgba(102, 102, 102, 0.2);
+            border: none;
             outline: none;
             width: 60px;
             text-align: center;
@@ -246,57 +220,74 @@
         
         .slider {
             -webkit-appearance: none;
+            appearance: none;
             width: 100%;
-            height: 6px;
-            border-radius: 3px;
+            height: 16px;
+            border-radius: 0;
             background: rgba(255, 255, 255, 0.1);
             outline: none;
+            border: none;
             transition: all 0.2s ease;
+            position: relative;
         }
         
         .slider:hover {
             background: rgba(255, 255, 255, 0.15);
         }
         
+        .slider-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .slider-thumb-value {
+            position: absolute;
+            top: 1px;
+            font-size: 9px;
+            color: white;
+            font-weight: 600;
+            pointer-events: none;
+            white-space: nowrap;
+            text-align: center;
+            width: 40px;
+            line-height: 14px;
+            z-index: 10;
+            transform: translateX(-50%);
+        }
+        
         .slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 40px;
+            height: 14px;
+            border-radius: 0;
+            background: #666;
             cursor: pointer;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-            transition: all 0.2s ease;
-        }
-        
-        .slider::-webkit-slider-thumb:hover {
-            transform: scale(1.1);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            border: none;
+            position: relative;
         }
         
         .slider::-moz-range-thumb {
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 40px;
+            height: 14px;
+            border-radius: 0;
+            background: #666;
             cursor: pointer;
             border: none;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
         }
         
         .movement-selector {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-top: 8px;
+            gap: 2px;
+            margin-top: 2px;
         }
         
         .movement-option {
-            padding: 10px 12px;
+            padding: 2px 4px;
             background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
+            border: none;
+            border-radius: 0;
             cursor: pointer;
             transition: all 0.2s ease;
             font-size: 12px;
@@ -306,101 +297,86 @@
         
         .movement-option:hover {
             background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(102, 126, 234, 0.3);
         }
         
         .movement-option.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-color: #667eea;
+            background: #666;
             color: white;
         }
         
         .primary-button {
             width: 100%;
-            padding: 14px 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2px 4px;
+            background: #666;
             border: none;
-            border-radius: 10px;
+            border-radius: 0;
             color: white;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
-            margin-top: 24px;
+            margin-top: 2px;
+            text-align: left;
+            outline: none;
         }
         
         .primary-button:hover {
             transform: translateY(-1px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            box-shadow: none;
+            background: #777;
         }
         
         .primary-button:active {
             transform: translateY(0);
         }
         
-        .color-selector {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 8px;
+        .color-picker-wrapper {
+            margin-top: 2px;
         }
         
-        .color-option {
+        .color-picker-input {
             width: 100%;
-            height: 40px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
+            height: 24px;
+            border: none;
+            border-radius: 0;
             cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
+            background: transparent;
+            outline: none;
         }
         
-        .color-option:hover {
-            transform: scale(1.05);
-            border-color: rgba(255, 255, 255, 0.4);
+        .color-picker-input::-webkit-color-swatch-wrapper {
+            padding: 0;
         }
         
-        .color-option.active {
-            border-color: #667eea;
-            border-width: 3px;
-            transform: scale(1.1);
-        }
-        
-        .color-option.active::after {
-            content: '✓';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #000;
-            font-weight: bold;
-            font-size: 16px;
-            text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+        .color-picker-input::-webkit-color-swatch {
+            border: none;
+            border-radius: 0;
         }
         
         .action-buttons {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-top: 24px;
+            gap: 2px;
+            margin-top: 2px;
         }
         
         .secondary-button {
             width: 100%;
-            padding: 12px 20px;
+            padding: 2px 4px;
             background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
+            border: none;
+            border-radius: 0;
             color: white;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s ease;
+            text-align: left;
+            outline: none;
         }
         
         .secondary-button:hover {
             background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.3);
             transform: translateY(-1px);
         }
         
@@ -436,11 +412,6 @@
             50% { opacity: 0.3; }
         }
         
-        canvas {
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-        }
-        
         /* Scrollbar styling */
         .sidebar::-webkit-scrollbar {
             width: 6px;
@@ -452,171 +423,203 @@
         
         .sidebar::-webkit-scrollbar-thumb {
             background: rgba(102, 126, 234, 0.5);
-            border-radius: 3px;
+            border-radius: 0;
         }
         
         .sidebar::-webkit-scrollbar-thumb:hover {
             background: rgba(102, 126, 234, 0.7);
         }
         
-        /* Toggle Switch Styles */
-        .toggle {
-            position: relative;
+        /* Checkbox Styles */
+        .checkbox-wrapper {
             display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-        
-        .toggle input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        
-        .toggle-slider {
-            position: absolute;
+            pointer-events: auto;
             cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.3s ease;
-            border-radius: 12px;
         }
         
-        .toggle-slider:before {
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+            accent-color: #666;
+            pointer-events: auto;
+            margin: 0;
+        }
+        
+        .sidebar.minimized {
+            height: 24px;
+            overflow: hidden;
+        }
+        
+        .sidebar.minimized .sidebar-content {
+            display: none;
+        }
+        
+        .sidebar.minimized .sidebar-minimize-bar {
+            display: flex;
+        }
+        
+        .sidebar-minimize-bar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 4px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #fff;
+        }
+        
+        .sidebar.minimized .sidebar-minimize-bar span:last-child {
+            transform: rotate(180deg);
+            display: inline-block;
+        }
+        
+        .sidebar.minimized .sidebar-close-button {
+            display: none;
+        }
+        
+        .sidebar-close-button {
             position: absolute;
-            content: "";
-            height: 16px;
-            width: 16px;
-            left: 3px;
-            bottom: 3px;
-            background-color: #fff;
-            transition: all 0.3s ease;
-            border-radius: 50%;
+            top: 2px;
+            right: 2px;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 0;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            z-index: 10;
+            outline: none;
         }
         
-        .toggle input:checked + .toggle-slider {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-color: #667eea;
-        }
-        
-        .toggle input:checked + .toggle-slider:before {
-            transform: translateX(20px);
-        }
-        
-        .toggle:hover .toggle-slider {
-            background-color: rgba(255, 255, 255, 0.15);
-        }
-        
-        .toggle input:checked:hover + .toggle-slider {
-            background: linear-gradient(135deg, #7788f0 0%, #8455b8 100%);
+        .sidebar-close-button:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
         
 
     </style>
 </head>
 <body>
-    <div class="sidebar-toggle" id="sidebarToggle">☰</div>
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
     
     <div class="sidebar" id="sidebar">
-        <div class="logo">GridFlow</div>
-        <div class="subtitle">Organic texture movements</div>
-        
-        <div class="control-group">
-            <div class="group-title">Canvas</div>
+        <button class="sidebar-close-button" id="sidebarCloseButton">✕</button>
+        <div class="sidebar-minimize-bar" id="sidebarMinimizeBar">
+            <span>Controls</span>
+            <span>▲</span>
+        </div>
+        <div class="sidebar-content">
+            <div class="sidebar-drag-handle">
+            </div>
             
+            <div class="control-group" style="display: none;">
             <div class="control-item">
                 <div class="control-label">
-                    <span>Width</span>
-                    <span class="control-value" id="widthValue">1080px</span>
+                    <span>Canvas Width</span>
                 </div>
-                <input type="range" class="slider" id="widthInput" value="1080" min="400" max="2000">
+                <div class="slider-container">
+                    <input type="range" class="slider" id="widthInput" value="1080" min="400" max="2000">
+                    <span class="slider-thumb-value" id="widthInputValue">1080px</span>
+                </div>
             </div>
             
             <div class="control-item">
                 <div class="control-label">
-                    <span>Height</span>
-                    <span class="control-value" id="heightValue">1080px</span>
+                    <span>Canvas Height</span>
                 </div>
-                <input type="range" class="slider" id="heightInput" value="1080" min="300" max="1200">
+                <div class="slider-container">
+                    <input type="range" class="slider" id="heightInput" value="1080" min="300" max="1200">
+                    <span class="slider-thumb-value" id="heightInputValue">1080px</span>
+                </div>
             </div>
         </div>
         
 
         
         <div class="control-group">
-            <div class="group-title">Grid Properties</div>
-            
             <div class="control-item">
                 <div class="control-label">
-                    <span>Cell Width</span>
-                    <span class="control-value" id="cellWidthValue">15px</span>
+                    <span>Grid Cell Width</span>
                 </div>
-                <input type="range" class="slider" id="cellWidthInput" value="15" min="15" max="120">
+                <div class="slider-container">
+                    <input type="range" class="slider" id="cellWidthInput" value="15" min="15" max="120">
+                    <span class="slider-thumb-value" id="cellWidthInputValue">15px</span>
+                </div>
             </div>
             
             <div class="control-item">
                 <div class="control-label">
-                    <span>Cell Height</span>
-                    <span class="control-value" id="cellHeightValue">15px</span>
+                    <span>Grid Cell Height</span>
                 </div>
-                <input type="range" class="slider" id="cellHeightInput" value="15" min="15" max="120">
+                <div class="slider-container">
+                    <input type="range" class="slider" id="cellHeightInput" value="15" min="15" max="120">
+                    <span class="slider-thumb-value" id="cellHeightInputValue">15px</span>
+                </div>
             </div>
             
             <div class="control-item">
                 <div class="control-label">
                     <span>Line Height</span>
-                    <span class="control-value" id="lineLengthValue">5px</span>
                 </div>
-                <input type="range" class="slider" id="lineLengthInput" value="5" min="5" max="120">
+                <div class="slider-container">
+                    <input type="range" class="slider" id="lineLengthInput" value="5" min="5" max="120">
+                    <span class="slider-thumb-value" id="lineLengthInputValue">5px</span>
+                </div>
             </div>
             
             <div class="control-item">
                 <div class="control-label">
                     <span>Line Width</span>
-                    <span class="control-value" id="lineWidthValue">1px</span>
                 </div>
-                <input type="range" class="slider" id="lineWidthInput" value="1" min="1" max="50">
+                <div class="slider-container">
+                    <input type="range" class="slider" id="lineWidthInput" value="1" min="1" max="50">
+                    <span class="slider-thumb-value" id="lineWidthInputValue">1px</span>
+                </div>
             </div>
             
 
         </div>
         
         <div class="control-group">
-            <div class="group-title">Animation</div>
-            
             <div class="control-item">
                 <div class="control-label">
-                    <span>Speed</span>
-                    <span class="control-value" id="speedValue">11</span>
+                    <span>Animation Speed</span>
                 </div>
-                <input type="range" class="slider" id="speedInput" value="11" min="1" max="21">
+                <div class="slider-container">
+                    <input type="range" class="slider" id="speedInput" value="11" min="1" max="21">
+                    <span class="slider-thumb-value" id="speedInputValue">11</span>
+                </div>
             </div>
             
             <div class="control-item">
                 <div class="control-label">
                     <span>Movement Amplitude</span>
-                    <span class="control-value" id="amplitudeValue">1250%</span>
                 </div>
-                <input type="range" class="slider" id="amplitudeInput" value="1250" min="10" max="2500">
+                <div class="slider-container">
+                    <input type="range" class="slider" id="amplitudeInput" value="1250" min="10" max="2500">
+                    <span class="slider-thumb-value" id="amplitudeInputValue">1250%</span>
+                </div>
             </div>
             
             <div class="control-item">
                 <div class="control-label">
-                    <span>Texture Type</span>
+                    <span>Movement Type</span>
                 </div>
                 <div class="movement-selector">
-                    <div class="movement-option" data-movement="liquid">Liquid</div>
-                    <div class="movement-option" data-movement="organic">Organic</div>
-                    <div class="movement-option" data-movement="turbulence">Turbulence</div>
-                    <div class="movement-option" data-movement="flowing">Flowing</div>
-                    <div class="movement-option" data-movement="dissolve">Dissolve</div>
-                    <div class="movement-option" data-movement="typography">Typography</div>
-                    <div class="movement-option active" data-movement="ripple">Ripple</div>
+                    <div class="movement-option" data-movement="liquid">1</div>
+                    <div class="movement-option" data-movement="organic">2</div>
+                    <div class="movement-option" data-movement="turbulence">3</div>
+                    <div class="movement-option" data-movement="flowing">4</div>
+                    <div class="movement-option" data-movement="dissolve">5</div>
+                    <div class="movement-option" data-movement="typography">6</div>
+                    <div class="movement-option active" data-movement="ripple">7</div>
                 </div>
             </div>
             
@@ -624,13 +627,8 @@
                 <div class="control-label">
                     <span>Stroke Color</span>
                 </div>
-                <div class="color-selector">
-                    <div class="color-option active" data-color="#FFFFFF" style="background-color: #FFFFFF;"></div>
-                    <div class="color-option" data-color="#85FF59" style="background-color: #85FF59;"></div>
-                    <div class="color-option" data-color="#D7FF59" style="background-color: #D7FF59;"></div>
-                    <div class="color-option" data-color="#6C5C3F" style="background-color: #6C5C3F;"></div>
-                    <div class="color-option" data-color="#3A3A3A" style="background-color: #3A3A3A;"></div>
-                    <div class="color-option" data-color="#BEBEBE" style="background-color: #BEBEBE;"></div>
+                <div class="color-picker-wrapper">
+                    <input type="color" class="color-picker-input" id="strokeColorInput" value="#FFFFFF">
                 </div>
             </div>
             
@@ -638,68 +636,51 @@
                 <div class="control-label">
                     <span>Background Color</span>
                 </div>
-                <div class="color-selector">
-                    <div class="color-option" data-bg-color="transparent" style="background: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%); background-size: 8px 8px; background-position: 0 0, 0 4px, 4px -4px, -4px 0px;"></div>
-                    <div class="color-option active" data-bg-color="#000000" style="background-color: #000000;"></div>
-                    <div class="color-option" data-bg-color="#FFFFFF" style="background-color: #FFFFFF;"></div>
-                    <div class="color-option" data-bg-color="#85FF59" style="background-color: #85FF59;"></div>
-                    <div class="color-option" data-bg-color="#D7FF59" style="background-color: #D7FF59;"></div>
-                    <div class="color-option" data-bg-color="#6C5C3F" style="background-color: #6C5C3F;"></div>
-                    <div class="color-option" data-bg-color="#3A3A3A" style="background-color: #3A3A3A;"></div>
-                    <div class="color-option" data-bg-color="#BEBEBE" style="background-color: #BEBEBE;"></div>
+                <div class="color-picker-wrapper">
+                    <input type="color" class="color-picker-input" id="backgroundColorInput" value="#000000">
                 </div>
             </div>
             
             <div class="control-group">
-                <div class="group-title">Stroke Animation</div>
-                
-                <div class="control-item">
-                    <div class="control-label">
-                        <span>Animate Length</span>
-                        <label class="toggle">
-                            <input type="checkbox" id="animateLengthToggle">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                </div>
-                
                 <div class="control-item" id="lengthAnimationControls">
                     <div class="control-label">
+                        <span class="checkbox-wrapper">
+                            <input type="checkbox" id="animateLengthToggle">
+                        </span>
                         <span>Length Amplitude</span>
-                        <span class="control-value" id="lengthAmplitudeValue">20px</span>
                     </div>
-                    <input type="range" class="slider" id="lengthAmplitudeInput" value="20" min="5" max="50">
-                </div>
-                
-                <div class="control-item">
-                    <div class="control-label">
-                        <span>Animate Weight</span>
-                        <label class="toggle">
-                            <input type="checkbox" id="animateWeightToggle">
-                            <span class="toggle-slider"></span>
-                        </label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="lengthAmplitudeInput" value="20" min="5" max="50">
+                        <span class="slider-thumb-value" id="lengthAmplitudeInputValue">20px</span>
                     </div>
                 </div>
                 
                 <div class="control-item" id="weightAnimationControls">
                     <div class="control-label">
+                        <span class="checkbox-wrapper">
+                            <input type="checkbox" id="animateWeightToggle">
+                        </span>
                         <span>Weight Amplitude</span>
-                        <span class="control-value" id="weightAmplitudeValue">5px</span>
                     </div>
-                    <input type="range" class="slider" id="weightAmplitudeInput" value="5" min="1" max="20">
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="weightAmplitudeInput" value="5" min="1" max="20">
+                        <span class="slider-thumb-value" id="weightAmplitudeInputValue">5px</span>
+                    </div>
                 </div>
             </div>
             
-            <button class="primary-button" id="toggleButton" onclick="toggleAnimation()">⏸ Pause Animation</button>
+            <button class="primary-button" id="toggleButton" onclick="toggleAnimation()">Pause Animation</button>
             
             <div class="action-buttons">
-                <button class="secondary-button" onclick="randomizeParameters()">🎲 Randomize All</button>
-                <button class="secondary-button" id="downloadButton" onclick="downloadMP4()">📹 Download MP4</button>
+                <button class="secondary-button" onclick="randomizeParameters()">Randomize All</button>
+                <button class="secondary-button" id="downloadPNGButton" onclick="downloadPNG()">Download PNG</button>
+                <button class="secondary-button" id="downloadButton" onclick="downloadMP4()">Download MP4</button>
                 <div class="recording-indicator" id="recordingIndicator">
                     <div class="recording-dot"></div>
                     <span>Recording...</span>
                 </div>
             </div>
+        </div>
         </div>
     </div>
     
@@ -907,7 +888,7 @@
         function toggleAnimation() {
             isAnimating = !isAnimating;
             const button = document.getElementById('toggleButton');
-            button.textContent = isAnimating ? '⏸ Pause Animation' : '▶ Play Animation';
+            button.textContent = isAnimating ? 'Pause Animation' : 'Play Animation';
             
             if (!isAnimating) {
                 drawGridLines(); // Draw static frame when animation stops
@@ -915,36 +896,72 @@
         }
         
         function updateCanvasSize() {
-            const width = parseInt(document.getElementById('widthInput').value);
-            const height = parseInt(document.getElementById('heightInput').value);
+            // Set canvas to full viewport size
+            const width = window.innerWidth;
+            const height = window.innerHeight;
             
             canvas.width = width;
             canvas.height = height;
             
-            // Update display values
-            document.getElementById('widthValue').textContent = width + 'px';
-            document.getElementById('heightValue').textContent = height + 'px';
+            // Update hidden slider values to match viewport
+            document.getElementById('widthInput').value = width;
+            document.getElementById('heightInput').value = height;
+            
+            // Update slider thumb values
+            updateSliderThumbs();
             
             if (!isAnimating) {
                 drawGridLines();
             }
         }
         
+        function handleWindowResize() {
+            updateCanvasSize();
+        }
+        
         function updateDisplayValues() {
-            document.getElementById('cellWidthValue').textContent = document.getElementById('cellWidthInput').value + 'px';
-            document.getElementById('cellHeightValue').textContent = document.getElementById('cellHeightInput').value + 'px';
-            document.getElementById('lineLengthValue').textContent = document.getElementById('lineLengthInput').value + 'px';
-            document.getElementById('lineWidthValue').textContent = document.getElementById('lineWidthInput').value + 'px';
-            document.getElementById('speedValue').textContent = document.getElementById('speedInput').value;
+            // Update slider thumb values and positions
+            updateSliderThumbs();
+        }
+        
+        function updateSliderThumbs() {
+            const sliderMap = {
+                'widthInput': { valueId: 'widthInputValue', suffix: 'px' },
+                'heightInput': { valueId: 'heightInputValue', suffix: 'px' },
+                'cellWidthInput': { valueId: 'cellWidthInputValue', suffix: 'px' },
+                'cellHeightInput': { valueId: 'cellHeightInputValue', suffix: 'px' },
+                'lineLengthInput': { valueId: 'lineLengthInputValue', suffix: 'px' },
+                'lineWidthInput': { valueId: 'lineWidthInputValue', suffix: 'px' },
+                'speedInput': { valueId: 'speedInputValue', suffix: '' },
+                'amplitudeInput': { valueId: 'amplitudeInputValue', suffix: '%' },
+                'lengthAmplitudeInput': { valueId: 'lengthAmplitudeInputValue', suffix: 'px' },
+                'weightAmplitudeInput': { valueId: 'weightAmplitudeInputValue', suffix: 'px' }
+            };
             
-            // Update stroke animation values (frequencies now tied to main speed)
-            document.getElementById('lengthAmplitudeValue').textContent = document.getElementById('lengthAmplitudeInput').value + 'px';
-            document.getElementById('weightAmplitudeValue').textContent = document.getElementById('weightAmplitudeInput').value + 'px';
-            
-
-            
-            // Update amplitude value
-            document.getElementById('amplitudeValue').textContent = document.getElementById('amplitudeInput').value + '%';
+            Object.keys(sliderMap).forEach(sliderId => {
+                const slider = document.getElementById(sliderId);
+                if (!slider) return;
+                
+                const config = sliderMap[sliderId];
+                const valueSpan = document.getElementById(config.valueId);
+                if (!valueSpan) return;
+                
+                const value = slider.value;
+                const displayValue = value + config.suffix;
+                valueSpan.textContent = displayValue;
+                
+                // Calculate position more accurately
+                const min = parseFloat(slider.min);
+                const max = parseFloat(slider.max);
+                const percentage = (value - min) / (max - min);
+                const sliderRect = slider.getBoundingClientRect();
+                const sliderWidth = sliderRect.width;
+                const thumbWidth = 40;
+                // Calculate thumb center position
+                const thumbCenter = percentage * (sliderWidth - thumbWidth) + (thumbWidth / 2);
+                
+                valueSpan.style.left = thumbCenter + 'px';
+            });
         }
         
         function selectMovement(movementType) {
@@ -959,22 +976,16 @@
         
         function selectColor(color) {
             currentColor = color;
-            
-            // Update active state
-            document.querySelectorAll('.color-option').forEach(option => {
-                option.classList.remove('active');
-            });
-            document.querySelector(`[data-color="${color}"]`).classList.add('active');
+            if (document.getElementById('strokeColorInput')) {
+                document.getElementById('strokeColorInput').value = color;
+            }
         }
         
         function selectBackgroundColor(color) {
             currentBackgroundColor = color;
-            
-            // Update active state for background color options
-            document.querySelectorAll('[data-bg-color]').forEach(option => {
-                option.classList.remove('active');
-            });
-            document.querySelector(`[data-bg-color="${color}"]`).classList.add('active');
+            if (document.getElementById('backgroundColorInput')) {
+                document.getElementById('backgroundColorInput').value = color;
+            }
         }
 
 
@@ -1006,6 +1017,9 @@
 
         
         function randomizeParameters() {
+            // Keep amplitude the same
+            const amplitudeValue = document.getElementById('amplitudeInput').value;
+            
             // Random grid properties (but keep canvas size consistent)
             const cellWidthSlider = document.getElementById('cellWidthInput');
             const cellHeightSlider = document.getElementById('cellHeightInput');
@@ -1026,19 +1040,15 @@
             const randomMovement = movements[Math.floor(Math.random() * movements.length)];
             selectMovement(randomMovement);
             
-
-            
-            // Random color
-            const colors = ['#FFFFFF', '#85FF59', '#D7FF59', '#6C5C3F', '#3A3A3A', '#BEBEBE'];
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            // Random color (RGB)
+            const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
             selectColor(randomColor);
+            document.getElementById('strokeColorInput').value = randomColor;
             
-            // Random background color
-            const backgroundColors = ['transparent', '#000000', '#FFFFFF', '#85FF59', '#D7FF59', '#6C5C3F', '#3A3A3A', '#BEBEBE'];
-            const randomBackgroundColor = backgroundColors[Math.floor(Math.random() * backgroundColors.length)];
+            // Random background color (RGB)
+            const randomBackgroundColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
             selectBackgroundColor(randomBackgroundColor);
-            
-
+            document.getElementById('backgroundColorInput').value = randomBackgroundColor;
             
             // Random stroke animation settings
             const animateLengthToggle = document.getElementById('animateLengthToggle');
@@ -1054,6 +1064,9 @@
             lengthAmplitudeSlider.value = Math.floor(Math.random() * (50 - 5) + 5);
             weightAmplitudeSlider.value = Math.floor(Math.random() * (20 - 1) + 1);
             
+            // Restore amplitude
+            document.getElementById('amplitudeInput').value = amplitudeValue;
+            
             // Update control visibility
             toggleAnimationControls();
             
@@ -1061,27 +1074,149 @@
             updateDisplayValues();
         }
         
-        function toggleSidebar() {
+        function minimizeSidebar() {
             const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('mainContent');
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            const backdrop = document.getElementById('sidebarBackdrop');
-            
-            sidebar.classList.toggle('hidden');
-            mainContent.classList.toggle('sidebar-hidden');
-            sidebarToggle.classList.toggle('sidebar-visible');
-            
-            // Handle mobile backdrop
-            if (window.innerWidth <= 768) {
-                backdrop.classList.toggle('visible');
-            }
-            
-            // Update toggle button icon
-            if (sidebar.classList.contains('hidden')) {
-                sidebarToggle.textContent = '☰';
+            sidebar.classList.add('minimized');
+        }
+        
+        function maximizeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.remove('minimized');
+        }
+        
+        function toggleMinimizeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar.classList.contains('minimized')) {
+                maximizeSidebar();
             } else {
-                sidebarToggle.textContent = '✕';
+                minimizeSidebar();
             }
+        }
+        
+        function drawGridLinesWithoutBackground() {
+            const cellWidth = parseInt(document.getElementById('cellWidthInput').value);
+            const cellHeight = parseInt(document.getElementById('cellHeightInput').value);
+            const baseLineLength = parseInt(document.getElementById('lineLengthInput').value);
+            const baseLineWidth = parseInt(document.getElementById('lineWidthInput').value);
+            const speed = getActualSpeed();
+            
+            // Clear canvas without background
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Set line properties
+            ctx.strokeStyle = currentColor;
+            ctx.lineCap = 'square';
+            
+            // Calculate grid dimensions
+            const cols = Math.floor(canvas.width / cellWidth);
+            const rows = Math.floor(canvas.height / cellHeight);
+            
+            // Draw grid of small lines
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    // Calculate center of each cell
+                    const centerX = col * cellWidth + cellWidth / 2;
+                    const centerY = row * cellHeight + cellHeight / 2;
+                    
+                    // Get horizontal displacement instead of rotation
+                    const displacement = getHorizontalDisplacement(col, row, centerX, centerY, animationTime, speed);
+                    
+                    // Get animated stroke properties
+                    let lineLength = getAnimatedStrokeLength(col, row, centerX, centerY, animationTime, baseLineLength, speed);
+                    let lineWidth = getAnimatedStrokeWeight(col, row, centerX, centerY, animationTime, baseLineWidth, speed);
+                    
+                    // Set fill and stroke styles
+                    ctx.fillStyle = currentColor;
+                    ctx.strokeStyle = currentColor;
+                    
+                    // Calculate final position with displacement
+                    const finalX = centerX + displacement;
+                    
+                    // Draw vertical line
+                    ctx.lineWidth = lineWidth;
+                    const halfLength = lineLength / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(finalX, centerY - halfLength);
+                    ctx.lineTo(finalX, centerY + halfLength);
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        function downloadPNG() {
+            // Create a temporary canvas to draw without background
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Save current animation state
+            const wasAnimating = isAnimating;
+            isAnimating = false; // Pause animation for snapshot
+            
+            // Draw the current frame without background
+            const cellWidth = parseInt(document.getElementById('cellWidthInput').value);
+            const cellHeight = parseInt(document.getElementById('cellHeightInput').value);
+            const baseLineLength = parseInt(document.getElementById('lineLengthInput').value);
+            const baseLineWidth = parseInt(document.getElementById('lineWidthInput').value);
+            const speed = getActualSpeed();
+            
+            // Clear canvas without background
+            tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Set line properties
+            tempCtx.strokeStyle = currentColor;
+            tempCtx.lineCap = 'square';
+            
+            // Calculate grid dimensions
+            const cols = Math.floor(tempCanvas.width / cellWidth);
+            const rows = Math.floor(tempCanvas.height / cellHeight);
+            
+            // Draw grid of small lines
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    // Calculate center of each cell
+                    const centerX = col * cellWidth + cellWidth / 2;
+                    const centerY = row * cellHeight + cellHeight / 2;
+                    
+                    // Get horizontal displacement instead of rotation
+                    const displacement = getHorizontalDisplacement(col, row, centerX, centerY, animationTime, speed);
+                    
+                    // Get animated stroke properties
+                    let lineLength = getAnimatedStrokeLength(col, row, centerX, centerY, animationTime, baseLineLength, speed);
+                    let lineWidth = getAnimatedStrokeWeight(col, row, centerX, centerY, animationTime, baseLineWidth, speed);
+                    
+                    // Set fill and stroke styles
+                    tempCtx.fillStyle = currentColor;
+                    tempCtx.strokeStyle = currentColor;
+                    
+                    // Calculate final position with displacement
+                    const finalX = centerX + displacement;
+                    
+                    // Draw vertical line
+                    tempCtx.lineWidth = lineWidth;
+                    const halfLength = lineLength / 2;
+                    tempCtx.beginPath();
+                    tempCtx.moveTo(finalX, centerY - halfLength);
+                    tempCtx.lineTo(finalX, centerY + halfLength);
+                    tempCtx.stroke();
+                }
+            }
+            
+            // Restore animation state
+            isAnimating = wasAnimating;
+            
+            // Download the image
+            tempCanvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `grid-pattern-${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
         }
         
         function downloadMP4() {
@@ -1198,48 +1333,68 @@
             }, recordingTime);
         }
         
-        function makeValueEditable(valueElement, sliderElement, suffix = 'px') {
-            const isSpeed = sliderElement.id === 'speedInput';
-            const currentValue = isSpeed ? parseFloat(valueElement.textContent) : parseInt(valueElement.textContent);
+        function makeSliderThumbEditable(valueSpan, sliderElement) {
+            const sliderMap = {
+                'widthInput': { suffix: 'px', isSpeed: false },
+                'heightInput': { suffix: 'px', isSpeed: false },
+                'cellWidthInput': { suffix: 'px', isSpeed: false },
+                'cellHeightInput': { suffix: 'px', isSpeed: false },
+                'lineLengthInput': { suffix: 'px', isSpeed: false },
+                'lineWidthInput': { suffix: 'px', isSpeed: false },
+                'speedInput': { suffix: '', isSpeed: true },
+                'amplitudeInput': { suffix: '%', isSpeed: false },
+                'lengthAmplitudeInput': { suffix: 'px', isSpeed: false },
+                'weightAmplitudeInput': { suffix: 'px', isSpeed: false }
+            };
+            
+            const config = sliderMap[sliderElement.id];
+            if (!config) return;
+            
+            // Extract current value from text (remove suffix)
+            const currentText = valueSpan.textContent;
+            let currentValue;
+            if (config.isSpeed) {
+                currentValue = parseFloat(currentText);
+            } else if (config.suffix === '%') {
+                currentValue = parseInt(currentText.replace('%', ''));
+            } else {
+                currentValue = parseInt(currentText.replace(/[^\d]/g, ''));
+            }
             
             const input = document.createElement('input');
             input.type = 'number';
             input.value = currentValue;
-            input.className = 'control-value-input';
-            input.id = valueElement.id;
+            input.style.cssText = 'position: absolute; top: 1px; width: 40px; height: 14px; font-size: 9px; text-align: center; background: #666; color: white; border: none; outline: none; z-index: 20;';
+            input.style.left = valueSpan.style.left;
             
-            if (isSpeed) {
+            // Set input constraints
+            if (config.isSpeed) {
                 input.step = '1';
-                input.min = 1;
-                input.max = 10;
+                input.min = sliderElement.min;
+                input.max = sliderElement.max;
             } else {
                 input.step = '1';
                 input.min = sliderElement.min;
                 input.max = sliderElement.max;
             }
             
-            valueElement.replaceWith(input);
+            valueSpan.style.visibility = 'hidden';
+            valueSpan.parentElement.appendChild(input);
             input.focus();
             input.select();
             
             function finishEditing() {
-                let newValue = isSpeed ? parseInt(input.value) : parseInt(input.value);
+                let newValue = config.isSpeed ? parseFloat(input.value) : parseInt(input.value);
                 if (isNaN(newValue)) newValue = currentValue;
                 
-                if (isSpeed) {
-                    newValue = Math.max(1, Math.min(10, newValue));
-                    sliderElement.value = newValue; // Direct assignment for new speed range
-                } else {
-                    newValue = Math.max(sliderElement.min, Math.min(sliderElement.max, newValue));
-                    sliderElement.value = newValue;
-                }
+                newValue = Math.max(parseFloat(sliderElement.min), Math.min(parseFloat(sliderElement.max), newValue));
+                sliderElement.value = newValue;
                 
-                const newSpan = document.createElement('span');
-                newSpan.className = 'control-value';
-                newSpan.id = input.id;
-                newSpan.textContent = newValue + suffix;
+                valueSpan.style.visibility = 'visible';
+                input.remove();
                 
-                input.replaceWith(newSpan);
+                // Update thumb value and position
+                updateSliderThumbs();
                 
                 // Handle special cases that need additional updates
                 if (sliderElement.id === 'widthInput' || sliderElement.id === 'heightInput') {
@@ -1265,31 +1420,218 @@
             const animateLength = document.getElementById('animateLengthToggle').checked;
             const animateWeight = document.getElementById('animateWeightToggle').checked;
             
-            lengthControls.style.opacity = animateLength ? '1' : '0.5';
-            lengthControls.style.pointerEvents = animateLength ? 'auto' : 'none';
+            // Get the slider containers
+            const lengthSlider = lengthControls.querySelector('.slider-container');
+            const weightSlider = weightControls.querySelector('.slider-container');
             
-            weightControls.style.opacity = animateWeight ? '1' : '0.5';
-            weightControls.style.pointerEvents = animateWeight ? 'auto' : 'none';
+            // Only disable the slider, not the entire control item (so checkbox remains clickable)
+            if (lengthSlider) {
+                lengthSlider.style.opacity = animateLength ? '1' : '0.5';
+                lengthSlider.style.pointerEvents = animateLength ? 'auto' : 'none';
+            }
+            
+            if (weightSlider) {
+                weightSlider.style.opacity = animateWeight ? '1' : '0.5';
+                weightSlider.style.pointerEvents = animateWeight ? 'auto' : 'none';
+            }
         }
         
-        function setupEventListeners() {
-            // Canvas size sliders
-            document.getElementById('widthInput').addEventListener('input', updateCanvasSize);
-            document.getElementById('heightInput').addEventListener('input', updateCanvasSize);
+        let activeSlider = null;
+        let isDraggingSidebar = false;
+        let sidebarDragOffset = { x: 0, y: 0 };
+        
+        // Make sidebar draggable
+        function makeSidebarDraggable() {
+            const sidebar = document.getElementById('sidebar');
+            const dragHandle = sidebar.querySelector('.sidebar-drag-handle');
             
-
-
+            dragHandle.addEventListener('mousedown', (e) => {
+                isDraggingSidebar = true;
+                const rect = sidebar.getBoundingClientRect();
+                sidebarDragOffset.x = e.clientX - rect.left;
+                sidebarDragOffset.y = e.clientY - rect.top;
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDraggingSidebar) return;
+                
+                let newX = e.clientX - sidebarDragOffset.x;
+                let newY = e.clientY - sidebarDragOffset.y;
+                
+                // Keep sidebar within viewport bounds
+                const maxX = window.innerWidth - sidebar.offsetWidth;
+                const maxY = window.innerHeight - sidebar.offsetHeight;
+                
+                newX = Math.max(0, Math.min(newX, maxX));
+                newY = Math.max(0, Math.min(newY, maxY));
+                
+                sidebar.style.left = newX + 'px';
+                sidebar.style.top = newY + 'px';
+                sidebar.style.transform = 'none';
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDraggingSidebar = false;
+            });
+            
+            // Touch support for mobile
+            dragHandle.addEventListener('touchstart', (e) => {
+                isDraggingSidebar = true;
+                const touch = e.touches[0];
+                const rect = sidebar.getBoundingClientRect();
+                sidebarDragOffset.x = touch.clientX - rect.left;
+                sidebarDragOffset.y = touch.clientY - rect.top;
+                e.preventDefault();
+            });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (!isDraggingSidebar) return;
+                
+                const touch = e.touches[0];
+                let newX = touch.clientX - sidebarDragOffset.x;
+                let newY = touch.clientY - sidebarDragOffset.y;
+                
+                const maxX = window.innerWidth - sidebar.offsetWidth;
+                const maxY = window.innerHeight - sidebar.offsetHeight;
+                
+                newX = Math.max(0, Math.min(newX, maxX));
+                newY = Math.max(0, Math.min(newY, maxY));
+                
+                sidebar.style.left = newX + 'px';
+                sidebar.style.top = newY + 'px';
+                sidebar.style.transform = 'none';
+            });
+            
+            document.addEventListener('touchend', () => {
+                isDraggingSidebar = false;
+            });
+        }
+        
+        function enableSliderDrag(slider) {
+            slider.addEventListener('mousedown', (e) => {
+                activeSlider = slider;
+                slider.focus();
+                e.preventDefault();
+            });
+            
+            slider.addEventListener('touchstart', (e) => {
+                activeSlider = slider;
+                slider.focus();
+                e.preventDefault();
+            });
+        }
+        
+        // Single document-level listeners for mouse and touch events
+        document.addEventListener('mousemove', (e) => {
+            if (!activeSlider) return;
+            
+            const rect = activeSlider.getBoundingClientRect();
+            const min = parseFloat(activeSlider.min);
+            const max = parseFloat(activeSlider.max);
+            const percentage = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const value = min + (max - min) * percentage;
+            
+            activeSlider.value = value;
+            
+            // Update thumb position immediately during drag
+            updateSliderThumbs();
+            
+            // Trigger the appropriate update function
+            if (activeSlider.id === 'widthInput' || activeSlider.id === 'heightInput') {
+                updateCanvasSize();
+            } else {
+                updateDisplayValues();
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            activeSlider = null;
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (!activeSlider) return;
+            
+            const rect = activeSlider.getBoundingClientRect();
+            const touch = e.touches[0];
+            const min = parseFloat(activeSlider.min);
+            const max = parseFloat(activeSlider.max);
+            const percentage = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+            const value = min + (max - min) * percentage;
+            
+            activeSlider.value = value;
+            
+            // Update thumb position immediately during drag
+            updateSliderThumbs();
+            
+            if (activeSlider.id === 'widthInput' || activeSlider.id === 'heightInput') {
+                updateCanvasSize();
+            } else {
+                updateDisplayValues();
+            }
+        });
+        
+        document.addEventListener('touchend', () => {
+            activeSlider = null;
+        });
+        
+        function setupEventListeners() {
+            // Get all sliders and enable drag functionality
+            const allSliders = document.querySelectorAll('.slider');
+            allSliders.forEach(slider => {
+                enableSliderDrag(slider);
+            });
+            
             // Other sliders - update display values only (animation loop handles the drawing)
-            document.getElementById('cellWidthInput').addEventListener('input', updateDisplayValues);
-            document.getElementById('cellHeightInput').addEventListener('input', updateDisplayValues);
-            document.getElementById('lineLengthInput').addEventListener('input', updateDisplayValues);
-            document.getElementById('lineWidthInput').addEventListener('input', updateDisplayValues);
-            document.getElementById('speedInput').addEventListener('input', updateDisplayValues);
-            document.getElementById('amplitudeInput').addEventListener('input', updateDisplayValues);
+            document.getElementById('cellWidthInput').addEventListener('input', () => {
+                updateDisplayValues();
+                updateSliderThumbs();
+            });
+            document.getElementById('cellHeightInput').addEventListener('input', () => {
+                updateDisplayValues();
+                updateSliderThumbs();
+            });
+            document.getElementById('lineLengthInput').addEventListener('input', () => {
+                updateDisplayValues();
+                updateSliderThumbs();
+            });
+            document.getElementById('lineWidthInput').addEventListener('input', () => {
+                updateDisplayValues();
+                updateSliderThumbs();
+            });
+            document.getElementById('speedInput').addEventListener('input', () => {
+                updateDisplayValues();
+                updateSliderThumbs();
+            });
+            document.getElementById('amplitudeInput').addEventListener('input', () => {
+                updateDisplayValues();
+                updateSliderThumbs();
+            });
 
             // Stroke animation sliders
-            document.getElementById('lengthAmplitudeInput').addEventListener('input', updateDisplayValues);
-            document.getElementById('weightAmplitudeInput').addEventListener('input', updateDisplayValues);
+            document.getElementById('lengthAmplitudeInput').addEventListener('input', () => {
+                updateDisplayValues();
+                updateSliderThumbs();
+            });
+            document.getElementById('weightAmplitudeInput').addEventListener('input', () => {
+                updateDisplayValues();
+                updateSliderThumbs();
+            });
+            
+            // Canvas size sliders also need thumb updates
+            document.getElementById('widthInput').addEventListener('input', () => {
+                updateCanvasSize();
+                updateSliderThumbs();
+            });
+            document.getElementById('heightInput').addEventListener('input', () => {
+                updateCanvasSize();
+                updateSliderThumbs();
+            });
+            
+            // Update slider thumb positions on window resize
+            window.addEventListener('resize', () => {
+                setTimeout(updateSliderThumbs, 100);
+            });
 
             // Movement type selection
             document.querySelectorAll('[data-movement]').forEach(option => {
@@ -1302,75 +1644,57 @@
             
 
             
-            // Color selection
-            document.querySelectorAll('.color-option').forEach(option => {
-                option.addEventListener('click', () => {
-                    selectColor(option.dataset.color);
-                });
+            // Color picker selection
+            document.getElementById('strokeColorInput').addEventListener('input', (e) => {
+                selectColor(e.target.value);
             });
             
-            // Background color selection
-            document.querySelectorAll('[data-bg-color]').forEach(option => {
-                option.addEventListener('click', () => {
-                    selectBackgroundColor(option.dataset.bgColor);
-                });
+            document.getElementById('backgroundColorInput').addEventListener('input', (e) => {
+                selectBackgroundColor(e.target.value);
             });
             
             // Stroke animation controls
             document.getElementById('animateLengthToggle').addEventListener('change', toggleAnimationControls);
             document.getElementById('animateWeightToggle').addEventListener('change', toggleAnimationControls);
             
-            // Sidebar toggle
-            document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
-            
-            // Backdrop click to close sidebar on mobile
-            document.getElementById('sidebarBackdrop').addEventListener('click', () => {
-                const sidebar = document.getElementById('sidebar');
-                if (!sidebar.classList.contains('hidden')) {
-                    toggleSidebar();
-                }
+            // Sidebar minimize/maximize
+            document.getElementById('sidebarCloseButton').addEventListener('click', (e) => {
+                e.stopPropagation();
+                minimizeSidebar();
             });
             
-            // Editable value displays
-            const valueElements = [
-                { id: 'widthValue', slider: 'widthInput' },
-                { id: 'heightValue', slider: 'heightInput' },
-                { id: 'cellWidthValue', slider: 'cellWidthInput' },
-                { id: 'cellHeightValue', slider: 'cellHeightInput' },
-                { id: 'lineLengthValue', slider: 'lineLengthInput' },
-                { id: 'lineWidthValue', slider: 'lineWidthInput' },
-                { id: 'speedValue', slider: 'speedInput', suffix: '' },
-                { id: 'amplitudeValue', slider: 'amplitudeInput', suffix: '%' },
-                { id: 'lengthAmplitudeValue', slider: 'lengthAmplitudeInput', suffix: 'px' },
-                { id: 'weightAmplitudeValue', slider: 'weightAmplitudeInput', suffix: 'px' }
-            ];
-            
-            valueElements.forEach(({ id, slider, suffix = 'px' }) => {
-                document.addEventListener('click', (e) => {
-                    if (e.target.id === id) {
-                        makeValueEditable(e.target, document.getElementById(slider), suffix);
-                    }
-                });
+            document.getElementById('sidebarMinimizeBar').addEventListener('click', () => {
+                toggleMinimizeSidebar();
             });
+            
         }
         
         // Initialize
+        makeSidebarDraggable();
         setupEventListeners();
+        
+        // Set canvas to full viewport size
+        updateCanvasSize();
+        
         updateDisplayValues();
+        updateSliderThumbs();
         toggleAnimationControls();
+        
+        // Initialize color pickers with current values
+        document.getElementById('strokeColorInput').value = currentColor;
+        document.getElementById('backgroundColorInput').value = currentBackgroundColor;
+        
+        // Handle window resize
+        window.addEventListener('resize', handleWindowResize);
+        
         
 
         
-        // Set initial sidebar toggle state
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        sidebarToggle.textContent = '✕';
-        sidebarToggle.classList.add('sidebar-visible');
-        
-        // Keyboard shortcut for toggling sidebar (Ctrl/Cmd + B)
+        // Keyboard shortcut for minimizing sidebar (Ctrl/Cmd + B)
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
                 e.preventDefault();
-                toggleSidebar();
+                toggleMinimizeSidebar();
             }
         });
         
@@ -1382,9 +1706,12 @@
             // Hide backdrop on larger screens
             if (window.innerWidth > 768) {
                 backdrop.classList.remove('visible');
-            } else if (!sidebar.classList.contains('hidden')) {
+            } else if (!sidebar.classList.contains('minimized')) {
                 backdrop.classList.add('visible');
             }
+            
+            // Update canvas size to match viewport
+            updateCanvasSize();
         });
         
         animate();
