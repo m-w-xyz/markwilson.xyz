@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fly Typer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: white;
+            font-family: Arial, sans-serif;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #input-container {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(80%, 800px);
+            z-index: 2;
+        }
+        #text-input {
+            display: block;
+            width: 100%;
+            padding: 15px 25px;
+            font-size: clamp(16px, 2vw, 20px);
+            border: 2px solid #333;
+            border-radius: 12px;
+            outline: none;
+            font-family: Arial, sans-serif;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        #text-input:focus {
+            border-color: #666;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        }
+        @media (max-width: 600px) {
+            #input-container {
+                bottom: 20px;
+                width: calc(100% - 40px); /* 20px padding on each side */
+            }
+            #text-input {
+                padding: 12px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="input-container">
+        <input type="text" id="text-input" placeholder="Type something...">
+    </div>
+
+    <script>
+        class Fly {
+            constructor(x, y, image) {
+                this.x = x;
+                this.y = y;
+                this.image = image;
+                this.size = 15;
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = Math.random() * 2 + 1;
+                this.isMoving = Math.random() < 0.1;
+                this.isErratic = Math.random() < 0.00005;
+                this.isSpinning = Math.random() < 0.005;
+                this.spinSpeed = this.isSpinning ? (Math.random() * 0.3 + 0.1) : 0;
+                this.targetX = x;
+                this.targetY = y;
+                this.wanderAngle = 0;
+                this.hoverOffset = 0;
+                this.hoverSpeed = Math.random() * 0.1 + 0.05;
+                this.landingDelay = Math.random() * 50 + 25; // Reduced from 100-300 to 25-75
+                this.startLandingTime = 0;
+                this.erraticIntensity = 1;
+                this.lastMoveAngle = this.angle;
+            }
+
+            update() {
+                if (this.isMoving) {
+                    // Consistent erratic movement
+                    this.wanderAngle += (Math.random() - 0.5) * 0.5;
+                    
+                    // Only update spin for spinning flies
+                    if (this.isSpinning) {
+                        this.angle += this.spinSpeed;
+                    }
+                    
+                    // Consistent speed
+                    this.speed = Math.random() * 3 + 2;
+                    
+                    this.hoverOffset += this.hoverSpeed;
+                    const hoverY = Math.sin(this.hoverOffset) * 4;
+                    const verticalRandomness = (Math.random() - 0.5) * 3;
+                    
+                    let dx, dy;
+                    
+                    if (this.isErratic || !this.assignedPoint) {
+                        // Completely erratic movement
+                        dx = Math.cos(this.wanderAngle) * this.speed;
+                        dy = Math.sin(this.wanderAngle) * this.speed + hoverY + verticalRandomness;
+                        this.x += dx;
+                        this.y += dy;
+                    } else {
+                        // Mix between random and targeted movement
+                        dx = this.targetX - this.x;
+                        dy = this.targetY - this.y;
+                        const targetAngle = Math.atan2(dy, dx);
+                        const mixFactor = 0.7;
+                        const finalAngle = targetAngle * (1 - mixFactor) + this.wanderAngle * mixFactor;
+                        
+                        dx = Math.cos(finalAngle) * this.speed;
+                        dy = Math.sin(finalAngle) * this.speed + hoverY + verticalRandomness;
+                        this.x += dx;
+                        this.y += dy;
+                    }
+
+                    // Update angle to match movement direction if not spinning
+                    if (!this.isSpinning) {
+                        const moveAngle = Math.atan2(dy, dx);
+                        // Smooth angle transition
+                        const angleDiff = moveAngle - this.lastMoveAngle;
+                        // Normalize angle difference to [-PI, PI]
+                        const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+                        this.angle = this.lastMoveAngle + normalizedDiff * 0.2; // Smooth transition
+                        this.lastMoveAngle = this.angle;
+                    }
+
+                    // Wrap around screen edges with some randomness
+                    if (this.x < -50) this.x = canvas.width + Math.random() * 50;
+                    if (this.x > canvas.width + 50) this.x = -Math.random() * 50;
+                    if (this.y < -50) this.y = canvas.height + Math.random() * 50;
+                    if (this.y > canvas.height + 50) this.y = -Math.random() * 50;
+                } else {
+                    // Existing landed behavior
+                    if (Math.random() < 0.05) {
+                        this.x += (Math.random() - 0.5) * 1.5;
+                        this.y += (Math.random() - 0.5) * 1.5;
+                    }
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle + Math.PI / 2); // Add PI/2 to make flies point in direction of travel
+                ctx.drawImage(
+                    this.image,
+                    -this.size / 2,
+                    -this.size / 2,
+                    this.size,
+                    this.size
+                );
+                ctx.restore();
+            }
+        }
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const input = document.getElementById('text-input');
+        const flies = [];
+        const numFlies = 1500; // Increased to 1500 flies
+        let displayText = '';
+        let flyImages = [];
+        let currentTextPoints = [];
+        let isScattering = false;
+        let scatterStartTime = 0;
+        const SCATTER_DURATION = 1000; // 1 second scatter duration
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Load fly images
+        Promise.all([
+            loadImage('fly1.png'),
+            loadImage('fly2.png'),
+            loadImage('fly3.png'),
+            loadImage('fly4.png'),
+            loadImage('fly5.png'),
+            loadImage('fly6.png')
+        ]).then(images => {
+            flyImages = images;
+            initFlies();
+            animate();
+        });
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        function initFlies() {
+            for (let i = 0; i < numFlies; i++) {
+                const randomImage = flyImages[Math.floor(Math.random() * flyImages.length)];
+                const fly = new Fly(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height,
+                    randomImage
+                );
+                // Make all flies initially moving and erratic
+                fly.isMoving = true;
+                fly.wanderAngle = Math.random() * Math.PI * 2;
+                fly.speed = Math.random() * 3 + 2;
+                flies.push(fly);
+            }
+        }
+
+        function calculateMaxFontSize(text) {
+            let fontSize = 72; // Start from minimum 72px
+            const maxWidth = canvas.width * 0.9;
+            const maxHeight = canvas.height * 0.7;
+            const words = text.split(' ');
+            
+            while (true) {
+                ctx.font = `${fontSize + 1}px Arial`;
+                
+                // Calculate total height needed for wrapped text
+                let currentLine = words[0];
+                let totalHeight = 0;
+                let maxLineWidth = 0;
+                const lineHeight = fontSize * 1.0; // Reduced from 1.1 to 1.05 for even tighter line spacing
+                
+                for (let i = 1; i < words.length; i++) {
+                    const testLine = currentLine + ' ' + words[i];
+                    const metrics = ctx.measureText(testLine);
+                    
+                    if (metrics.width > maxWidth) {
+                        // Line is too wide, start new line
+                        totalHeight += lineHeight;
+                        maxLineWidth = Math.max(maxLineWidth, ctx.measureText(currentLine).width);
+                        currentLine = words[i];
+                    } else {
+                        currentLine = testLine;
+                    }
+                }
+                
+                totalHeight += lineHeight; // Add height for last line
+                maxLineWidth = Math.max(maxLineWidth, ctx.measureText(currentLine).width);
+
+                if (maxLineWidth > maxWidth || totalHeight > maxHeight) {
+                    break;
+                }
+                fontSize++;
+            }
+
+            return fontSize;
+        }
+
+        function getTextPoints(text) {
+            const points = [];
+            const fontSize = calculateMaxFontSize(text);
+            const words = text.split(' ');
+            const lineHeight = fontSize * 1.0; // Reduced from 1.1 to 1.05 for even tighter line spacing
+            ctx.font = `${fontSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Calculate text wrapping
+            const maxWidth = canvas.width * 0.9;
+            let lines = [];
+            let currentLine = words[0];
+            
+            for (let i = 1; i < words.length; i++) {
+                const testLine = currentLine + ' ' + words[i];
+                const metrics = ctx.measureText(testLine);
+                
+                if (metrics.width > maxWidth) {
+                    lines.push(currentLine);
+                    currentLine = words[i];
+                } else {
+                    currentLine = testLine;
+                }
+            }
+            lines.push(currentLine);
+
+            // Calculate total height of text
+            const totalHeight = lines.length * lineHeight;
+            const startY = canvas.height / 2 - totalHeight / 2 + lineHeight / 2;
+
+            // Create points for each line
+            lines.forEach((line, lineIndex) => {
+                const textWidth = ctx.measureText(line).width;
+                const textHeight = fontSize;
+                const textX = canvas.width / 2;
+                const textY = startY + lineIndex * lineHeight;
+
+                // Create a temporary canvas for pixel sampling
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = textWidth * 1.2;
+                tempCanvas.height = textHeight * 1.2;
+
+                // Draw text on temporary canvas
+                tempCtx.font = `${fontSize}px Arial`;
+                tempCtx.textAlign = 'center';
+                tempCtx.textBaseline = 'middle';
+                tempCtx.fillText(line, tempCanvas.width / 2, tempCanvas.height / 2);
+
+                // Sample points from the text
+                const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                const data = imageData.data;
+                const sampleRate = 2;
+
+                for (let y = 0; y < tempCanvas.height; y += sampleRate) {
+                    for (let x = 0; x < tempCanvas.width; x += sampleRate) {
+                        const alpha = data[(y * tempCanvas.width + x) * 4 + 3];
+                        if (alpha > 0) {
+                            points.push({
+                                x: textX - textWidth / 2 + x * (textWidth / tempCanvas.width),
+                                y: textY - textHeight / 2 + y * (textHeight / tempCanvas.height),
+                                isEdge: isEdgePixel(data, x, y, tempCanvas.width)
+                            });
+                        }
+                    }
+                }
+            });
+
+            return points;
+        }
+
+        function isEdgePixel(data, x, y, width) {
+            // Check surrounding pixels to determine if this is an edge
+            const idx = (y * width + x) * 4 + 3;
+            const surrounding = [
+                data[idx - width * 4], // top
+                data[idx + width * 4], // bottom
+                data[idx - 4], // left
+                data[idx + 4]  // right
+            ];
+            return surrounding.some(alpha => !alpha);
+        }
+
+        function scatter() {
+            isScattering = true;
+            scatterStartTime = Date.now();
+            flies.forEach(fly => {
+                if (!fly.isErratic) {
+                    fly.isMoving = true;
+                    delete fly.assignedPoint;
+                    // Much reduced landing delay
+                    fly.startLandingTime = Date.now() + Math.random() * 200 + 100; // Reduced from 500-1000 to 100-300
+                }
+            });
+        }
+
+        function updateScatterBehavior() {
+            if (!isScattering) return;
+            
+            const currentTime = Date.now();
+            const elapsed = currentTime - scatterStartTime;
+            
+            if (elapsed > SCATTER_DURATION) {
+                isScattering = false;
+                flies.forEach(fly => {
+                    if (!fly.isErratic) {
+                        fly.erraticIntensity = 1;
+                    }
+                });
+                return;
+            }
+
+            flies.forEach(fly => {
+                if (!fly.isErratic) {
+                    if (currentTime >= fly.startLandingTime) {
+                        // Gradually reduce erratic behavior as we approach landing
+                        fly.erraticIntensity = Math.max(0.5, 2 - (currentTime - fly.startLandingTime) / 1000);
+                    }
+                }
+            });
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw the text in the same color as background
+            if (displayText) {
+                const fontSize = calculateMaxFontSize(displayText);
+                const words = displayText.split(' ');
+                const lineHeight = fontSize * 1.0; // Reduced from 1.1 to 1.05 for even tighter line spacing
+                ctx.font = `${fontSize}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'white';
+
+                // Calculate text wrapping
+                const maxWidth = canvas.width * 0.9;
+                let lines = [];
+                let currentLine = words[0];
+                
+                for (let i = 1; i < words.length; i++) {
+                    const testLine = currentLine + ' ' + words[i];
+                    const metrics = ctx.measureText(testLine);
+                    
+                    if (metrics.width > maxWidth) {
+                        lines.push(currentLine);
+                        currentLine = words[i];
+                    } else {
+                        currentLine = testLine;
+                    }
+                }
+                lines.push(currentLine);
+
+                // Draw each line
+                const totalHeight = lines.length * lineHeight;
+                const startY = canvas.height / 2 - totalHeight / 2 + lineHeight / 2;
+                
+                lines.forEach((line, index) => {
+                    ctx.fillText(line, canvas.width / 2, startY + index * lineHeight);
+                });
+            }
+
+            updateScatterBehavior();
+
+            // Update and draw flies
+            flies.forEach((fly, index) => {
+                const currentTime = Date.now();
+                
+                if (currentTextPoints.length > 0 && !fly.isErratic && !isScattering && currentTime >= fly.startLandingTime) {
+                    if (!fly.assignedPoint) {
+                        const pointIndex = Math.floor((index / flies.length) * currentTextPoints.length);
+                        fly.assignedPoint = currentTextPoints[pointIndex];
+                        fly.targetX = fly.assignedPoint.x;
+                        fly.targetY = fly.assignedPoint.y;
+                    }
+                    
+                    if (fly.isMoving) {
+                        const dx = fly.targetX - fly.x;
+                        const dy = fly.targetY - fly.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        // Much faster landing chance increase
+                        const timeSinceScatterStart = currentTime - fly.startLandingTime;
+                        const landingChance = Math.min(0.95, timeSinceScatterStart / 150); // Increased max chance to 95% and reaches it faster (0.15s instead of 0.3s)
+                        
+                        if (distance < 100 && Math.random() < landingChance) {
+                            fly.isMoving = false;
+                            fly.erraticIntensity = 0;
+                        }
+                    } else {
+                        // Much faster movement to landing position
+                        const dx = fly.targetX - fly.x;
+                        const dy = fly.targetY - fly.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance > 1) {
+                            fly.x += dx * 0.9; // Increased from 0.75 to 0.9 for much faster movement
+                            fly.y += dy * 0.9;
+                            fly.angle = Math.atan2(dy, dx);
+                        }
+                        
+                        // Small random movement when at target
+                        if (distance < 3) {
+                            fly.x += (Math.random() - 0.5) * 0.75;
+                            fly.y += (Math.random() - 0.5) * 0.75;
+                        }
+                        
+                        // Very low chance for landed flies to take off
+                        if (Math.random() < 0.0001) { // Reduced from 0.0005 to 0.0001 to make landed flies stay put
+                            fly.isMoving = true;
+                            fly.assignedPoint = currentTextPoints[Math.floor(Math.random() * currentTextPoints.length)];
+                            fly.targetX = fly.assignedPoint.x;
+                            fly.targetY = fly.assignedPoint.y;
+                        }
+                    }
+                } else {
+                    fly.isMoving = true;
+                    delete fly.assignedPoint;
+                }
+                
+                if (fly.isMoving) {
+                    fly.update();
+                }
+                fly.draw(ctx);
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        let typingTimeout;
+        input.addEventListener('input', (e) => {
+            displayText = e.target.value;
+            scatter(); // Scatter flies when typing
+            
+            // Clear previous timeout
+            if (typingTimeout) {
+                clearTimeout(typingTimeout);
+            }
+            
+            // Wait for typing to finish before calculating new points
+            typingTimeout = setTimeout(() => {
+                currentTextPoints = getTextPoints(displayText);
+                // Reset assigned points when text changes
+                flies.forEach(fly => delete fly.assignedPoint);
+            }, 100); // Short delay to wait for typing to finish
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if (displayText) {
+                // Make all non-erratic flies take off
+                flies.forEach(fly => {
+                    if (!fly.isErratic) {
+                        fly.isMoving = true;
+                        delete fly.assignedPoint;
+                        fly.startLandingTime = Date.now() + Math.random() * 2000 + 1000; // 1-3 second delay
+                    }
+                });
+                // Recalculate text points with new canvas size
+                currentTextPoints = getTextPoints(displayText);
+            }
+        });
+    </script>
+</body>
+</html> 

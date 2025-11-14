@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BUT WHERE ARE YOU FROM FROM?</title>
+  <style>
+    @font-face {
+      font-family: 'Penray';
+      src: url('Penray-Extrabold.otf') format('opentype');
+      font-weight: bold;
+      font-style: normal;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #000;
+      color: #fff;
+      width: 100vw;
+      height: 100vh;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      box-sizing: border-box;
+      padding: 50px;
+      position: relative;
+    }
+    .word {
+      font-family: 'Penray', sans-serif;
+      font-weight: bold;
+      color: #fff;
+      font-size: 8vw;
+      line-height: 1.05;
+      margin: 0;
+      padding: 0;
+      letter-spacing: 0.02em;
+      text-align: center;
+      white-space: nowrap;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .italic {
+      font-style: italic;
+      transform: skew(-12deg);
+      display: inline-block;
+    }
+    #xGrid {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #faceOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 20;
+    }
+    #textContainer {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="textContainer">
+    <div class="word">BUT</div>
+    <div class="word">WHERE</div>
+    <div class="word">ARE</div>
+    <div class="word">YOU</div>
+    <div class="word italic">FROM</div>
+    <div class="word">FROM?</div>
+  </div>
+  <canvas id="xGrid"></canvas>
+  <canvas id="faceOverlay"></canvas>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
+  <script>
+    // Draw a fine grid of Xs only where the text is white
+    const canvas = document.getElementById('xGrid');
+    const ctx = canvas.getContext('2d');
+    const textContainer = document.getElementById('textContainer');
+    function drawXGrid() {
+      // Set canvas size to fill the padded area
+      const pad = 50;
+      const width = window.innerWidth - pad * 2;
+      const height = window.innerHeight - pad * 2;
+      canvas.width = width;
+      canvas.height = height;
+      canvas.style.left = pad + 'px';
+      canvas.style.top = pad + 'px';
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      ctx.clearRect(0, 0, width, height);
+
+      // Render text to an offscreen canvas for sampling
+      const off = document.createElement('canvas');
+      off.width = width;
+      off.height = height;
+      const offCtx = off.getContext('2d');
+      offCtx.fillStyle = '#000';
+      offCtx.fillRect(0, 0, off.width, off.height);
+      // Draw each word in the correct position
+      const words = [
+        { text: 'BUT', italic: false },
+        { text: 'WHERE', italic: false },
+        { text: 'ARE', italic: false },
+        { text: 'YOU', italic: false },
+        { text: 'FROM', italic: true },
+        { text: 'FROM?', italic: false }
+      ];
+      const fontFamily = 'Penray, sans-serif';
+      const fontWeight = 'bold';
+      const fontSize = Math.floor(height / words.length * 0.95); // fit all lines
+      const lineHeight = height / words.length;
+      offCtx.textAlign = 'center';
+      offCtx.textBaseline = 'middle';
+      // Calculate dynamic skew for first 'FROM' based on lip distance
+      let dynamicSkew = -0.22;
+      if (faceLandmarks && faceLandmarks.length > 14) {
+        // Landmarks 13 (upper lip), 14 (lower lip)
+        const upper = faceLandmarks[13];
+        const lower = faceLandmarks[14];
+        const lipDist = Math.abs(upper.y - lower.y);
+        // Map lipDist (e.g., 0.01 closed to 0.08 open) to skew (-0.22 to -1.0)
+        const minLip = 0.01, maxLip = 0.08;
+        const minSkew = -0.22, maxSkew = -1.0;
+        const t = Math.max(0, Math.min(1, (lipDist - minLip) / (maxLip - minLip)));
+        dynamicSkew = minSkew + (maxSkew - minSkew) * t;
+      }
+      for (let i = 0; i < words.length; i++) {
+        offCtx.save();
+        const x = width / 2;
+        const y = (i + 0.5) * lineHeight;
+        offCtx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+        offCtx.textAlign = 'center';
+        offCtx.textBaseline = 'middle';
+        if (words[i].italic) {
+          // Dynamic skew for first FROM
+          const skew = dynamicSkew;
+          offCtx.translate(x, y);
+          offCtx.transform(1, 0, skew, 1, 0, 0);
+          offCtx.fillStyle = '#fff';
+          offCtx.fillText(words[i].text, 0, 0);
+        } else {
+          offCtx.fillStyle = '#fff';
+          offCtx.fillText(words[i].text, x, y);
+        }
+        offCtx.restore();
+      }
+      // Now sample the offscreen canvas for white pixels
+      const imgData = offCtx.getImageData(0, 0, width, height).data;
+      const gridSize = 3; // ultra dense grid
+      ctx.save();
+      ctx.font = '4px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // Use faceLandmarks from face tracking overlay
+      // Convert faceLandmarks to grid coordinates
+      let gridFaceLandmarks = [];
+      if (faceLandmarks && faceLandmarks.length >= 474) {
+        // 468: left eye center, 473: right eye center (MediaPipe iris)
+        const leftEye = faceLandmarks[468];
+        const rightEye = faceLandmarks[473];
+        if (leftEye) gridFaceLandmarks.push([(1 - leftEye.x) * width, leftEye.y * height]);
+        if (rightEye) gridFaceLandmarks.push([(1 - rightEye.x) * width, rightEye.y * height]);
+      }
+      // Face outline indices for MediaPipe FaceMesh (outer face contour)
+      const FACE_OUTLINE = [10, 338, 297, 332, 284, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
+
+      // Utility: point-in-polygon test
+      function pointInPolygon(x, y, poly) {
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+          const xi = poly[i][0], yi = poly[i][1];
+          const xj = poly[j][0], yj = poly[j][1];
+          const intersect = ((yi > y) !== (yj > y)) &&
+            (x < (xj - xi) * (y - yi) / (yj - yi + 1e-10) + xi);
+          if (intersect) inside = !inside;
+        }
+        return inside;
+      }
+
+      for (let y = 0; y < height; y += gridSize) {
+        for (let x = 0; x < width; x += gridSize) {
+          const idx = (y * width + x) * 4;
+          // If pixel is white (or nearly white)
+          if (imgData[idx] > 200 && imgData[idx+1] > 200 && imgData[idx+2] > 200) {
+            // If faceLandmarks available, check if inside face polygon
+            let color = '#fff';
+            if (faceLandmarks && faceLandmarks.length > 0) {
+              // Center of the grid canvas for scaling
+              const cx = width / 2;
+              const cy = height / 2;
+              // Build polygon from face outline
+              const poly = FACE_OUTLINE.map(idx => {
+                const pt = faceLandmarks[idx];
+                // Mirror and scale around center
+                let px = (1 - pt.x) * width;
+                let py = pt.y * height;
+                px = (px - cx) * ZOOM + cx;
+                py = (py - cy) * ZOOM + cy;
+                return [px, py];
+              });
+              if (pointInPolygon(x, y, poly)) {
+                color = underFaceColor;
+              }
+            }
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 0.5;
+            ctx.strokeText('X', x, y);
+          }
+        }
+      }
+      ctx.restore();
+    }
+    // Wait for font to load before drawing
+    function ensureFontAndDraw() {
+      // Try to load the Penray font explicitly
+      document.fonts.load('bold 40px Penray').then(function() {
+        document.fonts.ready.then(drawXGrid);
+      });
+    }
+    ensureFontAndDraw();
+    window.addEventListener('resize', drawXGrid);
+
+    // --- Face tracking overlay ---
+    const faceCanvas = document.getElementById('faceOverlay');
+    const faceCtx = faceCanvas.getContext('2d');
+    let faceMesh = null;
+    let camera = null;
+    let video = null;
+    let faceLandmarks = [];
+    // Blink detection
+    let lastBlinkState = false;
+    let underFaceColor = '#000';
+    // Full skin tone palette from image
+    const SKIN_COLORS = [
+      '#E7B18A', '#D49A6A', '#B97A4A', '#8B5A2B', // top left row
+      '#B06C3A', '#8B4C2B', '#6B3A1B', '#3B2312', // top right row
+      '#E6B1A1', '#D49A8A', '#B97A6A', '#8B5A4A', // 2nd left row
+      '#E6D6A1', '#D4C88A', '#B9A96A', '#8B7A4A', // 2nd right row
+      '#E6D1A1', '#D4B88A', '#B9A16A', '#8B7A4A', // 3rd left row
+      '#C89A4A', '#B97A2B', '#8B5A1B', '#6B3A0B', // 3rd right row
+      '#F7E2AB', '#E6C89A', '#D4A16A', '#B97A4A', // 4th left row
+      '#A15A3A', '#8B3A2B', '#6B1A1B', '#3B0A0A'  // 4th right row
+    ];
+    function randomSkinColor() {
+      return SKIN_COLORS[Math.floor(Math.random() * SKIN_COLORS.length)];
+    }
+    // Eye blink detection using upper/lower eyelid landmarks (left eye: 159, 145)
+    function isEyeClosed(landmarks) {
+      if (!landmarks || landmarks.length < 160) return false;
+      // Use left eye for simplicity
+      const upper = landmarks[159];
+      const lower = landmarks[145];
+      const dist = Math.abs(upper.y - lower.y);
+      return dist < 0.012; // Threshold for blink (tweak if needed)
+    }
+    // --- Webcam zoom for tracking ---
+    const ZOOM = 1.33;
+    function resizeFaceCanvas() {
+      faceCanvas.width = window.innerWidth;
+      faceCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeFaceCanvas);
+    resizeFaceCanvas();
+    async function startFaceTracking() {
+      if (faceMesh) return;
+      video = document.createElement('video');
+      video.setAttribute('autoplay', '');
+      video.setAttribute('playsinline', '');
+      video.setAttribute('muted', '');
+      faceMesh = new FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`
+      });
+      faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+      faceMesh.onResults((results) => {
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+          faceLandmarks = results.multiFaceLandmarks[0];
+          // Blink detection
+          const blink = isEyeClosed(faceLandmarks);
+          if (blink && !lastBlinkState) {
+            // Just blinked
+            underFaceColor = randomSkinColor();
+          }
+          lastBlinkState = blink;
+        } else {
+          faceLandmarks = [];
+        }
+        drawXGrid(); // Redraw the X grid with updated faceLandmarks
+        drawFaceXs(); // Draw the face overlay Xs
+      });
+      // Custom onFrame: zoom video before sending to FaceMesh
+      camera = new Camera(video, {
+        onFrame: async () => {
+          // Draw video to offscreen canvas, zoomed in
+          const vw = video.videoWidth;
+          const vh = video.videoHeight;
+          if (vw === 0 || vh === 0) return;
+          const off = document.createElement('canvas');
+          off.width = vw;
+          off.height = vh;
+          const offCtx = off.getContext('2d');
+          // Calculate crop for zoom
+          const cropW = vw / ZOOM;
+          const cropH = vh / ZOOM;
+          const cropX = (vw - cropW) / 2;
+          const cropY = (vh - cropH) / 2;
+          offCtx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, vw, vh);
+          await faceMesh.send({image: off});
+        },
+        width: 640,
+        height: 480
+      });
+      camera.start();
+    }
+    // Automatically start face tracking on page load
+    window.addEventListener('DOMContentLoaded', startFaceTracking);
+
+    function drawFaceXs() {
+      faceCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+      if (!faceLandmarks.length) return;
+      faceCtx.save();
+      faceCtx.font = '4px monospace';
+      faceCtx.textAlign = 'center';
+      faceCtx.textBaseline = 'middle';
+      faceCtx.fillStyle = '#fff';
+      // Scale Xs by 1.33x around the center
+      const cx = faceCanvas.width / 2;
+      const cy = faceCanvas.height / 2;
+      for (const pt of faceLandmarks) {
+        // Mirror horizontally
+        let x = (1 - pt.x) * faceCanvas.width;
+        let y = pt.y * faceCanvas.height;
+        // Scale around center
+        x = (x - cx) * ZOOM + cx;
+        y = (y - cy) * ZOOM + cy;
+        faceCtx.fillText('X', x, y);
+      }
+      faceCtx.restore();
+    }
+    // Also draw face overlay Xs on resize
+    window.addEventListener('resize', drawFaceXs);
+    // And on font load
+    document.fonts.ready.then(drawFaceXs);
+  </script>
+</body>
+</html>
