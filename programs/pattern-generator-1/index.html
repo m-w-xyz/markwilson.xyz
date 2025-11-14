@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jade Grid Animation 3</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 32px 24px;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, width 0.3s ease;
+            position: relative;
+            z-index: 100;
+            height: 100vh;
+            max-height: 100vh;
+        }
+        
+        .sidebar.hidden {
+            transform: translateX(-100%);
+            width: 0;
+            padding: 0;
+        }
+        
+        .sidebar-toggle {
+            position: fixed;
+            top: 32px;
+            left: 32px;
+            width: 48px;
+            height: 48px;
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s ease;
+            z-index: 200;
+        }
+        
+        .sidebar-toggle:hover {
+            background: rgba(30, 30, 30, 0.95);
+            transform: scale(1.05);
+        }
+        
+        .sidebar-toggle.sidebar-visible {
+            left: 288px;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px;
+            transition: margin-left 0.3s ease;
+        }
+        
+        .main-content.sidebar-hidden {
+            margin-left: 0;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 280px;
+                padding: 24px 20px;
+            }
+            
+            .sidebar-toggle.sidebar-visible {
+                left: 248px;
+            }
+        }
+        
+        @media (max-width: 900px) {
+            .sidebar {
+                width: 260px;
+                padding: 20px 16px;
+            }
+            
+            .sidebar-toggle.sidebar-visible {
+                left: 228px;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 300px;
+                z-index: 1000;
+                height: 100vh;
+                max-height: 100vh;
+            }
+            
+            .sidebar-toggle.sidebar-visible {
+                left: 268px;
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding: 80px 16px 16px 16px;
+            }
+            
+            .main-content.sidebar-hidden {
+                margin-left: 0;
+            }
+            
+            /* Mobile backdrop overlay */
+            .sidebar-backdrop {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(2px);
+                z-index: 999;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s ease, visibility 0.3s ease;
+            }
+            
+            .sidebar-backdrop.visible {
+                opacity: 1;
+                visibility: visible;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .sidebar {
+                width: 280px;
+                padding: 16px 12px;
+                height: 100vh;
+                max-height: 100vh;
+            }
+            
+            .sidebar-toggle.sidebar-visible {
+                left: 248px;
+            }
+            
+            .logo {
+                font-size: 20px;
+            }
+            
+            .control-group {
+                margin-bottom: 24px;
+            }
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 32px;
+            font-weight: 400;
+        }
+        
+        .control-group {
+            margin-bottom: 32px;
+        }
+        
+        .group-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .control-item {
+            margin-bottom: 20px;
+        }
+        
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #ccc;
+        }
+        
+        .control-value {
+            font-size: 13px;
+            color: #667eea;
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, monospace;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .control-value:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .control-value-input {
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid #667eea;
+            outline: none;
+            width: 60px;
+            text-align: center;
+        }
+        
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        
+        .slider:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            transition: all 0.2s ease;
+        }
+        
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .movement-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .movement-option {
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 12px;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .movement-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+        
+        .movement-option.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+            color: white;
+        }
+        
+        .primary-button {
+            width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 24px;
+        }
+        
+        .primary-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .primary-button:active {
+            transform: translateY(0);
+        }
+        
+        .color-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .color-option {
+            width: 100%;
+            height: 40px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.05);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .color-option.active {
+            border-color: #667eea;
+            border-width: 3px;
+            transform: scale(1.1);
+        }
+        
+        .color-option.active::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #000;
+            font-weight: bold;
+            font-size: 16px;
+            text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+        }
+        
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        .secondary-button {
+            width: 100%;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .secondary-button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        .secondary-button:active {
+            transform: translateY(0);
+        }
+        
+        .secondary-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .recording-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            color: #ff4757;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .recording-dot {
+            width: 8px;
+            height: 8px;
+            background: #ff4757;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        canvas {
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Scrollbar styling */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 3px;
+        }
+        
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.7);
+        }
+        
+        /* Toggle Switch Styles */
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            border-radius: 12px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #fff;
+            transition: all 0.3s ease;
+            border-radius: 50%;
+        }
+        
+        .toggle input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+        }
+        
+        .toggle input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+        
+        .toggle:hover .toggle-slider {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        .toggle input:checked:hover + .toggle-slider {
+            background: linear-gradient(135deg, #7788f0 0%, #8455b8 100%);
+        }
+        
+
+    </style>
+</head>
+<body>
+    <div class="sidebar-toggle" id="sidebarToggle">☰</div>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    
+    <div class="sidebar" id="sidebar">
+        <div class="logo">GridFlow</div>
+        <div class="subtitle">Organic texture movements</div>
+        
+        <div class="control-group">
+            <div class="group-title">Canvas</div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Width</span>
+                    <span class="control-value" id="widthValue">1080px</span>
+                </div>
+                <input type="range" class="slider" id="widthInput" value="1080" min="400" max="2000">
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Height</span>
+                    <span class="control-value" id="heightValue">1080px</span>
+                </div>
+                <input type="range" class="slider" id="heightInput" value="1080" min="300" max="1200">
+            </div>
+        </div>
+        
+
+        
+        <div class="control-group">
+            <div class="group-title">Grid Properties</div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Cell Width</span>
+                    <span class="control-value" id="cellWidthValue">15px</span>
+                </div>
+                <input type="range" class="slider" id="cellWidthInput" value="15" min="15" max="120">
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Cell Height</span>
+                    <span class="control-value" id="cellHeightValue">15px</span>
+                </div>
+                <input type="range" class="slider" id="cellHeightInput" value="15" min="15" max="120">
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Line Height</span>
+                    <span class="control-value" id="lineLengthValue">5px</span>
+                </div>
+                <input type="range" class="slider" id="lineLengthInput" value="5" min="5" max="120">
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Line Width</span>
+                    <span class="control-value" id="lineWidthValue">1px</span>
+                </div>
+                <input type="range" class="slider" id="lineWidthInput" value="1" min="1" max="50">
+            </div>
+            
+
+        </div>
+        
+        <div class="control-group">
+            <div class="group-title">Animation</div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Speed</span>
+                    <span class="control-value" id="speedValue">11</span>
+                </div>
+                <input type="range" class="slider" id="speedInput" value="11" min="1" max="21">
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Movement Amplitude</span>
+                    <span class="control-value" id="amplitudeValue">1250%</span>
+                </div>
+                <input type="range" class="slider" id="amplitudeInput" value="1250" min="10" max="2500">
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Texture Type</span>
+                </div>
+                <div class="movement-selector">
+                    <div class="movement-option" data-movement="liquid">Liquid</div>
+                    <div class="movement-option" data-movement="organic">Organic</div>
+                    <div class="movement-option" data-movement="turbulence">Turbulence</div>
+                    <div class="movement-option" data-movement="flowing">Flowing</div>
+                    <div class="movement-option" data-movement="dissolve">Dissolve</div>
+                    <div class="movement-option" data-movement="typography">Typography</div>
+                    <div class="movement-option active" data-movement="ripple">Ripple</div>
+                </div>
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Stroke Color</span>
+                </div>
+                <div class="color-selector">
+                    <div class="color-option active" data-color="#FFFFFF" style="background-color: #FFFFFF;"></div>
+                    <div class="color-option" data-color="#85FF59" style="background-color: #85FF59;"></div>
+                    <div class="color-option" data-color="#D7FF59" style="background-color: #D7FF59;"></div>
+                    <div class="color-option" data-color="#6C5C3F" style="background-color: #6C5C3F;"></div>
+                    <div class="color-option" data-color="#3A3A3A" style="background-color: #3A3A3A;"></div>
+                    <div class="color-option" data-color="#BEBEBE" style="background-color: #BEBEBE;"></div>
+                </div>
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Background Color</span>
+                </div>
+                <div class="color-selector">
+                    <div class="color-option" data-bg-color="transparent" style="background: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%); background-size: 8px 8px; background-position: 0 0, 0 4px, 4px -4px, -4px 0px;"></div>
+                    <div class="color-option active" data-bg-color="#000000" style="background-color: #000000;"></div>
+                    <div class="color-option" data-bg-color="#FFFFFF" style="background-color: #FFFFFF;"></div>
+                    <div class="color-option" data-bg-color="#85FF59" style="background-color: #85FF59;"></div>
+                    <div class="color-option" data-bg-color="#D7FF59" style="background-color: #D7FF59;"></div>
+                    <div class="color-option" data-bg-color="#6C5C3F" style="background-color: #6C5C3F;"></div>
+                    <div class="color-option" data-bg-color="#3A3A3A" style="background-color: #3A3A3A;"></div>
+                    <div class="color-option" data-bg-color="#BEBEBE" style="background-color: #BEBEBE;"></div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="group-title">Stroke Animation</div>
+                
+                <div class="control-item">
+                    <div class="control-label">
+                        <span>Animate Length</span>
+                        <label class="toggle">
+                            <input type="checkbox" id="animateLengthToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="control-item" id="lengthAnimationControls">
+                    <div class="control-label">
+                        <span>Length Amplitude</span>
+                        <span class="control-value" id="lengthAmplitudeValue">20px</span>
+                    </div>
+                    <input type="range" class="slider" id="lengthAmplitudeInput" value="20" min="5" max="50">
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-label">
+                        <span>Animate Weight</span>
+                        <label class="toggle">
+                            <input type="checkbox" id="animateWeightToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="control-item" id="weightAnimationControls">
+                    <div class="control-label">
+                        <span>Weight Amplitude</span>
+                        <span class="control-value" id="weightAmplitudeValue">5px</span>
+                    </div>
+                    <input type="range" class="slider" id="weightAmplitudeInput" value="5" min="1" max="20">
+                </div>
+            </div>
+            
+            <button class="primary-button" id="toggleButton" onclick="toggleAnimation()">⏸ Pause Animation</button>
+            
+            <div class="action-buttons">
+                <button class="secondary-button" onclick="randomizeParameters()">🎲 Randomize All</button>
+                <button class="secondary-button" id="downloadButton" onclick="downloadMP4()">📹 Download MP4</button>
+                <div class="recording-indicator" id="recordingIndicator">
+                    <div class="recording-dot"></div>
+                    <span>Recording...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-content" id="mainContent">
+        <canvas id="canvas" width="1080" height="1080"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let animationTime = 0;
+        let isAnimating = true;
+        let currentMovement = 'ripple';
+        let currentColor = '#FFFFFF';
+        let currentBackgroundColor = '#000000';
+
+        let isRecording = false;
+        let mediaRecorder = null;
+        
+
+        
+        function getActualSpeed() {
+            const sliderValue = parseFloat(document.getElementById('speedInput').value);
+            // Map slider value (1-21) with position 11 as default (current speed 2)
+            // Use exponential scaling for finer control
+            const minSpeed = 0.00001;
+            const defaultSpeed = 0.00112; // Current speed 2 value
+            const maxSpeed = 0.02;
+            
+            if (sliderValue <= 11) {
+                // Positions 1-11: exponential scale from minSpeed to defaultSpeed
+                const progress = (sliderValue - 1) / 10;
+                return minSpeed * Math.pow(defaultSpeed / minSpeed, progress);
+            } else {
+                // Positions 12-21: exponential scale from defaultSpeed to maxSpeed
+                const progress = (sliderValue - 11) / 10;
+                return defaultSpeed * Math.pow(maxSpeed / defaultSpeed, progress);
+            }
+        }
+        
+        function getHorizontalDisplacement(col, row, centerX, centerY, time, speed) {
+            // Get amplitude multiplier from slider (10% to 1000%)
+            const amplitudeMultiplier = parseInt(document.getElementById('amplitudeInput').value) / 100;
+            const maxDisplacement = parseInt(document.getElementById('cellWidthInput').value) * 0.6 * amplitudeMultiplier;
+            
+            switch(currentMovement) {
+                case 'liquid':
+                    // Multi-layered flowing liquid texture
+                    return (
+                        Math.sin(time * speed + col * 0.15 + row * 0.08) * 0.6 +
+                        Math.sin(time * speed * 1.7 + col * 0.25 + row * 0.12) * 0.3 +
+                        Math.sin(time * speed * 2.3 + col * 0.35) * 0.1
+                    ) * maxDisplacement;
+                
+                case 'organic':
+                    // Organic growth patterns with noise
+                    const noise1 = Math.sin(col * 0.3 + row * 0.2 + time * speed) * Math.cos(col * 0.15 + time * speed * 1.2);
+                    const noise2 = Math.sin(col * 0.25 + row * 0.18 + time * speed * 0.7) * Math.cos(row * 0.22 + time * speed * 1.8);
+                    return (noise1 * 0.7 + noise2 * 0.3) * maxDisplacement;
+                
+                case 'turbulence':
+                    // Chaotic turbulent motion
+                    return (
+                        Math.sin(time * speed * 3 + col * 0.4 + row * 0.1) * 0.4 +
+                        Math.sin(time * speed * 5.7 + col * 0.8 + row * 0.3) * 0.3 +
+                        Math.sin(time * speed * 8.2 + col * 1.2 + row * 0.7) * 0.2 +
+                        Math.sin(time * speed * 11.8 + col * 1.8) * 0.1
+                    ) * maxDisplacement;
+                
+                case 'flowing':
+                    // Smooth flowing streams
+                    const streamX = Math.sin(time * speed + row * 0.1) * 0.8;
+                    return streamX * maxDisplacement * (1 + Math.sin(col * 0.05) * 0.3);
+                
+                case 'dissolve':
+                    // Text dissolving effect - more displacement from left to right
+                    const cols = Math.floor(canvas.width / parseInt(document.getElementById('cellWidthInput').value));
+                    const progressFromLeft = col / cols; // 0 to 1 from left to right
+                    const dissolveFactor = Math.pow(progressFromLeft, 1.5) * 2; // Exponential increase
+                    const waveDisplacement = Math.sin(time * speed + col * 0.1 + row * 0.05) * dissolveFactor;
+                    return waveDisplacement * maxDisplacement;
+                
+                case 'typography':
+                    // Typography expansion - letters spread from center outward
+                    const totalCols = Math.floor(canvas.width / parseInt(document.getElementById('cellWidthInput').value));
+                    const totalRows = Math.floor(canvas.height / parseInt(document.getElementById('cellHeightInput').value));
+                    const centerCol = totalCols / 2;
+                    const centerRow = totalRows / 2;
+                    
+                    // Distance from center
+                    const distanceFromCenter = Math.sqrt(Math.pow(col - centerCol, 2) + Math.pow(row - centerRow, 2));
+                    const maxDistance = Math.sqrt(Math.pow(centerCol, 2) + Math.pow(centerRow, 2));
+                    const normalizedDistance = distanceFromCenter / maxDistance;
+                    
+                    // Create expanding letter-like formations
+                    const expansionFactor = Math.pow(normalizedDistance, 0.8) * 1.5;
+                    const typographyWave = Math.sin(time * speed * 0.5 + distanceFromCenter * 0.3) * expansionFactor;
+                    
+                    // Add horizontal bias for letter spacing
+                    const horizontalBias = (col - centerCol) / centerCol * 0.3;
+                    return (typographyWave + horizontalBias) * maxDisplacement;
+                
+                case 'ripple':
+                    // Rippling water surface
+                    const centerDistX = (col - canvas.width / parseInt(document.getElementById('cellWidthInput').value) / 2) * 0.1;
+                    const centerDistY = (row - canvas.height / parseInt(document.getElementById('cellHeightInput').value) / 2) * 0.1;
+                    const dist = Math.sqrt(centerDistX * centerDistX + centerDistY * centerDistY);
+                    const ripple = Math.sin(time * speed * 2 - dist * 2) * Math.exp(-dist * 0.1);
+                    return ripple * maxDisplacement * 0.7;
+                
+                default:
+                    return Math.sin(time * speed + col * 0.15 + row * 0.08) * maxDisplacement * 0.6;
+            }
+        }
+        
+        function getAnimatedStrokeLength(col, row, centerX, centerY, time, baseLength, speed) {
+            const animateLength = document.getElementById('animateLengthToggle').checked;
+            if (!animateLength) return baseLength;
+            
+            const amplitude = parseInt(document.getElementById('lengthAmplitudeInput').value);
+            
+            // Use main animation speed for consistency
+            const variation = Math.sin(time * speed + (col + row) * 0.2) * amplitude;
+            return Math.max(5, baseLength + variation);
+        }
+        
+        function getAnimatedStrokeWeight(col, row, centerX, centerY, time, baseWeight, speed) {
+            const animateWeight = document.getElementById('animateWeightToggle').checked;
+            if (!animateWeight) return baseWeight;
+            
+            const amplitude = parseInt(document.getElementById('weightAmplitudeInput').value);
+            
+            // Use main animation speed for consistency
+            const variation = Math.sin(time * speed + (col * 0.3) + (row * 0.2)) * amplitude;
+            return Math.max(1, baseWeight + variation);
+        }
+        
+
+        
+        function drawGridLines() {
+            const cellWidth = parseInt(document.getElementById('cellWidthInput').value);
+            const cellHeight = parseInt(document.getElementById('cellHeightInput').value);
+            const baseLineLength = parseInt(document.getElementById('lineLengthInput').value);
+            const baseLineWidth = parseInt(document.getElementById('lineWidthInput').value);
+            const speed = getActualSpeed();
+            
+            // Clear canvas and set background
+            if (currentBackgroundColor === 'transparent') {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = currentBackgroundColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            // Set line properties
+            ctx.strokeStyle = currentColor;
+            ctx.lineCap = 'square';
+            
+            // Calculate grid dimensions
+            const cols = Math.floor(canvas.width / cellWidth);
+            const rows = Math.floor(canvas.height / cellHeight);
+            
+            // Draw grid of small lines
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    // Calculate center of each cell
+                    const centerX = col * cellWidth + cellWidth / 2;
+                    const centerY = row * cellHeight + cellHeight / 2;
+                    
+                    // Get horizontal displacement instead of rotation
+                    const displacement = getHorizontalDisplacement(col, row, centerX, centerY, animationTime, speed);
+                    
+                    // Get animated stroke properties
+                    let lineLength = getAnimatedStrokeLength(col, row, centerX, centerY, animationTime, baseLineLength, speed);
+                    let lineWidth = getAnimatedStrokeWeight(col, row, centerX, centerY, animationTime, baseLineWidth, speed);
+                    
+
+                    
+                    // Set fill and stroke styles
+                    ctx.fillStyle = currentColor;
+                    ctx.strokeStyle = currentColor;
+                    
+                    // Calculate final position with displacement
+                    const finalX = centerX + displacement;
+                    
+                    // Draw vertical line (simplified for this organic texture approach)
+                    ctx.lineWidth = lineWidth;
+                    const halfLength = lineLength / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(finalX, centerY - halfLength);
+                    ctx.lineTo(finalX, centerY + halfLength);
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        function animate() {
+            if (isAnimating) {
+                animationTime++;
+                drawGridLines();
+            }
+            requestAnimationFrame(animate);
+        }
+        
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+            const button = document.getElementById('toggleButton');
+            button.textContent = isAnimating ? '⏸ Pause Animation' : '▶ Play Animation';
+            
+            if (!isAnimating) {
+                drawGridLines(); // Draw static frame when animation stops
+            }
+        }
+        
+        function updateCanvasSize() {
+            const width = parseInt(document.getElementById('widthInput').value);
+            const height = parseInt(document.getElementById('heightInput').value);
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Update display values
+            document.getElementById('widthValue').textContent = width + 'px';
+            document.getElementById('heightValue').textContent = height + 'px';
+            
+            if (!isAnimating) {
+                drawGridLines();
+            }
+        }
+        
+        function updateDisplayValues() {
+            document.getElementById('cellWidthValue').textContent = document.getElementById('cellWidthInput').value + 'px';
+            document.getElementById('cellHeightValue').textContent = document.getElementById('cellHeightInput').value + 'px';
+            document.getElementById('lineLengthValue').textContent = document.getElementById('lineLengthInput').value + 'px';
+            document.getElementById('lineWidthValue').textContent = document.getElementById('lineWidthInput').value + 'px';
+            document.getElementById('speedValue').textContent = document.getElementById('speedInput').value;
+            
+            // Update stroke animation values (frequencies now tied to main speed)
+            document.getElementById('lengthAmplitudeValue').textContent = document.getElementById('lengthAmplitudeInput').value + 'px';
+            document.getElementById('weightAmplitudeValue').textContent = document.getElementById('weightAmplitudeInput').value + 'px';
+            
+
+            
+            // Update amplitude value
+            document.getElementById('amplitudeValue').textContent = document.getElementById('amplitudeInput').value + '%';
+        }
+        
+        function selectMovement(movementType) {
+            currentMovement = movementType;
+            
+            // Update active state
+            document.querySelectorAll('.movement-option').forEach(option => {
+                option.classList.remove('active');
+            });
+            document.querySelector(`[data-movement="${movementType}"]`).classList.add('active');
+        }
+        
+        function selectColor(color) {
+            currentColor = color;
+            
+            // Update active state
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.classList.remove('active');
+            });
+            document.querySelector(`[data-color="${color}"]`).classList.add('active');
+        }
+        
+        function selectBackgroundColor(color) {
+            currentBackgroundColor = color;
+            
+            // Update active state for background color options
+            document.querySelectorAll('[data-bg-color]').forEach(option => {
+                option.classList.remove('active');
+            });
+            document.querySelector(`[data-bg-color="${color}"]`).classList.add('active');
+        }
+
+
+        
+
+        
+        function drawLine(centerX, centerY, angle, lineLength, lineWidth) {
+            ctx.lineWidth = lineWidth;
+            const halfLength = lineLength / 2;
+            const startX = centerX - Math.cos(angle) * halfLength;
+            const startY = centerY - Math.sin(angle) * halfLength;
+            const endX = centerX + Math.cos(angle) * halfLength;
+            const endY = centerY + Math.sin(angle) * halfLength;
+            
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+        }
+        
+
+        
+
+
+
+        
+
+        
+
+        
+        function randomizeParameters() {
+            // Random grid properties (but keep canvas size consistent)
+            const cellWidthSlider = document.getElementById('cellWidthInput');
+            const cellHeightSlider = document.getElementById('cellHeightInput');
+            const lineLengthSlider = document.getElementById('lineLengthInput');
+            const lineWidthSlider = document.getElementById('lineWidthInput');
+            
+            cellWidthSlider.value = Math.floor(Math.random() * (120 - 15) + 15);
+            cellHeightSlider.value = Math.floor(Math.random() * (120 - 15) + 15);
+            lineLengthSlider.value = Math.floor(Math.random() * (120 - 5) + 5);
+            lineWidthSlider.value = Math.floor(Math.random() * (50 - 1) + 1);
+            
+            // Random speed
+            const speedSlider = document.getElementById('speedInput');
+            speedSlider.value = Math.floor(Math.random() * (10 - 1) + 1);
+            
+            // Random texture type
+            const movements = ['liquid', 'organic', 'turbulence', 'flowing', 'dissolve', 'typography', 'ripple'];
+            const randomMovement = movements[Math.floor(Math.random() * movements.length)];
+            selectMovement(randomMovement);
+            
+
+            
+            // Random color
+            const colors = ['#FFFFFF', '#85FF59', '#D7FF59', '#6C5C3F', '#3A3A3A', '#BEBEBE'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            selectColor(randomColor);
+            
+            // Random background color
+            const backgroundColors = ['transparent', '#000000', '#FFFFFF', '#85FF59', '#D7FF59', '#6C5C3F', '#3A3A3A', '#BEBEBE'];
+            const randomBackgroundColor = backgroundColors[Math.floor(Math.random() * backgroundColors.length)];
+            selectBackgroundColor(randomBackgroundColor);
+            
+
+            
+            // Random stroke animation settings
+            const animateLengthToggle = document.getElementById('animateLengthToggle');
+            const animateWeightToggle = document.getElementById('animateWeightToggle');
+            const lengthAmplitudeSlider = document.getElementById('lengthAmplitudeInput');
+            const weightAmplitudeSlider = document.getElementById('weightAmplitudeInput');
+            
+            // Randomly enable/disable animations (70% chance for each)
+            animateLengthToggle.checked = Math.random() < 0.7;
+            animateWeightToggle.checked = Math.random() < 0.7;
+            
+            // Random animation parameters (frequencies now tied to main speed)
+            lengthAmplitudeSlider.value = Math.floor(Math.random() * (50 - 5) + 5);
+            weightAmplitudeSlider.value = Math.floor(Math.random() * (20 - 1) + 1);
+            
+            // Update control visibility
+            toggleAnimationControls();
+            
+            // Update display values only (canvas size remains unchanged)
+            updateDisplayValues();
+        }
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            
+            sidebar.classList.toggle('hidden');
+            mainContent.classList.toggle('sidebar-hidden');
+            sidebarToggle.classList.toggle('sidebar-visible');
+            
+            // Handle mobile backdrop
+            if (window.innerWidth <= 768) {
+                backdrop.classList.toggle('visible');
+            }
+            
+            // Update toggle button icon
+            if (sidebar.classList.contains('hidden')) {
+                sidebarToggle.textContent = '☰';
+            } else {
+                sidebarToggle.textContent = '✕';
+            }
+        }
+        
+        function downloadMP4() {
+            if (isRecording) return;
+            
+            // Check if MediaRecorder is supported
+            if (!window.MediaRecorder) {
+                alert('Video recording is not supported in this browser. Please try Chrome, Firefox, or Edge.');
+                return;
+            }
+            
+            const downloadButton = document.getElementById('downloadButton');
+            const recordingIndicator = document.getElementById('recordingIndicator');
+            
+            // Disable button and show recording indicator
+            downloadButton.disabled = true;
+            recordingIndicator.style.display = 'flex';
+            isRecording = true;
+            
+            // Get canvas stream
+            const stream = canvas.captureStream(60); // 60 FPS
+            
+            // Try MP4 first, fallback to WebM
+            let options;
+            let fileExtension = '.mp4';
+            let mimeType = 'video/mp4';
+            
+            if (MediaRecorder.isTypeSupported('video/mp4; codecs="avc1.42E01E"')) {
+                options = {
+                    mimeType: 'video/mp4; codecs="avc1.42E01E"',
+                    videoBitsPerSecond: 5000000
+                };
+            } else if (MediaRecorder.isTypeSupported('video/webm; codecs="h264"')) {
+                options = {
+                    mimeType: 'video/webm; codecs="h264"',
+                    videoBitsPerSecond: 5000000
+                };
+                fileExtension = '.mp4'; // Still use .mp4 extension for compatibility
+                mimeType = 'video/mp4';
+            } else if (MediaRecorder.isTypeSupported('video/webm; codecs="vp9"')) {
+                options = {
+                    mimeType: 'video/webm; codecs="vp9"',
+                    videoBitsPerSecond: 5000000
+                };
+                fileExtension = '.mp4'; // Use .mp4 extension for better compatibility
+                mimeType = 'video/mp4';
+            } else {
+                options = { videoBitsPerSecond: 5000000 };
+                fileExtension = '.mp4'; // Use .mp4 extension
+                mimeType = 'video/mp4';
+            }
+            
+            try {
+                mediaRecorder = new MediaRecorder(stream, options);
+            } catch (e) {
+                // Fallback to default settings
+                mediaRecorder = new MediaRecorder(stream);
+            }
+            
+            const chunks = [];
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    chunks.push(event.data);
+                }
+            };
+            
+            mediaRecorder.onstop = () => {
+                // Create blob and download
+                const blob = new Blob(chunks, { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `grid-animation-${Date.now()}${fileExtension}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                // Reset UI
+                isRecording = false;
+                downloadButton.disabled = false;
+                recordingIndicator.style.display = 'none';
+                downloadButton.textContent = '✅ Downloaded!';
+                setTimeout(() => {
+                    downloadButton.textContent = '📹 Download MP4';
+                }, 2000);
+            };
+            
+            mediaRecorder.onerror = (event) => {
+                console.error('Recording error:', event.error);
+                isRecording = false;
+                downloadButton.disabled = false;
+                recordingIndicator.style.display = 'none';
+                downloadButton.textContent = '❌ Error';
+                setTimeout(() => {
+                    downloadButton.textContent = '📹 Download MP4';
+                }, 2000);
+            };
+            
+            // Calculate recording duration for perfect loop
+            const speed = getActualSpeed();
+            const cycleDuration = (2 * Math.PI) / speed; // Frames for one complete cycle
+            const recordingTime = Math.max(cycleDuration / 60 * 1000, 3000); // Convert to milliseconds, minimum 3 seconds
+            
+            // Start recording
+            mediaRecorder.start();
+            
+            // Stop recording after one complete cycle
+            setTimeout(() => {
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                }
+            }, recordingTime);
+        }
+        
+        function makeValueEditable(valueElement, sliderElement, suffix = 'px') {
+            const isSpeed = sliderElement.id === 'speedInput';
+            const currentValue = isSpeed ? parseFloat(valueElement.textContent) : parseInt(valueElement.textContent);
+            
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.value = currentValue;
+            input.className = 'control-value-input';
+            input.id = valueElement.id;
+            
+            if (isSpeed) {
+                input.step = '1';
+                input.min = 1;
+                input.max = 10;
+            } else {
+                input.step = '1';
+                input.min = sliderElement.min;
+                input.max = sliderElement.max;
+            }
+            
+            valueElement.replaceWith(input);
+            input.focus();
+            input.select();
+            
+            function finishEditing() {
+                let newValue = isSpeed ? parseInt(input.value) : parseInt(input.value);
+                if (isNaN(newValue)) newValue = currentValue;
+                
+                if (isSpeed) {
+                    newValue = Math.max(1, Math.min(10, newValue));
+                    sliderElement.value = newValue; // Direct assignment for new speed range
+                } else {
+                    newValue = Math.max(sliderElement.min, Math.min(sliderElement.max, newValue));
+                    sliderElement.value = newValue;
+                }
+                
+                const newSpan = document.createElement('span');
+                newSpan.className = 'control-value';
+                newSpan.id = input.id;
+                newSpan.textContent = newValue + suffix;
+                
+                input.replaceWith(newSpan);
+                
+                // Handle special cases that need additional updates
+                if (sliderElement.id === 'widthInput' || sliderElement.id === 'heightInput') {
+                    updateCanvasSize();
+                } else {
+                    updateDisplayValues();
+                }
+            }
+            
+            input.addEventListener('blur', finishEditing);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') finishEditing();
+                if (e.key === 'Escape') {
+                    input.value = currentValue;
+                    finishEditing();
+                }
+            });
+        }
+        
+        function toggleAnimationControls() {
+            const lengthControls = document.getElementById('lengthAnimationControls');
+            const weightControls = document.getElementById('weightAnimationControls');
+            const animateLength = document.getElementById('animateLengthToggle').checked;
+            const animateWeight = document.getElementById('animateWeightToggle').checked;
+            
+            lengthControls.style.opacity = animateLength ? '1' : '0.5';
+            lengthControls.style.pointerEvents = animateLength ? 'auto' : 'none';
+            
+            weightControls.style.opacity = animateWeight ? '1' : '0.5';
+            weightControls.style.pointerEvents = animateWeight ? 'auto' : 'none';
+        }
+        
+        function setupEventListeners() {
+            // Canvas size sliders
+            document.getElementById('widthInput').addEventListener('input', updateCanvasSize);
+            document.getElementById('heightInput').addEventListener('input', updateCanvasSize);
+            
+
+
+            // Other sliders - update display values only (animation loop handles the drawing)
+            document.getElementById('cellWidthInput').addEventListener('input', updateDisplayValues);
+            document.getElementById('cellHeightInput').addEventListener('input', updateDisplayValues);
+            document.getElementById('lineLengthInput').addEventListener('input', updateDisplayValues);
+            document.getElementById('lineWidthInput').addEventListener('input', updateDisplayValues);
+            document.getElementById('speedInput').addEventListener('input', updateDisplayValues);
+            document.getElementById('amplitudeInput').addEventListener('input', updateDisplayValues);
+
+            // Stroke animation sliders
+            document.getElementById('lengthAmplitudeInput').addEventListener('input', updateDisplayValues);
+            document.getElementById('weightAmplitudeInput').addEventListener('input', updateDisplayValues);
+
+            // Movement type selection
+            document.querySelectorAll('[data-movement]').forEach(option => {
+                option.addEventListener('click', () => {
+                    selectMovement(option.dataset.movement);
+                });
+            });
+            
+
+            
+
+            
+            // Color selection
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    selectColor(option.dataset.color);
+                });
+            });
+            
+            // Background color selection
+            document.querySelectorAll('[data-bg-color]').forEach(option => {
+                option.addEventListener('click', () => {
+                    selectBackgroundColor(option.dataset.bgColor);
+                });
+            });
+            
+            // Stroke animation controls
+            document.getElementById('animateLengthToggle').addEventListener('change', toggleAnimationControls);
+            document.getElementById('animateWeightToggle').addEventListener('change', toggleAnimationControls);
+            
+            // Sidebar toggle
+            document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+            
+            // Backdrop click to close sidebar on mobile
+            document.getElementById('sidebarBackdrop').addEventListener('click', () => {
+                const sidebar = document.getElementById('sidebar');
+                if (!sidebar.classList.contains('hidden')) {
+                    toggleSidebar();
+                }
+            });
+            
+            // Editable value displays
+            const valueElements = [
+                { id: 'widthValue', slider: 'widthInput' },
+                { id: 'heightValue', slider: 'heightInput' },
+                { id: 'cellWidthValue', slider: 'cellWidthInput' },
+                { id: 'cellHeightValue', slider: 'cellHeightInput' },
+                { id: 'lineLengthValue', slider: 'lineLengthInput' },
+                { id: 'lineWidthValue', slider: 'lineWidthInput' },
+                { id: 'speedValue', slider: 'speedInput', suffix: '' },
+                { id: 'amplitudeValue', slider: 'amplitudeInput', suffix: '%' },
+                { id: 'lengthAmplitudeValue', slider: 'lengthAmplitudeInput', suffix: 'px' },
+                { id: 'weightAmplitudeValue', slider: 'weightAmplitudeInput', suffix: 'px' }
+            ];
+            
+            valueElements.forEach(({ id, slider, suffix = 'px' }) => {
+                document.addEventListener('click', (e) => {
+                    if (e.target.id === id) {
+                        makeValueEditable(e.target, document.getElementById(slider), suffix);
+                    }
+                });
+            });
+        }
+        
+        // Initialize
+        setupEventListeners();
+        updateDisplayValues();
+        toggleAnimationControls();
+        
+
+        
+        // Set initial sidebar toggle state
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        sidebarToggle.textContent = '✕';
+        sidebarToggle.classList.add('sidebar-visible');
+        
+        // Keyboard shortcut for toggling sidebar (Ctrl/Cmd + B)
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                e.preventDefault();
+                toggleSidebar();
+            }
+        });
+        
+        // Handle window resize for responsive behavior
+        window.addEventListener('resize', () => {
+            const backdrop = document.getElementById('sidebarBackdrop');
+            const sidebar = document.getElementById('sidebar');
+            
+            // Hide backdrop on larger screens
+            if (window.innerWidth > 768) {
+                backdrop.classList.remove('visible');
+            } else if (!sidebar.classList.contains('hidden')) {
+                backdrop.classList.add('visible');
+            }
+        });
+        
+        animate();
+    </script>
+</body>
+</html> 
