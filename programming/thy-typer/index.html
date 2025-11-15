@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Typography</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #000000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            max-width: 200%;
+            max-height: 100vh;
+            width: auto;
+            height: auto;
+            display: block;
+        }
+        #text-input {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50%;
+            max-width: 1000px;
+            padding: 15px;
+            border: none;
+            border-radius: 0px;
+            background: rgb(50, 50, 50);
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            z-index: 10;
+            color: #ffffff;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        #text-input::placeholder {
+            color: rgba(190, 190, 190, 0.5);
+        }
+        #text-input:focus {
+            border-color: #ffffff;
+            background: rgb(65, 65, 65);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="canvas" width="1080" height="1350"></canvas>
+        <input type="text" id="text-input" placeholder="Type your text here...">
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
