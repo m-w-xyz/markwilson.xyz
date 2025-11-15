@@ -55,6 +55,28 @@
             z-index: 1;
         }
         
+        .text-input {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 20px;
+            background-color: #ffffff;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            z-index: 10;
+            width: 300px;
+            text-align: center;
+            outline: none;
+        }
+        
+        .text-input:focus {
+            outline: none;
+        }
+        
         .hide-video-control {
             position: absolute;
             bottom: 30px;
@@ -70,6 +92,33 @@
         
         .hide-video-control input[type="checkbox"] {
             cursor: pointer;
+        }
+        
+        .text-3d-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+            transform-style: preserve-3d;
+            perspective: 2000px;
+        }
+        
+        .text-3d-layer {
+            position: absolute;
+            color: #ffffff;
+            font-family: 'Penray', Arial, sans-serif;
+            font-weight: normal;
+            font-size: 180px;
+            white-space: nowrap;
+            transform-style: preserve-3d;
+            transform-origin: center center;
+            opacity: 1;
+            backface-visibility: visible;
+            -webkit-backface-visibility: visible;
+            text-transform: uppercase;
         }
         
         .eye-letter, .mouth-letter {
@@ -90,6 +139,7 @@
     <div class="container">
         <video id="webcam" playsinline></video>
         <canvas id="canvas"></canvas>
+        <div id="text3dContainer" class="text-3d-container"></div>
         <div id="leftEye" class="eye-letter">O</div>
         <div id="rightEye" class="eye-letter">O</div>
         <div id="mouth" class="mouth-letter">—</div>
@@ -97,26 +147,25 @@
             <input type="checkbox" id="hideVideoCheckbox">
             <label for="hideVideoCheckbox">Hide video</label>
         </div>
+        <input type="text" id="textInput" class="text-input" placeholder="TYPE SOMETHING">
     </div>
 
     <script>
         /*
          * NOTE ON TONGUE DETECTION:
          * MediaPipe Face Mesh does not have dedicated tongue landmarks. However, we've
-         * implemented a novel approach using PIXEL COLOR ANALYSIS with BRIGHTNESS & SATURATION:
+         * implemented a novel approach using PIXEL COLOR ANALYSIS:
          * 
          * How it works:
          * 1. Detects when mouth is open (shape analysis)
-         * 2. Samples 20x20 pixel area from center of mouth region
-         * 3. Calculates average brightness (0-255) AND saturation (color intensity)
+         * 2. Samples pixel colors from center of mouth region
+         * 3. Calculates average brightness:
+         *    - Very dark pixels (< 50) = mouth cavity visible (shocked face) → O
+         *    - Lighter pixels (> 60) = tongue/flesh visible → P
          * 
-         * Detection logic:
-         * - TONGUE OUT: Brightness 70-200 + Saturation > 20 (flesh has color) → P rotated 90°
-         * - SHOCKED (O): Brightness < 70 + Saturation < 30 (dark cavity, no color) → O
-         * 
-         * The saturation check is KEY:
-         * - Dark mouth cavity = very low saturation (black/dark brown)
-         * - Tongue/flesh = higher saturation (pinkish/flesh tones)
+         * This distinguishes between:
+         * - Open mouth showing dark cavity (shocked expression): Shows O
+         * - Open mouth with tongue out (lighter flesh tones): Shows P rotated 90°
          * 
          * Try sticking your tongue out with your mouth moderately open!
          */
@@ -124,6 +173,8 @@
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        const textInput = document.getElementById('textInput');
+        const text3dContainer = document.getElementById('text3dContainer');
         const hideVideoCheckbox = document.getElementById('hideVideoCheckbox');
         const leftEyeElement = document.getElementById('leftEye');
         const rightEyeElement = document.getElementById('rightEye');
@@ -144,13 +195,17 @@
         
         initializeFaceElements();
         
+        let currentText = 'TYPE FACE';
         let facePosition = null;
         let faceRotation = 0;
+        let autoRotation = 0;
         let smoothedFacePosition = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
         let smoothedFaceRotation = 0;
         let mouthOpenAmount = 0;
         let smoothedMouthOpenAmount = 0;
-        const textColor = '#ffffff'; // Always white
+        let textColor = '#ffffff';
+        let lastBlinkTime = 0;
+        let eyeAspectRatio = 0.3;
         
         let webcamVisible = true;
         let handAngularVelocity = 0;
@@ -171,18 +226,29 @@
         let smoothedMouthPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
         const FACE_LETTER_SMOOTHING = 0.25; // Higher = more responsive, lower = smoother
         
+        const ROTATION_SPEED = 0.3;
         const SMOOTHING_FACTOR = 0.15;
         const MOUTH_SMOOTHING_FACTOR = 0.25;
+        const EXTRUSION_LAYERS = 30;
+        const EXTRUSION_DEPTH = 40;
         const BLINK_THRESHOLD = 0.2;
         const FRICTION = 0.95;
         const HAND_ROTATION_SENSITIVITY = 0.3;
         const HAND_SMOOTHING_FACTOR = 0.2;
+        
+        textInput.addEventListener('input', (e) => {
+            currentText = (e.target.value || 'TYPE FACE').toUpperCase();
+            e.target.value = currentText;
+            update3DText();
+        });
         
         hideVideoCheckbox.addEventListener('change', (e) => {
             webcamVisible = !e.target.checked;
             video.style.opacity = webcamVisible ? '1' : '0';
             canvas.style.opacity = webcamVisible ? '1' : '0';
         });
+        
+        update3DText();
         
         const faceMesh = new FaceMesh({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
@@ -198,6 +264,26 @@
         // Handle face results
         faceMesh.onResults((results) => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            autoRotation += ROTATION_SPEED;
+            
+            smoothedHandAngularVelocity += (handAngularVelocity - smoothedHandAngularVelocity) * HAND_SMOOTHING_FACTOR;
+            
+            if (smoothedHandAngularVelocity !== 0) {
+                autoRotation += smoothedHandAngularVelocity;
+            }
+            
+            handAngularVelocity *= FRICTION;
+            smoothedHandAngularVelocity *= FRICTION;
+            if (Math.abs(handAngularVelocity) < 0.1) {
+                handAngularVelocity = 0;
+            }
+            if (Math.abs(smoothedHandAngularVelocity) < 0.1) {
+                smoothedHandAngularVelocity = 0;
+            }
+            
+            if (autoRotation >= 360) autoRotation -= 360;
+            if (autoRotation < 0) autoRotation += 360;
             
             if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
                 const landmarks = results.multiFaceLandmarks[0];
@@ -231,13 +317,23 @@
                 mouthOpenAmount = detectMouthOpen(landmarks);
                 smoothedMouthOpenAmount += (mouthOpenAmount - smoothedMouthOpenAmount) * MOUTH_SMOOTHING_FACTOR;
                 
+                const currentEAR = detectBlink(landmarks);
+                
+                if (currentEAR < BLINK_THRESHOLD && eyeAspectRatio >= BLINK_THRESHOLD) {
+                    textColor = getRandomColor();
+                    lastBlinkTime = Date.now();
+                }
+                eyeAspectRatio = currentEAR;
+                
                 updateFaceLetters(landmarks);
+                update3DText();
             } else {
                 facePosition = null;
                 faceRotation = 0;
                 mouthOpenAmount = 0;
                 smoothedFaceRotation += (0 - smoothedFaceRotation) * SMOOTHING_FACTOR;
                 smoothedMouthOpenAmount += (0 - smoothedMouthOpenAmount) * MOUTH_SMOOTHING_FACTOR;
+                text3dContainer.style.display = 'none';
                 leftEyeElement.style.display = 'none';
                 rightEyeElement.style.display = 'none';
                 mouthElement.style.display = 'none';
@@ -334,7 +430,9 @@
         video.addEventListener('loadedmetadata', resizeCanvas);
         window.addEventListener('resize', () => {
             resizeCanvas();
-            if (!facePosition) {
+            if (facePosition) {
+                update3DText();
+            } else {
                 initializeFaceElements();
             }
         });
@@ -516,13 +614,10 @@
             
             // Mouth is fully open if ratio is very high (shocked/surprised face)
             // Also check for dark cavity (no tongue visible)
-            const mouthColor = analyzeMouthPixelColor(landmarks);
+            const mouthBrightness = analyzeMouthPixelColor(landmarks);
             
-            // Very wide open + dark inside (mouth cavity) = shocked expression (O)
-            // Dark cavity: low brightness + low saturation (black/dark brown)
-            const isDarkCavity = mouthColor.brightness < 70 && mouthColor.saturation < 30;
-            
-            return mouthOpenRatio > 0.5 && isDarkCavity;
+            // Very wide open + dark inside = shocked expression (O)
+            return mouthOpenRatio > 0.5 && mouthBrightness < 50;
         }
         
         function detectSmileOpen(landmarks) {
@@ -620,12 +715,8 @@
             const mouthOpenRatio = mouthHeight / mouthWidth;
             
             // Kissing face: mouth corners are very close together (narrow width)
-            // Mouth forms a small pucker/pout shape
-            // Made more lenient to detect better
-            const isNarrow = mouthWidth < 0.055; // Increased threshold
-            const hasSmallOpening = mouthOpenRatio > 0.2 && mouthOpenRatio < 1.5; // Wider range
-            
-            return isNarrow && hasSmallOpening;
+            // Mouth forms a small circle/pucker shape
+            return mouthWidth < 0.045 && mouthOpenRatio > 0.3 && mouthOpenRatio < 1.2;
         }
         
         function checkAndTriggerTears(landmarks, eyeX, eyeY, color, fontSize) {
@@ -635,66 +726,72 @@
             if (isSad) {
                 if (sadFaceStartTime === null) {
                     sadFaceStartTime = currentTime;
+                    tearsTriggered = false;
                 }
                 
                 const sadDuration = (currentTime - sadFaceStartTime) / 1000;
                 
-                // After 2 seconds of being sad, start spawning tears
-                if (sadDuration >= 2) {
-                    // Spawn a new tear every 1 second
-                    if (currentTime - lastTearTime >= 1000) {
-                        createSingleTear(eyeX, eyeY, color, fontSize);
-                        lastTearTime = currentTime;
-                    }
+                if (sadDuration >= 2 && !tearsTriggered) {
+                    tearsTriggered = true;
+                    createTears(eyeX, eyeY, color, fontSize);
                 }
             } else {
                 sadFaceStartTime = null;
-                lastTearTime = 0;
+                tearsTriggered = false;
             }
         }
         
-        function createSingleTear(startX, startY, color, fontSize) {
+        function createTears(startX, startY, color, fontSize) {
             const container = document.querySelector('.container');
             
-            const tear = document.createElement('div');
-            tear.className = 'tear';
-            tear.textContent = ',';
-            tear.style.position = 'absolute';
-            tear.style.left = startX + 'px';
-            tear.style.top = startY + 'px';
-            tear.style.color = color;
-            tear.style.fontSize = fontSize + 'px';
-            tear.style.fontFamily = "'Penray', Arial, sans-serif";
-            tear.style.pointerEvents = 'none';
-            tear.style.zIndex = '7';
-            tear.style.transform = 'translate(-50%, -50%)';
-            tear.style.transition = 'top 3s linear, opacity 0.1s linear';
-            
-            container.appendChild(tear);
-            
-            const tearData = {
-                element: tear,
-                startTime: Date.now(),
-                startY: startY
-            };
-            
-            activeTears.push(tearData);
-            
-            // Start falling immediately
-            setTimeout(() => {
-                tear.style.top = (startY + 200) + 'px'; // Fall 200px over 3 seconds
-            }, 10);
-            
-            // Remove after 3 seconds
-            setTimeout(() => {
-                tear.style.opacity = '0';
+            for (let i = 0; i < 3; i++) {
+                const tear = document.createElement('div');
+                tear.className = 'tear';
+                tear.textContent = ',';
+                tear.style.position = 'absolute';
+                tear.style.left = startX + 'px';
+                tear.style.top = startY + 'px';
+                tear.style.color = color;
+                tear.style.fontSize = fontSize + 'px';
+                tear.style.fontFamily = "'Penray', Arial, sans-serif";
+                tear.style.pointerEvents = 'none';
+                tear.style.zIndex = '7';
+                tear.style.transform = 'translate(-50%, -50%)';
+                tear.style.transition = 'top 2s linear, opacity 0.1s linear';
+                
+                container.appendChild(tear);
+                
+                const tearData = {
+                    element: tear,
+                    startTime: Date.now() + (i * 300), // Stagger by 300ms
+                    startY: startY
+                };
+                
+                activeTears.push(tearData);
+                
+                // Start falling after delay
                 setTimeout(() => {
-                    if (tear.parentNode) {
-                        tear.parentNode.removeChild(tear);
-                    }
-                    activeTears = activeTears.filter(t => t.element !== tear);
-                }, 100);
-            }, 3000);
+                    tear.style.top = (startY + 150) + 'px'; // Fall 150px
+                }, i * 300);
+                
+                // Remove after 2 seconds of falling
+                setTimeout(() => {
+                    tear.style.opacity = '0';
+                    setTimeout(() => {
+                        if (tear.parentNode) {
+                            tear.parentNode.removeChild(tear);
+                        }
+                        activeTears = activeTears.filter(t => t.element !== tear);
+                    }, 100);
+                }, (i * 300) + 2000);
+            }
+        }
+        
+        function getRandomColor() {
+            const colors = [
+            '#FBC6EF', '#2D493F', '#F2A3BB', '#122924', '#BD4349', '#FF74DF'];
+            
+            return colors[Math.floor(Math.random() * colors.length)];
         }
         
         function drawFaceLandmarks(landmarks) {
@@ -785,16 +882,10 @@
             const mouthScreenX = canvasRect.left + (canvasRect.width / 2) + (((1 - mouthCenterX) * canvas.width - canvas.width / 2) * scale);
             const mouthScreenY = canvasRect.top + (canvasRect.height / 2) + ((mouthCenterY * canvas.height - canvas.height / 2) * scale);
             
-            // Smooth the eye positions to reduce jitter
-            smoothedLeftEyePos.x += (leftEyeScreenX - smoothedLeftEyePos.x) * FACE_LETTER_SMOOTHING;
-            smoothedLeftEyePos.y += (leftEyeScreenY - smoothedLeftEyePos.y) * FACE_LETTER_SMOOTHING;
-            smoothedRightEyePos.x += (rightEyeScreenX - smoothedRightEyePos.x) * FACE_LETTER_SMOOTHING;
-            smoothedRightEyePos.y += (rightEyeScreenY - smoothedRightEyePos.y) * FACE_LETTER_SMOOTHING;
-            
             // Update left eye (en dash when closed, no rotation)
             leftEyeElement.style.display = 'block';
-            leftEyeElement.style.left = smoothedLeftEyePos.x + 'px';
-            leftEyeElement.style.top = smoothedLeftEyePos.y + 'px';
+            leftEyeElement.style.left = leftEyeScreenX + 'px';
+            leftEyeElement.style.top = leftEyeScreenY + 'px';
             leftEyeElement.style.fontSize = eyeFontSize + 'px';
             leftEyeElement.style.color = textColor;
             
@@ -808,8 +899,8 @@
             
             // Update right eye (en dash when closed, no rotation)
             rightEyeElement.style.display = 'block';
-            rightEyeElement.style.left = smoothedRightEyePos.x + 'px';
-            rightEyeElement.style.top = smoothedRightEyePos.y + 'px';
+            rightEyeElement.style.left = rightEyeScreenX + 'px';
+            rightEyeElement.style.top = rightEyeScreenY + 'px';
             rightEyeElement.style.fontSize = eyeFontSize + 'px';
             rightEyeElement.style.color = textColor;
             
@@ -820,14 +911,9 @@
                 rightEyeElement.textContent = 'O';
                 rightEyeElement.style.transform = 'translate(-50%, -50%)';
             }
-
             
-            // Check for sad face and trigger tears (use smoothed position)
-            checkAndTriggerTears(landmarks, smoothedRightEyePos.x, smoothedRightEyePos.y, textColor, eyeFontSize);
-            
-            // Smooth the mouth position to reduce jitter
-            smoothedMouthPos.x += (mouthScreenX - smoothedMouthPos.x) * FACE_LETTER_SMOOTHING;
-            smoothedMouthPos.y += (mouthScreenY - smoothedMouthPos.y) * FACE_LETTER_SMOOTHING;
+            // Check for sad face and trigger tears
+            checkAndTriggerTears(landmarks, rightEyeScreenX, rightEyeScreenY, textColor, eyeFontSize);
             
             // Update mouth: Check tongue, smile, frown, pursed lips, kissing face, and mouth open states
             const tongueOut = detectTongueOut(landmarks);
@@ -839,8 +925,8 @@
             const isMouthOpen = detectMouthOpen(landmarks);
             
             mouthElement.style.display = 'block';
-            mouthElement.style.left = smoothedMouthPos.x + 'px';
-            mouthElement.style.top = smoothedMouthPos.y + 'px';
+            mouthElement.style.left = mouthScreenX + 'px';
+            mouthElement.style.top = mouthScreenY + 'px';
             mouthElement.style.fontSize = mouthFontSize + 'px';
             mouthElement.style.color = textColor;
             
@@ -879,6 +965,60 @@
             }
         }
         
+        function update3DText() {
+            text3dContainer.innerHTML = '';
+            
+            const displayText = (currentText || 'TYPE FACE').toUpperCase();
+            if (!displayText) {
+                text3dContainer.style.display = 'none';
+                return;
+            }
+            
+            text3dContainer.style.display = 'block';
+            
+            const faceCenterX = facePosition ? smoothedFacePosition.x : window.innerWidth / 2;
+            const faceCenterY = facePosition ? smoothedFacePosition.y : window.innerHeight / 2;
+            const characters = displayText.split('');
+            const viewportWidth = window.innerWidth;
+            const radius = Math.max(viewportWidth * 0.2, 200);
+            
+            const totalAngle = 2 * Math.PI - (2 * Math.PI / (characters.length + 1));
+            const angleStep = characters.length > 0 ? totalAngle / characters.length : 0;
+            const maxRotation = smoothedMouthOpenAmount * 45;
+            
+            characters.forEach((char, charIndex) => {
+                const baseAngle = (charIndex * angleStep) - (Math.PI / 2) - (Math.PI / (characters.length + 1));
+                const angle = baseAngle + (smoothedFaceRotation * Math.PI / 180) + (autoRotation * Math.PI / 180);
+                
+                const charX = faceCenterX + Math.cos(angle) * radius;
+                const charY = faceCenterY + Math.sin(angle) * radius;
+                
+                const charRotationZ = (angle * 180 / Math.PI) + 90;
+                
+                const baseYRotation = Math.sin(angle) * 90;
+                const yRotation = baseYRotation + (smoothedFaceRotation * 0.5) + maxRotation;
+                
+                for (let layer = 0; layer < EXTRUSION_LAYERS; layer++) {
+                    const layerElement = document.createElement('div');
+                    layerElement.className = 'text-3d-layer';
+                    layerElement.textContent = char;
+                    layerElement.style.color = textColor;
+                    layerElement.style.left = charX + 'px';
+                    layerElement.style.top = charY + 'px';
+                    layerElement.style.zIndex = EXTRUSION_LAYERS - layer;
+                    
+                    const depthOffset = (layer / EXTRUSION_LAYERS) * EXTRUSION_DEPTH;
+                    layerElement.style.transform = `
+                        translate(-50%, -50%)
+                        translateZ(${-depthOffset}px)
+                        rotateZ(${charRotationZ}deg)
+                        rotateY(${yRotation}deg)
+                    `;
+                    
+                    text3dContainer.appendChild(layerElement);
+                }
+            });
+        }
     </script>
 </body>
 </html> 
