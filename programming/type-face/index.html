@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Tracking</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #webcam {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+        }
+        
+        .text-input {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 20px;
+            background-color: #ffffff;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            z-index: 10;
+            width: 300px;
+            text-align: center;
+            outline: none;
+        }
+        
+        .text-input:focus {
+            outline: none;
+        }
+        
+        .hide-video-control {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            color: #ffffff;
+        }
+        
+        .hide-video-control input[type="checkbox"] {
+            cursor: pointer;
+        }
+        
+        .text-3d-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+            transform-style: preserve-3d;
+            perspective: 2000px;
+        }
+        
+        .text-3d-layer {
+            position: absolute;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            font-size: 180px;
+            white-space: nowrap;
+            transform-style: preserve-3d;
+            transform-origin: center center;
+            opacity: 1;
+            backface-visibility: visible;
+            -webkit-backface-visibility: visible;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <video id="webcam" playsinline></video>
+        <canvas id="canvas"></canvas>
+        <div id="text3dContainer" class="text-3d-container"></div>
+        <div class="hide-video-control">
+            <input type="checkbox" id="hideVideoCheckbox">
+            <label for="hideVideoCheckbox">Hide video</label>
+        </div>
+        <input type="text" id="textInput" class="text-input" placeholder="Type something">
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const textInput = document.getElementById('textInput');
+        const text3dContainer = document.getElementById('text3dContainer');
+        const hideVideoCheckbox = document.getElementById('hideVideoCheckbox');
+        
+        let currentText = 'TYPE FACE';
+        let facePosition = null;
+        let faceRotation = 0;
+        let autoRotation = 0;
+        let smoothedFacePosition = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        let smoothedFaceRotation = 0;
+        let mouthOpenAmount = 0;
+        let smoothedMouthOpenAmount = 0;
+        let textColor = '#ffffff';
+        let lastBlinkTime = 0;
+        let eyeAspectRatio = 0.3;
+        
+        let webcamVisible = true;
+        let handAngularVelocity = 0;
+        let smoothedHandAngularVelocity = 0;
+        let lastHandAngle = null;
+        let lastHandTime = null;
+        let handPosition = null;
+        
+        const ROTATION_SPEED = 0.3;
+        const SMOOTHING_FACTOR = 0.15;
+        const MOUTH_SMOOTHING_FACTOR = 0.25;
+        const EXTRUSION_LAYERS = 30;
+        const EXTRUSION_DEPTH = 40;
+        const BLINK_THRESHOLD = 0.2;
+        const FRICTION = 0.95;
+        const HAND_ROTATION_SENSITIVITY = 0.3;
+        const HAND_SMOOTHING_FACTOR = 0.2;
+        
+        textInput.addEventListener('input', (e) => {
+            currentText = e.target.value || 'TYPE FACE';
+            update3DText();
+        });
+        
+        hideVideoCheckbox.addEventListener('change', (e) => {
+            webcamVisible = !e.target.checked;
+            video.style.opacity = webcamVisible ? '1' : '0';
+            canvas.style.opacity = webcamVisible ? '1' : '0';
+        });
+        
+        update3DText();
+        
+        const faceMesh = new FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+        
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+        
+        // Handle face results
+        faceMesh.onResults((results) => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            autoRotation += ROTATION_SPEED;
+            
+            smoothedHandAngularVelocity += (handAngularVelocity - smoothedHandAngularVelocity) * HAND_SMOOTHING_FACTOR;
+            
+            if (smoothedHandAngularVelocity !== 0) {
+                autoRotation += smoothedHandAngularVelocity;
+            }
+            
+            handAngularVelocity *= FRICTION;
+            smoothedHandAngularVelocity *= FRICTION;
+            if (Math.abs(handAngularVelocity) < 0.1) {
+                handAngularVelocity = 0;
+            }
+            if (Math.abs(smoothedHandAngularVelocity) < 0.1) {
+                smoothedHandAngularVelocity = 0;
+            }
+            
+            if (autoRotation >= 360) autoRotation -= 360;
+            if (autoRotation < 0) autoRotation += 360;
+            
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                const landmarks = results.multiFaceLandmarks[0];
+                
+                const noseTip = landmarks[4];
+                const canvasX = (1 - noseTip.x) * canvas.width;
+                const canvasY = noseTip.y * canvas.height;
+                
+                const canvasRect = canvas.getBoundingClientRect();
+                const scaleX = canvasRect.width / canvas.width;
+                const scaleY = canvasRect.height / canvas.height;
+                const scale = Math.min(scaleX, scaleY);
+                
+                const faceCenterX = canvasRect.left + (canvasRect.width / 2) + ((canvasX - canvas.width / 2) * scale);
+                const faceCenterY = canvasRect.top + (canvasRect.height / 2) + ((canvasY - canvas.height / 2) * scale);
+                
+                const leftFace = landmarks[234];
+                const rightFace = landmarks[454];
+                const dx = rightFace.x - leftFace.x;
+                const dy = rightFace.y - leftFace.y;
+                
+                faceRotation = Math.atan2(dy, dx) * (180 / Math.PI);
+                faceRotation = Math.max(-45, Math.min(45, faceRotation));
+                
+                facePosition = { x: faceCenterX, y: faceCenterY };
+                
+                smoothedFacePosition.x += (facePosition.x - smoothedFacePosition.x) * SMOOTHING_FACTOR;
+                smoothedFacePosition.y += (facePosition.y - smoothedFacePosition.y) * SMOOTHING_FACTOR;
+                smoothedFaceRotation += (faceRotation - smoothedFaceRotation) * SMOOTHING_FACTOR;
+                
+                mouthOpenAmount = detectMouthOpen(landmarks);
+                smoothedMouthOpenAmount += (mouthOpenAmount - smoothedMouthOpenAmount) * MOUTH_SMOOTHING_FACTOR;
+                
+                const currentEAR = detectBlink(landmarks);
+                
+                if (currentEAR < BLINK_THRESHOLD && eyeAspectRatio >= BLINK_THRESHOLD) {
+                    textColor = getRandomColor();
+                    lastBlinkTime = Date.now();
+                }
+                eyeAspectRatio = currentEAR;
+                
+                update3DText();
+            } else {
+                facePosition = null;
+                faceRotation = 0;
+                mouthOpenAmount = 0;
+                smoothedFaceRotation += (0 - smoothedFaceRotation) * SMOOTHING_FACTOR;
+                smoothedMouthOpenAmount += (0 - smoothedMouthOpenAmount) * MOUTH_SMOOTHING_FACTOR;
+                text3dContainer.style.display = 'none';
+            }
+        });
+        
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+        
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+        
+        hands.onResults((results) => {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                const wrist = landmarks[0];
+                const indexFinger = landmarks[8];
+                
+                const canvasRect = canvas.getBoundingClientRect();
+                const scaleX = canvasRect.width / canvas.width;
+                const scaleY = canvasRect.height / canvas.height;
+                const scale = Math.min(scaleX, scaleY);
+                
+                const wristX = canvasRect.left + (canvasRect.width / 2) + (((1 - wrist.x) * canvas.width - canvas.width / 2) * scale);
+                const wristY = canvasRect.top + (canvasRect.height / 2) + ((wrist.y * canvas.height - canvas.height / 2) * scale);
+                const indexX = canvasRect.left + (canvasRect.width / 2) + (((1 - indexFinger.x) * canvas.width - canvas.width / 2) * scale);
+                const indexY = canvasRect.top + (canvasRect.height / 2) + ((indexFinger.y * canvas.height - canvas.height / 2) * scale);
+                
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                
+                const wristAngle = Math.atan2(wristY - centerY, wristX - centerX);
+                const indexAngle = Math.atan2(indexY - centerY, indexX - centerX);
+                const handAngle = (wristAngle + indexAngle) / 2;
+                
+                const currentTime = Date.now();
+                
+                if (lastHandAngle !== null && lastHandTime !== null) {
+                    let angleDiff = handAngle - lastHandAngle;
+                    if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                    if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                    
+                    const timeDiff = (currentTime - lastHandTime) / 1000;
+                    if (timeDiff > 0) {
+                        const angularVelocity = (angleDiff / timeDiff) * (180 / Math.PI) * HAND_ROTATION_SENSITIVITY;
+                        handAngularVelocity = angularVelocity;
+                    }
+                }
+                
+                lastHandAngle = handAngle;
+                lastHandTime = currentTime;
+                handPosition = { x: wristX, y: wristY };
+            } else {
+                lastHandAngle = null;
+                lastHandTime = null;
+                handPosition = null;
+            }
+        });
+        
+        const camera = new Camera(video, {
+            onFrame: async () => {
+                await faceMesh.send({image: video});
+                await hands.send({image: video});
+            },
+            width: 1280,
+            height: 720
+        });
+        
+        function resizeCanvas() {
+            if (video.videoWidth && video.videoHeight) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                const container = canvas.parentElement;
+                const containerRect = container.getBoundingClientRect();
+                const videoAspect = video.videoWidth / video.videoHeight;
+                const containerAspect = containerRect.width / containerRect.height;
+                
+                if (containerAspect > videoAspect) {
+                    canvas.style.width = '100%';
+                    canvas.style.height = 'auto';
+            } else {
+                    canvas.style.width = 'auto';
+                    canvas.style.height = '100%';
+                }
+            }
+        }
+        
+        video.addEventListener('loadedmetadata', resizeCanvas);
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if (facePosition) update3DText();
+        });
+        
+        camera.start();
+        
+        function detectMouthOpen(landmarks) {
+            const upperLip = landmarks[13];
+            const lowerLip = landmarks[14];
+            const mouthLeft = landmarks[61];
+            const mouthRight = landmarks[291];
+            
+            const mouthWidth = Math.sqrt(
+                Math.pow((mouthRight.x - mouthLeft.x) * canvas.width, 2) +
+                Math.pow((mouthRight.y - mouthLeft.y) * canvas.height, 2)
+            );
+            const mouthHeight = Math.sqrt(
+                Math.pow((lowerLip.x - upperLip.x) * canvas.width, 2) +
+                Math.pow((lowerLip.y - upperLip.y) * canvas.height, 2)
+            );
+            
+            return Math.min(mouthHeight / mouthWidth, 0.15) * 10;
+        }
+        
+        function detectBlink(landmarks) {
+            const leftEyeTop = landmarks[159];
+            const leftEyeBottom = landmarks[145];
+            const leftEyeLeft = landmarks[33];
+            const leftEyeRight = landmarks[133];
+            
+            const rightEyeTop = landmarks[386];
+            const rightEyeBottom = landmarks[374];
+            const rightEyeLeft = landmarks[362];
+            const rightEyeRight = landmarks[263];
+            
+            const leftEyeHeight = Math.abs(leftEyeTop.y - leftEyeBottom.y);
+            const leftEyeWidth = Math.abs(leftEyeRight.x - leftEyeLeft.x);
+            const leftEAR = leftEyeHeight / leftEyeWidth;
+            
+            const rightEyeHeight = Math.abs(rightEyeTop.y - rightEyeBottom.y);
+            const rightEyeWidth = Math.abs(rightEyeRight.x - rightEyeLeft.x);
+            const rightEAR = rightEyeHeight / rightEyeWidth;
+            
+            const avgEAR = (leftEAR + rightEAR) / 2;
+            return avgEAR;
+        }
+        
+        function getRandomColor() {
+            const colors = [
+                '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff',
+                '#ff69b4', '#ff1493', '#00ff7f', '#1e90ff', '#ff4500', '#9370db',
+                '#ffd700', '#ff6347', '#40e0d0', '#ee82ee', '#f0e68c', '#ffa500'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        function drawFaceLandmarks(landmarks) {
+            ctx.strokeStyle = '#ff69b4';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#ff69b4';
+            
+            for (let i = 0; i < landmarks.length; i++) {
+                const x = (1 - landmarks[i].x) * canvas.width;
+                const y = landmarks[i].y * canvas.height;
+                ctx.beginPath();
+                ctx.arc(x, y, 2, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+            
+            const outlinePoints = [
+                10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
+                397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136,
+                172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109
+            ];
+            
+            ctx.beginPath();
+            for (let i = 0; i < outlinePoints.length; i++) {
+                const point = landmarks[outlinePoints[i]];
+                const x = (1 - point.x) * canvas.width;
+                const y = point.y * canvas.height;
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+        
+        function update3DText() {
+            text3dContainer.innerHTML = '';
+            
+            const displayText = currentText || 'TYPE FACE';
+            if (!displayText) {
+                text3dContainer.style.display = 'none';
+                return;
+            }
+            
+            text3dContainer.style.display = 'block';
+            
+            const faceCenterX = facePosition ? smoothedFacePosition.x : window.innerWidth / 2;
+            const faceCenterY = facePosition ? smoothedFacePosition.y : window.innerHeight / 2;
+            const characters = displayText.split('');
+            const viewportWidth = window.innerWidth;
+            const radius = Math.max(viewportWidth * 0.2, 200);
+            
+            const totalAngle = 2 * Math.PI - (2 * Math.PI / (characters.length + 1));
+            const angleStep = characters.length > 0 ? totalAngle / characters.length : 0;
+            const maxRotation = smoothedMouthOpenAmount * 45;
+            
+            characters.forEach((char, charIndex) => {
+                const baseAngle = (charIndex * angleStep) - (Math.PI / 2) - (Math.PI / (characters.length + 1));
+                const angle = baseAngle + (smoothedFaceRotation * Math.PI / 180) + (autoRotation * Math.PI / 180);
+                
+                const charX = faceCenterX + Math.cos(angle) * radius;
+                const charY = faceCenterY + Math.sin(angle) * radius;
+                
+                const charRotationZ = (angle * 180 / Math.PI) + 90;
+                
+                const baseYRotation = Math.sin(angle) * 90;
+                const yRotation = baseYRotation + (smoothedFaceRotation * 0.5) + maxRotation;
+                
+                for (let layer = 0; layer < EXTRUSION_LAYERS; layer++) {
+                    const layerElement = document.createElement('div');
+                    layerElement.className = 'text-3d-layer';
+                    layerElement.textContent = char;
+                    layerElement.style.color = textColor;
+                    layerElement.style.left = charX + 'px';
+                    layerElement.style.top = charY + 'px';
+                    layerElement.style.zIndex = EXTRUSION_LAYERS - layer;
+                    
+                    const depthOffset = (layer / EXTRUSION_LAYERS) * EXTRUSION_DEPTH;
+                    layerElement.style.transform = `
+                        translate(-50%, -50%)
+                        translateZ(${-depthOffset}px)
+                        rotateZ(${charRotationZ}deg)
+                        rotateY(${yRotation}deg)
+                    `;
+                    
+                    text3dContainer.appendChild(layerElement);
+                }
+            });
+        }
+    </script>
+</body>
+</html> 

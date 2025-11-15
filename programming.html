@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>programming</title>
-    <link rel="icon" type="image/gif" href="assets/img/favicon-1.gif">
+    <link rel="icon" type="gif" href="assets/img/favicon-1.gif">
 
     <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-C437JD01VX"></script>
@@ -38,7 +38,18 @@ body {
 .insta {
     rotate: 1.8deg;
 }
-
+.pretty-fly {
+    rotate: 1.8deg;
+}
+.pattern-1 {
+    rotate: 1.8deg;
+}
+.from-from {
+    rotate: 1.8deg;
+}
+.back {
+    rotate: 1.8deg;
+}
 /* text styles */
 
 p,
@@ -55,29 +66,92 @@ a {
 ::selection {
     color: orangered;
 }
+
+/* Image overlay for hover effect */
+.image-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.image-overlay.active {
+    display: flex;
+}
+
+.image-overlay img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+}
 </style>
 
 </head>
 
 <body>
     <div class="container">
-        <div class="name">
+        <div class="pretty-fly">
             <a href="./programming/pretty-fly/index.html">pretty fly</a>
         </div>
 
-        <div class="name">
+        <div class="type-face">
+            <a href="./programming/type-face/index.html">pattern 1</a>
+        </div>
+
+        <div class="from-from">
             <a href="./programming/from-from/index.html"><span style="font-style: italic;">from</span> from</a>
         </div>
 
-        <div class="name">
-            <a href="./programming/pattern-generator-1/index.html">pattern 1</a>
+        <div class="pattern-1">
+            <a href="./programming/pattern-1/index.html">pattern 1</a>
         </div>
 
-        <div class="name">
+        <div class="     back">
             <a href="https://markwilson.xyz">back
             </p>
         </div>
     </div>
+
+    <!-- Image overlay -->
+    <div class="image-overlay" id="imageOverlay">
+        <img src="./programming/pretty-fly.png" alt="pretty fly">
+    </div>
+
+    <script>
+        const imageOverlay = document.getElementById('imageOverlay');
+        const overlayImg = imageOverlay.querySelector('img');
+
+        // Map class names to their corresponding PNG files
+        const imageMap = {
+            'pretty-fly': './programming/pretty-fly.png',
+            'type-face': './programming/type-face.png',
+            'from-from': './programming/from-from.png',
+            'pattern-1': './programming/pattern-1.png',
+            'back': './programming/back.png'
+        };
+
+        // Add hover effects for each class
+        Object.keys(imageMap).forEach(className => {
+            const link = document.querySelector(`.${className} a`);
+            if (link && imageOverlay && overlayImg) {
+                link.addEventListener('mouseenter', () => {
+                    overlayImg.src = imageMap[className];
+                    imageOverlay.classList.add('active');
+                });
+
+                link.addEventListener('mouseleave', () => {
+                    imageOverlay.classList.remove('active');
+                });
+            }
+        });
+    </script>
+
 </body>
 
 </html>
