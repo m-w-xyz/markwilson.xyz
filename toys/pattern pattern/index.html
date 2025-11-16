@@ -34,7 +34,7 @@
             box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
             position: fixed;
             top: 20px;
-            left: 20px;
+            right: 20px;
             z-index: 100;
             max-height: calc(100vh - 40px);
             transition: height 0.3s ease;
@@ -1450,7 +1450,7 @@
             dragHandle.addEventListener('mousedown', (e) => {
                 isDraggingSidebar = true;
                 const rect = sidebar.getBoundingClientRect();
-                sidebarDragOffset.x = e.clientX - rect.left;
+                sidebarDragOffset.x = e.clientX - rect.right;
                 sidebarDragOffset.y = e.clientY - rect.top;
                 e.preventDefault();
             });
@@ -1458,17 +1458,23 @@
             document.addEventListener('mousemove', (e) => {
                 if (!isDraggingSidebar) return;
                 
-                let newX = e.clientX - sidebarDragOffset.x;
+                // Calculate new right edge position
+                let newRightEdge = e.clientX - sidebarDragOffset.x;
                 let newY = e.clientY - sidebarDragOffset.y;
                 
                 // Keep sidebar within viewport bounds
-                const maxX = window.innerWidth - sidebar.offsetWidth;
+                const minRightEdge = sidebar.offsetWidth;
+                const maxRightEdge = window.innerWidth;
                 const maxY = window.innerHeight - sidebar.offsetHeight;
                 
-                newX = Math.max(0, Math.min(newX, maxX));
+                newRightEdge = Math.max(minRightEdge, Math.min(newRightEdge, maxRightEdge));
                 newY = Math.max(0, Math.min(newY, maxY));
                 
-                sidebar.style.left = newX + 'px';
+                // Convert right edge to right offset
+                let newRight = window.innerWidth - newRightEdge;
+                
+                sidebar.style.right = newRight + 'px';
+                sidebar.style.left = 'auto';
                 sidebar.style.top = newY + 'px';
                 sidebar.style.transform = 'none';
             });
@@ -1482,7 +1488,7 @@
                 isDraggingSidebar = true;
                 const touch = e.touches[0];
                 const rect = sidebar.getBoundingClientRect();
-                sidebarDragOffset.x = touch.clientX - rect.left;
+                sidebarDragOffset.x = touch.clientX - rect.right;
                 sidebarDragOffset.y = touch.clientY - rect.top;
                 e.preventDefault();
             });
@@ -1491,16 +1497,23 @@
                 if (!isDraggingSidebar) return;
                 
                 const touch = e.touches[0];
-                let newX = touch.clientX - sidebarDragOffset.x;
+                // Calculate new right edge position
+                let newRightEdge = touch.clientX - sidebarDragOffset.x;
                 let newY = touch.clientY - sidebarDragOffset.y;
                 
-                const maxX = window.innerWidth - sidebar.offsetWidth;
+                // Keep sidebar within viewport bounds
+                const minRightEdge = sidebar.offsetWidth;
+                const maxRightEdge = window.innerWidth;
                 const maxY = window.innerHeight - sidebar.offsetHeight;
                 
-                newX = Math.max(0, Math.min(newX, maxX));
+                newRightEdge = Math.max(minRightEdge, Math.min(newRightEdge, maxRightEdge));
                 newY = Math.max(0, Math.min(newY, maxY));
                 
-                sidebar.style.left = newX + 'px';
+                // Convert right edge to right offset
+                let newRight = window.innerWidth - newRightEdge;
+                
+                sidebar.style.right = newRight + 'px';
+                sidebar.style.left = 'auto';
                 sidebar.style.top = newY + 'px';
                 sidebar.style.transform = 'none';
             });

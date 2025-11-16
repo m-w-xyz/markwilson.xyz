@@ -379,7 +379,74 @@ canvas.addEventListener('click', () => {
     triggerFallAnimation();
 });
 
+// Medieval phrases (3 words each)
+const medievalPhrases = [
+    'Hark the herald',
+    'Forsooth good sir',
+    'Prithee fair maiden',
+    'By my troth',
+    'Harken to me',
+    'Fie upon thee',
+    'Alas poor wretch',
+    'Hie thee hence',
+    'By the rood',
+    'Marry come up',
+    'Gramercy good friend',
+    'Pardonnez moi',
+    'God save thee',
+    'Fare thee well',
+    'Anon good fellow',
+    'I pray thee',
+    'By my faith',
+    'Hark the trumpets',
+    'Forsooth I say',
+    'Prithee attend me',
+    'By my sword',
+    'Hark the bells',
+    'Fie on fortune',
+    'Alas and alack',
+    'Hie thee hither',
+    'By my beard',
+    'Marry and amen',
+    'Gramercy my lord',
+    'Pardonnez mon ami',
+    'God grant mercy',
+    'Fare thee well',
+    'Anon I come',
+    'I beseech thee',
+    'By my honor',
+    'Hark the drums',
+    'Forsooth tis true',
+    'Prithee speak true',
+    'By my life',
+    'Hark the horns',
+    'Fie on falsehood',
+    'Alas poor soul',
+    'Hie thee away',
+    'By my troth',
+    'Marry well met',
+    'Gramercy kind sir',
+    'Pardonnez mon seigneur',
+    'God bless thee',
+    'Fare thee well',
+    'Anon I shall',
+    'I implore thee',
+    'By my word'
+];
+
+// Get random medieval phrase
+function getRandomMedievalPhrase() {
+    return medievalPhrases[Math.floor(Math.random() * medievalPhrases.length)];
+}
+
 // Initial setup
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
+
+// Set default text with random medieval phrase (display on canvas, but keep input empty for placeholder)
+const defaultPhrase = getRandomMedievalPhrase();
+currentText = defaultPhrase;
+textInput.value = ''; // Keep input empty so placeholder shows
+updateTextPosition();
+
 animate(); 
