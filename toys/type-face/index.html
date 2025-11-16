@@ -66,9 +66,10 @@
         }
         
         .hide-video-control {
-            position: absolute;
-            bottom: 15px;
-            left: 15px;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 10;
         }
         
@@ -165,8 +166,8 @@
         <div id="rightEyebrow" class="nose-letter" style="display: none;">(</div>
         <div id="nose" class="nose-letter">L</div>
         <div id="mouth" class="mouth-letter">(</div>
-        <div class="hide-video-control" style="bottom: 170px;">
-            <button id="hideCameraButton" class="hide-camera-button">Hide camera</button>
+        <div class="hide-video-control">
+            <button id="hideCameraButton" class="hide-camera-button">Show camera</button>
         </div>
         <div class="threshold-controls" style="display: none;">
             <div class="threshold-control">
@@ -304,7 +305,21 @@
         let smoothedMouthOpenAmount = 0;
         const textColor = '#ffffff'; // Always white
         
-        let webcamVisible = true;
+        let webcamVisible = false; // Camera hidden by default
+        
+        // Initialize camera as hidden on page load
+        function initializeCameraVisibility() {
+            video.style.opacity = '0';
+            canvas.style.opacity = '0';
+            video.classList.add('hidden');
+            canvas.classList.add('hidden');
+            leftEyeElement.classList.add('hidden');
+            rightEyeElement.classList.add('hidden');
+            noseElement.classList.add('hidden');
+            mouthElement.classList.add('hidden');
+            hideCameraButton.classList.add('active');
+            hideCameraButton.textContent = 'Show camera';
+        }
         let handAngularVelocity = 0;
         let smoothedHandAngularVelocity = 0;
         let lastHandAngle = null;
@@ -412,11 +427,11 @@
             video.style.opacity = webcamVisible ? '1' : '0';
             canvas.style.opacity = webcamVisible ? '1' : '0';
             
-            // Add scaling class for smooth transition
-            leftEyeElement.classList.add('scaling');
-            rightEyeElement.classList.add('scaling');
-            noseElement.classList.add('scaling');
-            mouthElement.classList.add('scaling');
+            // Remove scaling class to prevent smooth rotation transition
+            leftEyeElement.classList.remove('scaling');
+            rightEyeElement.classList.remove('scaling');
+            noseElement.classList.remove('scaling');
+            mouthElement.classList.remove('scaling');
             
             // Add/remove classes for scaling
             if (webcamVisible) {
@@ -427,6 +442,7 @@
                 noseElement.classList.remove('hidden');
                 mouthElement.classList.remove('hidden');
                 hideCameraButton.classList.remove('active');
+                hideCameraButton.textContent = 'Hide camera';
             } else {
                 video.classList.add('hidden');
                 canvas.classList.add('hidden');
@@ -435,15 +451,8 @@
                 noseElement.classList.add('hidden');
                 mouthElement.classList.add('hidden');
                 hideCameraButton.classList.add('active');
+                hideCameraButton.textContent = 'Show camera';
             }
-            
-            // Remove scaling class after transition completes
-            setTimeout(() => {
-                leftEyeElement.classList.remove('scaling');
-                rightEyeElement.classList.remove('scaling');
-                noseElement.classList.remove('scaling');
-                mouthElement.classList.remove('scaling');
-            }, 600);
         });
         
         const faceMesh = new FaceMesh({
@@ -670,6 +679,9 @@
         }
         
         startCameraWithPermission();
+        
+        // Initialize camera as hidden on page load
+        initializeCameraVisibility();
         
         function detectMouthOpen(landmarks) {
             const upperLip = landmarks[13];
