@@ -140,14 +140,11 @@
         <video id="webcam" playsinline></video>
         <canvas id="canvas"></canvas>
         <div id="text3dContainer" class="text-3d-container"></div>
-        <div id="leftEye" class="eye-letter">O</div>
-        <div id="rightEye" class="eye-letter">O</div>
-        <div id="mouth" class="mouth-letter">—</div>
         <div class="hide-video-control">
             <input type="checkbox" id="hideVideoCheckbox">
             <label for="hideVideoCheckbox">Hide video</label>
         </div>
-        <input type="text" id="textInput" class="text-input" placeholder="TYPE SOMETHING">
+        <input type="text" id="textInput" class="text-input" placeholder="FACE MASK" value="FACE MASK">
     </div>
 
     <script>
@@ -176,26 +173,8 @@
         const textInput = document.getElementById('textInput');
         const text3dContainer = document.getElementById('text3dContainer');
         const hideVideoCheckbox = document.getElementById('hideVideoCheckbox');
-        const leftEyeElement = document.getElementById('leftEye');
-        const rightEyeElement = document.getElementById('rightEye');
-        const mouthElement = document.getElementById('mouth');
         
-        // Initialize eye and mouth positions to center of canvas
-        function initializeFaceElements() {
-            const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight / 2;
-            
-            leftEyeElement.style.left = centerX + 'px';
-            leftEyeElement.style.top = centerY + 'px';
-            rightEyeElement.style.left = centerX + 'px';
-            rightEyeElement.style.top = centerY + 'px';
-            mouthElement.style.left = centerX + 'px';
-            mouthElement.style.top = centerY + 'px';
-        }
-        
-        initializeFaceElements();
-        
-        let currentText = 'TYPE FACE';
+        let currentText = 'FACE MASK';
         let facePosition = null;
         let faceRotation = 0;
         let autoRotation = 0;
@@ -237,7 +216,7 @@
         const HAND_SMOOTHING_FACTOR = 0.2;
         
         textInput.addEventListener('input', (e) => {
-            currentText = (e.target.value || 'TYPE FACE').toUpperCase();
+            currentText = (e.target.value || 'FACE MASK').toUpperCase();
             e.target.value = currentText;
             update3DText();
         });
@@ -325,7 +304,6 @@
                 }
                 eyeAspectRatio = currentEAR;
                 
-                updateFaceLetters(landmarks);
                 update3DText();
             } else {
                 facePosition = null;
@@ -334,9 +312,6 @@
                 smoothedFaceRotation += (0 - smoothedFaceRotation) * SMOOTHING_FACTOR;
                 smoothedMouthOpenAmount += (0 - smoothedMouthOpenAmount) * MOUTH_SMOOTHING_FACTOR;
                 text3dContainer.style.display = 'none';
-                leftEyeElement.style.display = 'none';
-                rightEyeElement.style.display = 'none';
-                mouthElement.style.display = 'none';
             }
         });
         
@@ -432,8 +407,6 @@
             resizeCanvas();
             if (facePosition) {
                 update3DText();
-            } else {
-                initializeFaceElements();
             }
         });
         
@@ -828,147 +801,10 @@
             ctx.stroke();
         }
         
-        function updateFaceLetters(landmarks) {
-            const canvasRect = canvas.getBoundingClientRect();
-            const scaleX = canvasRect.width / canvas.width;
-            const scaleY = canvasRect.height / canvas.height;
-            const scale = Math.min(scaleX, scaleY);
-            
-            // Get individual eye states
-            const eyeRatios = getIndividualEyeAspectRatios(landmarks);
-            const leftEyeClosed = eyeRatios.left < BLINK_THRESHOLD;
-            const rightEyeClosed = eyeRatios.right < BLINK_THRESHOLD;
-            
-            // Get face distance and calculate font size scaling
-            const faceWidth = getFaceDistance(landmarks);
-            // Base font sizes: eyes 80px, mouth 100px (slightly larger)
-            const baseEyeFontSize = 80;
-            const baseMouthFontSize = 100;
-            const sizeMultiplier = Math.max(0.5, Math.min(3, faceWidth / 0.15));
-            const eyeFontSize = baseEyeFontSize * sizeMultiplier;
-            const mouthFontSize = baseMouthFontSize * sizeMultiplier;
-            
-            // Get left eye center
-            const leftEyeTop = landmarks[159];
-            const leftEyeBottom = landmarks[145];
-            const leftEyeLeft = landmarks[33];
-            const leftEyeRight = landmarks[133];
-            const leftEyeCenterX = (leftEyeLeft.x + leftEyeRight.x) / 2;
-            const leftEyeCenterY = (leftEyeTop.y + leftEyeBottom.y) / 2;
-            
-            // Get right eye center
-            const rightEyeTop = landmarks[386];
-            const rightEyeBottom = landmarks[374];
-            const rightEyeLeft = landmarks[362];
-            const rightEyeRight = landmarks[263];
-            const rightEyeCenterX = (rightEyeLeft.x + rightEyeRight.x) / 2;
-            const rightEyeCenterY = (rightEyeTop.y + rightEyeBottom.y) / 2;
-            
-            // Get mouth center
-            const upperLip = landmarks[13];
-            const lowerLip = landmarks[14];
-            const mouthLeft = landmarks[61];
-            const mouthRight = landmarks[291];
-            const mouthCenterX = (mouthLeft.x + mouthRight.x) / 2;
-            const mouthCenterY = (upperLip.y + lowerLip.y) / 2;
-            
-            // Convert to screen coordinates (mirrored for webcam)
-            const leftEyeScreenX = canvasRect.left + (canvasRect.width / 2) + (((1 - leftEyeCenterX) * canvas.width - canvas.width / 2) * scale);
-            const leftEyeScreenY = canvasRect.top + (canvasRect.height / 2) + ((leftEyeCenterY * canvas.height - canvas.height / 2) * scale);
-            
-            const rightEyeScreenX = canvasRect.left + (canvasRect.width / 2) + (((1 - rightEyeCenterX) * canvas.width - canvas.width / 2) * scale);
-            const rightEyeScreenY = canvasRect.top + (canvasRect.height / 2) + ((rightEyeCenterY * canvas.height - canvas.height / 2) * scale);
-            
-            const mouthScreenX = canvasRect.left + (canvasRect.width / 2) + (((1 - mouthCenterX) * canvas.width - canvas.width / 2) * scale);
-            const mouthScreenY = canvasRect.top + (canvasRect.height / 2) + ((mouthCenterY * canvas.height - canvas.height / 2) * scale);
-            
-            // Update left eye (en dash when closed, no rotation)
-            leftEyeElement.style.display = 'block';
-            leftEyeElement.style.left = leftEyeScreenX + 'px';
-            leftEyeElement.style.top = leftEyeScreenY + 'px';
-            leftEyeElement.style.fontSize = eyeFontSize + 'px';
-            leftEyeElement.style.color = textColor;
-            
-            if (leftEyeClosed) {
-                leftEyeElement.textContent = '–';
-                leftEyeElement.style.transform = 'translate(-50%, -50%)';
-            } else {
-                leftEyeElement.textContent = 'O';
-                leftEyeElement.style.transform = 'translate(-50%, -50%)';
-            }
-            
-            // Update right eye (en dash when closed, no rotation)
-            rightEyeElement.style.display = 'block';
-            rightEyeElement.style.left = rightEyeScreenX + 'px';
-            rightEyeElement.style.top = rightEyeScreenY + 'px';
-            rightEyeElement.style.fontSize = eyeFontSize + 'px';
-            rightEyeElement.style.color = textColor;
-            
-            if (rightEyeClosed) {
-                rightEyeElement.textContent = '–';
-                rightEyeElement.style.transform = 'translate(-50%, -50%)';
-            } else {
-                rightEyeElement.textContent = 'O';
-                rightEyeElement.style.transform = 'translate(-50%, -50%)';
-            }
-            
-            // Check for sad face and trigger tears
-            checkAndTriggerTears(landmarks, rightEyeScreenX, rightEyeScreenY, textColor, eyeFontSize);
-            
-            // Update mouth: Check tongue, smile, frown, pursed lips, kissing face, and mouth open states
-            const tongueOut = detectTongueOut(landmarks);
-            const isKissing = detectKissingFace(landmarks);
-            const isPursedLips = detectPursedLips(landmarks);
-            const isSmilingOpen = detectSmileOpen(landmarks);
-            const isSmilingClosed = detectSmileClosed(landmarks);
-            const isFrowning = detectFrown(landmarks);
-            const isMouthOpen = detectMouthOpen(landmarks);
-            
-            mouthElement.style.display = 'block';
-            mouthElement.style.left = mouthScreenX + 'px';
-            mouthElement.style.top = mouthScreenY + 'px';
-            mouthElement.style.fontSize = mouthFontSize + 'px';
-            mouthElement.style.color = textColor;
-            
-            if (tongueOut) {
-                // Tongue out: P rotated 90 degrees
-                mouthElement.textContent = 'P';
-                mouthElement.style.transform = 'translate(-50%, -50%) rotate(90deg)';
-            } else if (isKissing) {
-                // Kissing face (lips puckered): X (no rotation)
-                mouthElement.textContent = 'X';
-                mouthElement.style.transform = 'translate(-50%, -50%)';
-            } else if (isPursedLips) {
-                // Pursed lips tight together: X rotated 90 degrees
-                mouthElement.textContent = 'X';
-                mouthElement.style.transform = 'translate(-50%, -50%) rotate(90deg)';
-            } else if (isSmilingOpen) {
-                // Smiling with lips open: D rotated 90 degrees
-                mouthElement.textContent = 'D';
-                mouthElement.style.transform = 'translate(-50%, -50%) rotate(90deg)';
-            } else if (isSmilingClosed) {
-                // Smiling with lips closed: ( rotated -90 degrees
-                mouthElement.textContent = '(';
-                mouthElement.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
-            } else if (isFrowning) {
-                // Frowning: ) rotated -90 degrees
-                mouthElement.textContent = ')';
-                mouthElement.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
-            } else if (isMouthOpen) {
-                // Mouth fully open: O (no rotation)
-                mouthElement.textContent = 'O';
-                mouthElement.style.transform = 'translate(-50%, -50%)';
-            } else {
-                // Default neutral: em dash
-                mouthElement.textContent = '—';
-                mouthElement.style.transform = 'translate(-50%, -50%)';
-            }
-        }
-        
         function update3DText() {
             text3dContainer.innerHTML = '';
             
-            const displayText = (currentText || 'TYPE FACE').toUpperCase();
+            const displayText = (currentText || 'FACE MASK').toUpperCase();
             if (!displayText) {
                 text3dContainer.style.display = 'none';
                 return;

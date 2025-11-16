@@ -39,40 +39,105 @@
         
         #webcam {
             position: absolute;
-            top: 0;
-            left: 0;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scaleX(-1);
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transform: scaleX(-1);
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #webcam.hidden {
+            transform: translate(-50%, -50%) scaleX(-1) scale(1.6);
         }
         
         #canvas {
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) scale(1.2);
             z-index: 1;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #canvas.hidden {
+            transform: translate(-50%, -50%) scale(1.8);
         }
         
         .hide-video-control {
             position: absolute;
+            bottom: 15px;
+            left: 15px;
+            z-index: 10;
+        }
+        
+        .hide-camera-button {
+            background: #4a4a4a;
+            color: #ffffff;
+            border: 2px solid #6a6a6a;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        
+        .hide-camera-button:hover {
+            background: #5a5a5a;
+            border-color: #7a7a7a;
+        }
+        
+        .hide-camera-button.active {
+            background: #2a2a2a;
+            border-color: #ffffff;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        
+        .threshold-controls {
+            position: absolute;
             bottom: 30px;
             right: 30px;
             display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 8px;
             z-index: 10;
             font-family: Arial, sans-serif;
-            font-size: 12px;
+            font-size: 11px;
             color: #ffffff;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            min-width: 200px;
         }
         
-        .hide-video-control input[type="checkbox"] {
+        .threshold-control {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .threshold-control label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .threshold-control input[type="range"] {
+            width: 100%;
             cursor: pointer;
         }
         
-        .eye-letter, .mouth-letter {
+        .threshold-value {
+            font-weight: bold;
+            min-width: 50px;
+            text-align: right;
+        }
+        
+        .eye-letter, .mouth-letter, .nose-letter {
             position: absolute;
             color: #ffffff;
             font-family: 'Penray', Arial, sans-serif;
@@ -84,6 +149,10 @@
             z-index: 6;
             display: none;
         }
+        
+        .eye-letter.scaling, .mouth-letter.scaling, .nose-letter.scaling {
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
     </style>
 </head>
 <body>
@@ -92,44 +161,125 @@
         <canvas id="canvas"></canvas>
         <div id="leftEye" class="eye-letter">O</div>
         <div id="rightEye" class="eye-letter">O</div>
-        <div id="mouth" class="mouth-letter">—</div>
-        <div class="hide-video-control">
-            <input type="checkbox" id="hideVideoCheckbox">
-            <label for="hideVideoCheckbox">Hide video</label>
+        <div id="leftEyebrow" class="nose-letter" style="display: none;">(</div>
+        <div id="rightEyebrow" class="nose-letter" style="display: none;">(</div>
+        <div id="nose" class="nose-letter">L</div>
+        <div id="mouth" class="mouth-letter">(</div>
+        <div class="hide-video-control" style="bottom: 170px;">
+            <button id="hideCameraButton" class="hide-camera-button">Hide camera</button>
+        </div>
+        <div class="threshold-controls" style="display: none;">
+            <div class="threshold-control">
+                <label>
+                    <span>Mouth Brightness Threshold</span>
+                    <span class="threshold-value" id="mouthBrightnessThresholdValue">0.2</span>
+                </label>
+                <input type="range" id="mouthBrightnessThresholdSlider" min="0.000" max="1.000" step="0.001" value="0.2">
+            </div>
+            <div class="threshold-control">
+                <label>
+                    <span>Mouth Brightness Adjustment</span>
+                    <span class="threshold-value" id="mouthBrightnessAdjustValue">0.2</span>
+                </label>
+                <input type="range" id="mouthBrightnessAdjustSlider" min="-1.0" max="1.0" step="0.01" value="0.2">
+            </div>
+            <div class="threshold-control">
+                <label>
+                    <span>Mouth Contrast Adjustment</span>
+                    <span class="threshold-value" id="mouthContrastAdjustValue">1.8</span>
+                </label>
+                <input type="range" id="mouthContrastAdjustSlider" min="0.5" max="3.0" step="0.1" value="1.8">
+            </div>
+            <div class="threshold-control">
+                <label>
+                    <span>Extreme Brightness Threshold (Teeth/D)</span>
+                    <span class="threshold-value" id="extremeBrightnessThresholdValue">0.9</span>
+                </label>
+                <input type="range" id="extremeBrightnessThresholdSlider" min="0.0" max="3.0" step="0.1" value="0.9">
+                <div style="font-size: 11px; color: #aaa; margin-top: 5px;">
+                    Mouth brightness relative to nose (1.0 = same as nose, >1.0 = brighter)
+                </div>
+            </div>
+            <div style="display: flex; gap: 20px; margin-top: 15px;">
+                <div class="brightness-display" style="flex: 1; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 5px; color: white; font-family: monospace; font-size: 12px;">
+                    <div>Current Brightness: <span id="currentBrightnessValue">0.00</span> (0-1 normalized)</div>
+                    <div>Raw Brightness: <span id="rawBrightnessValue">0</span> (0-255)</div>
+                    <div style="margin-top: 5px; height: 20px; background: #333; position: relative; border: 1px solid #666;">
+                        <div id="brightnessBar" style="height: 100%; background: linear-gradient(to right, #000, #fff); width: 0%;"></div>
+                        <div id="thresholdLine" style="position: absolute; top: 0; bottom: 0; width: 2px; background: red; left: 0%;"></div>
+                    </div>
+                </div>
+                <div style="flex: 1;">
+                    <div style="padding: 10px; background: rgba(0,0,0,0.5); border-radius: 5px; color: white; font-family: monospace; font-size: 12px;">
+                        <div style="margin-bottom: 5px;">Mouth Area Preview:</div>
+                        <canvas id="mouthPreviewCanvas" style="width: 100%; max-width: 200px; height: auto; border: 1px solid #666; background: #000;"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         /*
-         * NOTE ON TONGUE DETECTION:
-         * MediaPipe Face Mesh does not have dedicated tongue landmarks. However, we've
-         * implemented a novel approach using PIXEL COLOR ANALYSIS with BRIGHTNESS & SATURATION:
+         * NOTE ON FACIAL EXPRESSION DETECTION:
          * 
-         * How it works:
-         * 1. Detects when mouth is open (shape analysis)
-         * 2. Samples 20x20 pixel area from center of mouth region
-         * 3. Calculates average brightness (0-255) AND saturation (color intensity)
+         * 🎯 DISTANCE-NORMALIZED DETECTION:
+         * All measurements are normalized by face width (landmarks 234-454), so detection 
+         * works consistently regardless of how close/far you are from the camera!
          * 
-         * Detection logic:
-         * - TONGUE OUT: Brightness 70-200 + Saturation > 20 (flesh has color) → P rotated 90°
-         * - SHOCKED (O): Brightness < 70 + Saturation < 30 (dark cavity, no color) → O
+         * SIMPLE LANDMARK-BASED DETECTION:
          * 
-         * The saturation check is KEY:
-         * - Dark mouth cavity = very low saturation (black/dark brown)
-         * - Tongue/flesh = higher saturation (pinkish/flesh tones)
+         * X (KISSING FACE):
+         * - 🟢 GREEN CORNERS MOVE CLOSE TOGETHER (landmarks 61 & 291)
+         * - Normalized distance between corners < 25% of face width
+         * - Also detects motion: corners actively moving together
+         * Try: Pucker your lips! Bring the corners of your mouth together!
          * 
-         * Try sticking your tongue out with your mouth moderately open!
+         * O (SHOCKED/OPEN MOUTH):
+         * - 🔴 RED DOTS WIDEN APART VERTICALLY (landmarks 13 & 14)
+         * - Normalized vertical distance > 20% of face width
+         * - Must have dark mouth cavity (no tongue visible)
+         * Try: Open your mouth wide! Separate upper and lower lips!
+         * 
+         * P (TONGUE OUT) - rotated 90°:
+         * - Detects when mouth is moderately open (0.15-0.8 ratio)
+         * - BLOB DETECTION: Checks if inner lip landmarks protrude (normalized)
+         * - COLOR ANALYSIS: Lighter flesh tones vs dark cavity
+         * Try: Stick your tongue out with your mouth moderately open!
+         * 
+         * ( and ) (SMILE/FROWN) - rotated -90°:
+         * - Detects when mouth corners are raised (smile) or lowered (frown)
+         * - Normalized measurements relative to face size
+         * Try: Smile or frown!
+         * 
+         * TRACKING VISUALIZATION:
+         * Enable "Show tracking points" to see what the system is detecting:
+         * - 🟢 GREEN dots = outer mouth contour (CORNERS at left/right)
+         * - 🟡 YELLOW dots = inner mouth contour (inner lip line)
+         * - 🔴 RED dots = key reference points (UPPER/LOWER lip centers)
+         * - 🔵 BLUE dots = eye landmarks
+         * - 🟣 MAGENTA dots = cheek landmarks
+         * 
+         * Watch the green corners and red dots to understand X vs O detection!
          */
         
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const hideVideoCheckbox = document.getElementById('hideVideoCheckbox');
+        
+        // Create a separate offscreen canvas for teeth detection (never cleared)
+        const detectionCanvas = document.createElement('canvas');
+        const detectionCtx = detectionCanvas.getContext('2d');
+        
+        const hideCameraButton = document.getElementById('hideCameraButton');
         const leftEyeElement = document.getElementById('leftEye');
         const rightEyeElement = document.getElementById('rightEye');
+        const noseElement = document.getElementById('nose');
         const mouthElement = document.getElementById('mouth');
+        const leftEyebrowElement = document.getElementById('leftEyebrow');
+        const rightEyebrowElement = document.getElementById('rightEyebrow');
         
-        // Initialize eye and mouth positions to center of canvas
+        // Initialize eye, nose and mouth positions to center of canvas
         function initializeFaceElements() {
             const centerX = window.innerWidth / 2;
             const centerY = window.innerHeight / 2;
@@ -138,6 +288,8 @@
             leftEyeElement.style.top = centerY + 'px';
             rightEyeElement.style.left = centerX + 'px';
             rightEyeElement.style.top = centerY + 'px';
+            noseElement.style.left = centerX + 'px';
+            noseElement.style.top = centerY + 'px';
             mouthElement.style.left = centerX + 'px';
             mouthElement.style.top = centerY + 'px';
         }
@@ -159,29 +311,139 @@
         let lastHandTime = null;
         let handPosition = null;
         
+        // Cache for teeth detection to handle timing issues when console is closed
+        let cachedTeethShowing = false;
+        let lastTeethDetectionTime = 0;
+        
+        // Store current teeth detection result (calculated in onFrame, used in onResults)
+        let currentTeethShowing = false;
+        let currentLandmarksForTeeth = null;
+        let previousLandmarksForTeeth = null;
+        
         // Tears tracking
-        let sadFaceStartTime = null;
-        let tearsTriggered = false;
         let activeTears = [];
-        let lastTearTime = 0;
+        let previousLeftEyeClosed = false;
+        let previousRightEyeClosed = false;
+        
         
         // Smoothed positions for face letters
         let smoothedLeftEyePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
         let smoothedRightEyePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        let smoothedNosePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
         let smoothedMouthPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        let smoothedLeftEyebrowPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        let smoothedRightEyebrowPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
         const FACE_LETTER_SMOOTHING = 0.25; // Higher = more responsive, lower = smoother
+        const FACE_LETTER_SMOOTHING_HIDDEN = 0.15; // Smoother when video is hidden
         
         const SMOOTHING_FACTOR = 0.15;
         const MOUTH_SMOOTHING_FACTOR = 0.25;
-        const BLINK_THRESHOLD = 0.2;
+        const BLINK_THRESHOLD = 0.25; // Increased to make blinks easier to detect (show hyphen)
         const FRICTION = 0.95;
         const HAND_ROTATION_SENSITIVITY = 0.3;
         const HAND_SMOOTHING_FACTOR = 0.2;
         
-        hideVideoCheckbox.addEventListener('change', (e) => {
-            webcamVisible = !e.target.checked;
+        // Fixed thresholds (no sliders)
+        let xThreshold = 0.28;
+        let oThreshold = 0.12;
+        let frownThreshold = 0.007;
+        let extremeFrownThreshold = 0.039;
+        let extremeSmileThreshold = 0.02;
+        let eyeSqueezeThreshold = 0.4;
+        
+        // Mouth brightness threshold (adjustable slider)
+        let mouthBrightnessThreshold = 0.2; // 0.000-1.000, below = O (dark), above = P (tongue/light)
+        let mouthBrightnessAdjust = 0.2; // -1.0 to 1.0, brightness adjustment
+        let mouthContrastAdjust = 1.8; // 0.5 to 3.0, contrast adjustment
+        let extremeBrightnessThreshold = 0.9; // 0.0-3.0, normalized brightness relative to nose (when to show D for teeth)
+        
+        // Get preview canvas (will be initialized after DOM loads)
+        let mouthPreviewCanvas = null;
+        let mouthPreviewCtx = null;
+        
+        // Slider controls
+        const mouthBrightnessThresholdSlider = document.getElementById('mouthBrightnessThresholdSlider');
+        const mouthBrightnessAdjustSlider = document.getElementById('mouthBrightnessAdjustSlider');
+        const mouthContrastAdjustSlider = document.getElementById('mouthContrastAdjustSlider');
+        const extremeBrightnessThresholdSlider = document.getElementById('extremeBrightnessThresholdSlider');
+        
+        mouthBrightnessThresholdSlider.addEventListener('input', (e) => {
+            mouthBrightnessThreshold = parseFloat(e.target.value);
+            document.getElementById('mouthBrightnessThresholdValue').textContent = mouthBrightnessThreshold.toFixed(3);
+            // Update threshold line position
+            const thresholdPercent = mouthBrightnessThreshold * 100;
+            const thresholdLine = document.getElementById('thresholdLine');
+            if (thresholdLine) thresholdLine.style.left = thresholdPercent + '%';
+        });
+        
+        mouthBrightnessAdjustSlider.addEventListener('input', (e) => {
+            mouthBrightnessAdjust = parseFloat(e.target.value);
+            document.getElementById('mouthBrightnessAdjustValue').textContent = mouthBrightnessAdjust.toFixed(2);
+        });
+        
+        mouthContrastAdjustSlider.addEventListener('input', (e) => {
+            mouthContrastAdjust = parseFloat(e.target.value);
+            document.getElementById('mouthContrastAdjustValue').textContent = mouthContrastAdjust.toFixed(1);
+        });
+        
+        extremeBrightnessThresholdSlider.addEventListener('input', (e) => {
+            extremeBrightnessThreshold = parseFloat(e.target.value);
+            document.getElementById('extremeBrightnessThresholdValue').textContent = extremeBrightnessThreshold.toFixed(1);
+        });
+        
+        // Initialize threshold line position and preview canvas (after DOM is ready)
+        setTimeout(() => {
+            const thresholdLine = document.getElementById('thresholdLine');
+            if (thresholdLine) {
+                const initialThresholdPercent = mouthBrightnessThreshold * 100;
+                thresholdLine.style.left = initialThresholdPercent + '%';
+            }
+            // Initialize preview canvas
+            mouthPreviewCanvas = document.getElementById('mouthPreviewCanvas');
+            if (mouthPreviewCanvas) {
+                mouthPreviewCtx = mouthPreviewCanvas.getContext('2d');
+                mouthPreviewCanvas.width = 200;
+                mouthPreviewCanvas.height = 200;
+            }
+        }, 100);
+        
+        hideCameraButton.addEventListener('click', () => {
+            webcamVisible = !webcamVisible;
             video.style.opacity = webcamVisible ? '1' : '0';
             canvas.style.opacity = webcamVisible ? '1' : '0';
+            
+            // Add scaling class for smooth transition
+            leftEyeElement.classList.add('scaling');
+            rightEyeElement.classList.add('scaling');
+            noseElement.classList.add('scaling');
+            mouthElement.classList.add('scaling');
+            
+            // Add/remove classes for scaling
+            if (webcamVisible) {
+                video.classList.remove('hidden');
+                canvas.classList.remove('hidden');
+                leftEyeElement.classList.remove('hidden');
+                rightEyeElement.classList.remove('hidden');
+                noseElement.classList.remove('hidden');
+                mouthElement.classList.remove('hidden');
+                hideCameraButton.classList.remove('active');
+            } else {
+                video.classList.add('hidden');
+                canvas.classList.add('hidden');
+                leftEyeElement.classList.add('hidden');
+                rightEyeElement.classList.add('hidden');
+                noseElement.classList.add('hidden');
+                mouthElement.classList.add('hidden');
+                hideCameraButton.classList.add('active');
+            }
+            
+            // Remove scaling class after transition completes
+            setTimeout(() => {
+                leftEyeElement.classList.remove('scaling');
+                rightEyeElement.classList.remove('scaling');
+                noseElement.classList.remove('scaling');
+                mouthElement.classList.remove('scaling');
+            }, 600);
         });
         
         const faceMesh = new FaceMesh({
@@ -197,10 +459,21 @@
         
         // Handle face results
         faceMesh.onResults((results) => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Draw video to main canvas for display
+            // Detection canvas is already updated in onFrame callback (before MediaPipe processes)
+            if (video.videoWidth && video.videoHeight) {
+                // Draw to main canvas (for display, will be cleared later)
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            }
             
             if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
                 const landmarks = results.multiFaceLandmarks[0];
+                
+                // CRITICAL: Detect teeth IMMEDIATELY and SYNCHRONOUSLY after getting landmarks
+                // The detection canvas was updated in onFrame, so it's ready NOW
+                // Do this BEFORE any other operations to ensure timing
+                currentTeethShowing = detectTeethShowingSync(landmarks);
+                currentLandmarksForTeeth = landmarks;
                 
                 const noseTip = landmarks[4];
                 const canvasX = (1 - noseTip.x) * canvas.width;
@@ -231,7 +504,13 @@
                 mouthOpenAmount = detectMouthOpen(landmarks);
                 smoothedMouthOpenAmount += (mouthOpenAmount - smoothedMouthOpenAmount) * MOUTH_SMOOTHING_FACTOR;
                 
+                // Update face letters IMMEDIATELY and SYNCHRONOUSLY
+                // Read from detection canvas right after drawing to it
+                // This must be synchronous - no async operations
                 updateFaceLetters(landmarks);
+                
+                // Clear the main canvas after detection is done
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
             } else {
                 facePosition = null;
                 faceRotation = 0;
@@ -240,7 +519,10 @@
                 smoothedMouthOpenAmount += (0 - smoothedMouthOpenAmount) * MOUTH_SMOOTHING_FACTOR;
                 leftEyeElement.style.display = 'none';
                 rightEyeElement.style.display = 'none';
+                noseElement.style.display = 'none';
                 mouthElement.style.display = 'none';
+                leftEyebrowElement.style.display = 'none';
+                rightEyebrowElement.style.display = 'none';
             }
         });
         
@@ -304,6 +586,20 @@
         
         const camera = new Camera(video, {
             onFrame: async () => {
+                // CRITICAL: Capture video frame to detection canvas BEFORE MediaPipe processes it
+                // This ensures we have the exact frame MediaPipe will process
+                if (video.videoWidth && video.videoHeight) {
+                    if (detectionCanvas.width !== video.videoWidth || detectionCanvas.height !== video.videoHeight) {
+                        detectionCanvas.width = video.videoWidth;
+                        detectionCanvas.height = video.videoHeight;
+                    }
+                    // Capture the frame NOW, before MediaPipe processes it
+                    detectionCtx.drawImage(video, 0, 0, detectionCanvas.width, detectionCanvas.height);
+                    
+                    // Detection canvas is now ready with the current frame
+                    // Teeth detection will happen in onResults synchronously
+                }
+                
                 await faceMesh.send({image: video});
                 await hands.send({image: video});
             },
@@ -393,15 +689,124 @@
             const rightEyeLeft = landmarks[362];
             const rightEyeRight = landmarks[263];
             
+            // Get face width for normalization
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
             const leftEyeHeight = Math.abs(leftEyeTop.y - leftEyeBottom.y);
             const leftEyeWidth = Math.abs(leftEyeRight.x - leftEyeLeft.x);
-            const leftEAR = leftEyeHeight / leftEyeWidth;
+            
+            // Calculate EAR but use normalized measurements for distance-independent detection
+            // Normalize both height and width by face width, then calculate ratio
+            // This ensures the ratio is consistent regardless of distance
+            const normalizedLeftEyeHeight = leftEyeHeight / faceWidth;
+            const normalizedLeftEyeWidth = leftEyeWidth / faceWidth;
+            const leftEAR = normalizedLeftEyeHeight / normalizedLeftEyeWidth;
             
             const rightEyeHeight = Math.abs(rightEyeTop.y - rightEyeBottom.y);
             const rightEyeWidth = Math.abs(rightEyeRight.x - rightEyeLeft.x);
-            const rightEAR = rightEyeHeight / rightEyeWidth;
+            
+            const normalizedRightEyeHeight = rightEyeHeight / faceWidth;
+            const normalizedRightEyeWidth = rightEyeWidth / faceWidth;
+            const rightEAR = normalizedRightEyeHeight / normalizedRightEyeWidth;
             
             return { left: leftEAR, right: rightEAR };
+        }
+        
+        function detectExtremeEyeSqueeze(landmarks) {
+            // Detect when eyes are extremely squeezed shut
+            const leftEyeTop = landmarks[159];
+            const leftEyeBottom = landmarks[145];
+            const rightEyeTop = landmarks[386];
+            const rightEyeBottom = landmarks[374];
+            
+            // Get face width for normalization
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
+            const leftEyeHeight = Math.abs(leftEyeTop.y - leftEyeBottom.y);
+            const rightEyeHeight = Math.abs(rightEyeTop.y - rightEyeBottom.y);
+            
+            // Normalize eye heights by face width
+            const normalizedLeftEyeHeight = leftEyeHeight / faceWidth;
+            const normalizedRightEyeHeight = rightEyeHeight / faceWidth;
+            
+            // Extremely squeezed if both eyes have very small normalized height
+            const leftExtremelySqueezed = normalizedLeftEyeHeight < eyeSqueezeThreshold;
+            const rightExtremelySqueezed = normalizedRightEyeHeight < eyeSqueezeThreshold;
+            
+            return { left: leftExtremelySqueezed, right: rightExtremelySqueezed };
+        }
+        
+        function detectIndividualEyeSquint(landmarks) {
+            // Detect if cheeks and sides of face rise relative to rest of face (for < > display)
+            // Hyphens turn into accents when face rises
+            
+            // Get EAR for each eye (already normalized and distance-independent)
+            const eyeRatios = getIndividualEyeAspectRatios(landmarks);
+            
+            // Use eyeSqueezeThreshold from slider for more flexible detection
+            // Normal open eye EAR is around 0.25-0.35, closed is < 0.2, REALLY squeezed is < threshold
+            const tightSqueezeThreshold = eyeSqueezeThreshold; // Use slider value
+            
+            // Check if eyes are squeezed
+            const leftEyeSqueezed = eyeRatios.left < tightSqueezeThreshold;
+            const rightEyeSqueezed = eyeRatios.right < tightSqueezeThreshold;
+            
+            // Check if cheeks are raised
+            const leftCheek = landmarks[205];  // Left mid-cheek
+            const rightCheek = landmarks[425]; // Right mid-cheek
+            const noseTip = landmarks[4];      // Reference point
+            
+            // Calculate cheek positions relative to nose tip
+            // When squeezing hard, cheeks move up (lower Y value)
+            const leftCheekRelativeY = leftCheek.y - noseTip.y;
+            const rightCheekRelativeY = rightCheek.y - noseTip.y;
+            const avgCheekRelativeY = (leftCheekRelativeY + rightCheekRelativeY) / 2;
+            
+            // Check if sides of face rise - use additional landmarks
+            // Left side landmarks: 234 (left face edge), 172 (left temple), 36 (left outer eye)
+            // Right side landmarks: 454 (right face edge), 397 (right temple), 266 (right outer eye)
+            const leftFaceEdge = landmarks[234];
+            const rightFaceEdge = landmarks[454];
+            const leftTemple = landmarks[172];
+            const rightTemple = landmarks[397];
+            const leftOuterEye = landmarks[36];
+            const rightOuterEye = landmarks[266];
+            
+            // Get face width for normalization
+            const faceWidth = Math.abs(rightFaceEdge.x - leftFaceEdge.x);
+            
+            // Calculate center reference point (average of nose and mouth center)
+            const upperLip = landmarks[13];
+            const lowerLip = landmarks[14];
+            const faceCenterY = (noseTip.y + (upperLip.y + lowerLip.y) / 2) / 2;
+            
+            // Calculate if sides of face rise relative to center
+            const leftSideRise = (leftFaceEdge.y + leftTemple.y + leftOuterEye.y) / 3 - faceCenterY;
+            const rightSideRise = (rightFaceEdge.y + rightTemple.y + rightOuterEye.y) / 3 - faceCenterY;
+            const avgSideRise = (leftSideRise + rightSideRise) / 2;
+            
+            // Normalize side rise by face width
+            const normalizedSideRise = avgSideRise / faceWidth;
+            
+            // Cheeks raised when relative Y is negative (above nose tip)
+            const cheeksRaised = avgCheekRelativeY < -0.01;
+            
+            // Sides of face rise when normalized rise is negative (above center)
+            const sidesRise = normalizedSideRise < -0.01;
+            
+            // Face rises if cheeks OR sides rise (or both)
+            const faceRises = cheeksRaised || sidesRise;
+            
+            // Extreme squeezed eyes with face rising: eyes squeezed AND face rises (for < > display)
+            // Blink (just closed eyes) = hyphen, squeeze with face rising = <>
+            return { 
+                left: leftEyeSqueezed && faceRises, 
+                right: rightEyeSqueezed && faceRises 
+            };
         }
         
         function getFaceDistance(landmarks) {
@@ -412,41 +817,160 @@
             return faceWidth;
         }
         
+        // Get nose brightness as reference for lighting compensation
+        function getNoseBrightness(landmarks) {
+            const noseTip = landmarks[4];
+            const noseLeft = landmarks[131];
+            const noseRight = landmarks[360];
+            
+            // Calculate center of nose region (in normalized 0-1 coordinates)
+            const centerX = (noseLeft.x + noseRight.x) / 2;
+            const centerY = noseTip.y;
+            
+            const sampleSize = 20;
+            
+            try {
+                // Read from detection canvas for consistency
+                if (!detectionCanvas.width || !detectionCanvas.height) {
+                    return 128; // Default neutral brightness
+                }
+                
+                const pixelX = Math.floor(centerX * detectionCanvas.width);
+                const pixelY = Math.floor(centerY * detectionCanvas.height);
+                const x = Math.max(0, Math.min(detectionCanvas.width - sampleSize, Math.floor(pixelX - sampleSize / 2)));
+                const y = Math.max(0, Math.min(detectionCanvas.height - sampleSize, Math.floor(pixelY - sampleSize / 2)));
+                
+                const imageData = detectionCtx.getImageData(x, y, sampleSize, sampleSize);
+                
+                let totalBrightness = 0;
+                let pixelCount = 0;
+                
+                for (let i = 0; i < imageData.data.length; i += 4) {
+                    const r = imageData.data[i];
+                    const g = imageData.data[i + 1];
+                    const b = imageData.data[i + 2];
+                    const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+                    totalBrightness += brightness;
+                    pixelCount++;
+                }
+                
+                return totalBrightness / pixelCount;
+            } catch (e) {
+                return 128; // Default neutral brightness if sampling fails
+            }
+        }
+        
         function analyzeMouthPixelColor(landmarks) {
             // Analyze pixel colors inside mouth to detect tongue vs open mouth
+            // Applies contrast and brightness adjustments before analysis
+            // Uses nose brightness as reference to compensate for lighting conditions
             // Dark/black = mouth cavity (shocked/open mouth O)
             // Lighter/flesh tone = tongue visible (P)
+            // Very bright = teeth showing (D)
             
             const upperLip = landmarks[13];
             const lowerLip = landmarks[14];
             const mouthLeft = landmarks[61];
             const mouthRight = landmarks[291];
             
-            // Calculate center of mouth region in canvas coordinates
-            const centerX = ((mouthLeft.x + mouthRight.x) / 2) * canvas.width;
-            const centerY = ((upperLip.y + lowerLip.y) / 2) * canvas.height;
+            // Get nose brightness as reference for lighting compensation
+            const noseBrightness = getNoseBrightness(landmarks);
+            
+            // Calculate center of mouth region (in normalized 0-1 coordinates)
+            const centerX = (mouthLeft.x + mouthRight.x) / 2;
+            const centerY = (upperLip.y + lowerLip.y) / 2;
             
             // Sample larger area for more reliable detection
-            const sampleSize = 20;
+            const sampleSize = 40; // Increased for better preview
             
             try {
-                // Get pixel data from video canvas at mouth region
-                const imageData = ctx.getImageData(
-                    Math.floor(centerX - sampleSize / 2),
-                    Math.floor(centerY - sampleSize / 2),
-                    sampleSize,
-                    sampleSize
-                );
+                // Read from detection canvas for consistency with teeth detection
+                if (!detectionCanvas.width || !detectionCanvas.height) {
+                    return { brightness: 100, saturation: 50, normalizedBrightness: 0.5, lightingCompensatedBrightness: 127.5, noseBrightness: 128 };
+                }
+                
+                const pixelX = Math.floor(centerX * detectionCanvas.width);
+                const pixelY = Math.floor(centerY * detectionCanvas.height);
+                const x = Math.max(0, Math.min(detectionCanvas.width - sampleSize, Math.floor(pixelX - sampleSize / 2)));
+                const y = Math.max(0, Math.min(detectionCanvas.height - sampleSize, Math.floor(pixelY - sampleSize / 2)));
+                
+                // Get pixel data from detection canvas at mouth region
+                const imageData = detectionCtx.getImageData(x, y, sampleSize, sampleSize);
+                
+                // Create a copy for processing
+                const processedData = new ImageData(imageData.width, imageData.height);
+                
+                // Apply contrast and brightness adjustments
+                for (let i = 0; i < imageData.data.length; i += 4) {
+                    let r = imageData.data[i];
+                    let g = imageData.data[i + 1];
+                    let b = imageData.data[i + 2];
+                    const a = imageData.data[i + 3];
+                    
+                    // Normalize to 0-1 range
+                    r = r / 255;
+                    g = g / 255;
+                    b = b / 255;
+                    
+                    // Apply contrast (center around 0.5)
+                    r = ((r - 0.5) * mouthContrastAdjust) + 0.5;
+                    g = ((g - 0.5) * mouthContrastAdjust) + 0.5;
+                    b = ((b - 0.5) * mouthContrastAdjust) + 0.5;
+                    
+                    // Apply brightness adjustment
+                    r = r + mouthBrightnessAdjust;
+                    g = g + mouthBrightnessAdjust;
+                    b = b + mouthBrightnessAdjust;
+                    
+                    // Clamp to 0-1 range
+                    r = Math.max(0, Math.min(1, r));
+                    g = Math.max(0, Math.min(1, g));
+                    b = Math.max(0, Math.min(1, b));
+                    
+                    // Convert back to 0-255 range
+                    processedData.data[i] = r * 255;
+                    processedData.data[i + 1] = g * 255;
+                    processedData.data[i + 2] = b * 255;
+                    processedData.data[i + 3] = a;
+                }
+                
+                // Display processed image in preview canvas (scaled up)
+                if (mouthPreviewCtx && mouthPreviewCanvas) {
+                    // Create a temporary canvas with the processed image data
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = sampleSize;
+                    tempCanvas.height = sampleSize;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.putImageData(processedData, 0, 0);
+                    
+                    // Clear preview canvas
+                    mouthPreviewCtx.fillStyle = '#000';
+                    mouthPreviewCtx.fillRect(0, 0, mouthPreviewCanvas.width, mouthPreviewCanvas.height);
+                    
+                    // Draw the processed image scaled up (pixelated look)
+                    mouthPreviewCtx.imageSmoothingEnabled = false;
+                    mouthPreviewCtx.drawImage(
+                        tempCanvas,
+                        0,
+                        0,
+                        sampleSize,
+                        sampleSize,
+                        0,
+                        0,
+                        mouthPreviewCanvas.width,
+                        mouthPreviewCanvas.height
+                    );
+                }
                 
                 let totalBrightness = 0;
                 let totalSaturation = 0;
                 let pixelCount = 0;
                 
-                // Calculate average brightness and saturation
-                for (let i = 0; i < imageData.data.length; i += 4) {
-                    const r = imageData.data[i];
-                    const g = imageData.data[i + 1];
-                    const b = imageData.data[i + 2];
+                // Calculate average brightness and saturation from PROCESSED image
+                for (let i = 0; i < processedData.data.length; i += 4) {
+                    const r = processedData.data[i];
+                    const g = processedData.data[i + 1];
+                    const b = processedData.data[i + 2];
                     
                     // Calculate brightness (perceived luminance)
                     const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
@@ -464,17 +988,154 @@
                 const avgBrightness = totalBrightness / pixelCount;
                 const avgSaturation = totalSaturation / pixelCount;
                 
-                // Return object with both metrics
-                return { brightness: avgBrightness, saturation: avgSaturation };
+                // Normalize mouth brightness relative to nose brightness
+                // This compensates for different lighting conditions
+                // If nose is bright (good lighting), mouth should be compared relative to that
+                // If nose is dark (poor lighting), mouth should be compared relative to that
+                const normalizedBrightness = noseBrightness > 0 ? (avgBrightness / noseBrightness) : (avgBrightness / 255);
+                // Clamp normalized brightness to reasonable range (0-2, where 1.0 = same as nose)
+                const clampedNormalized = Math.max(0, Math.min(2, normalizedBrightness));
+                // Convert back to 0-255 scale for compatibility
+                const lightingCompensatedBrightness = clampedNormalized * 127.5; // 127.5 = middle of 0-255
+                
+                // Return object with both metrics and processed image data
+                // brightness: raw brightness (0-255)
+                // normalizedBrightness: relative to nose (0-2, where 1.0 = same as nose)
+                // lightingCompensatedBrightness: converted back to 0-255 scale
+                return { 
+                    brightness: avgBrightness, // Raw brightness for display
+                    normalizedBrightness: clampedNormalized, // Relative to nose (0-2)
+                    lightingCompensatedBrightness: lightingCompensatedBrightness, // Compensated brightness (0-255)
+                    saturation: avgSaturation,
+                    processedImageData: processedData,
+                    noseBrightness: noseBrightness // Reference brightness
+                };
             } catch (e) {
                 // If pixel sampling fails, return neutral value
                 return { brightness: 100, saturation: 50 };
             }
         }
         
+        // Helper function to analyze pixel data for teeth
+        function analyzeTeethPixels(imageData) {
+            let brightWhitePixels = 0;
+            let totalBrightness = 0;
+            let totalSaturation = 0;
+            let pixelCount = 0;
+            
+            // Analyze pixels for teeth characteristics
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                const r = imageData.data[i];
+                const g = imageData.data[i + 1];
+                const b = imageData.data[i + 2];
+                
+                // Calculate brightness and saturation
+                const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                const saturation = max === 0 ? 0 : (max - min) / max * 255;
+                
+                totalBrightness += brightness;
+                totalSaturation += saturation;
+                pixelCount++;
+                
+                // Teeth are very bright (white) and have low saturation
+                // Bright white: brightness > 180 and saturation < 30
+                if (brightness > 180 && saturation < 30) {
+                    brightWhitePixels++;
+                }
+            }
+            
+            const avgBrightness = totalBrightness / pixelCount;
+            const avgSaturation = totalSaturation / pixelCount;
+            
+            // Teeth detected if:
+            // 1. High percentage of bright white pixels (> 15%)
+            // OR 2. Average brightness is very high (> 160) with low saturation (< 25)
+            const whitePixelRatio = brightWhitePixels / pixelCount;
+            const hasTeeth = whitePixelRatio > 0.15 || (avgBrightness > 160 && avgSaturation < 25);
+            
+            // DEBUG: Log detection details
+            if (hasTeeth) {
+                console.log('TEETH DETECTED - whitePixelRatio:', whitePixelRatio.toFixed(3), 'avgBrightness:', avgBrightness.toFixed(1), 'avgSaturation:', avgSaturation.toFixed(1));
+            }
+            
+            return hasTeeth;
+        }
+        
+        // Synchronous version - reads from detection canvas immediately
+        function detectTeethShowingSync(landmarks) {
+            const upperLip = landmarks[13];
+            const lowerLip = landmarks[14];
+            const mouthLeft = landmarks[61];
+            const mouthRight = landmarks[291];
+            
+            // Calculate center of mouth region in canvas coordinates (0-1 normalized)
+            const centerX = (mouthLeft.x + mouthRight.x) / 2;
+            const centerY = (upperLip.y + lowerLip.y) / 2;
+            
+            // Sample area for teeth detection
+            const sampleSize = 25;
+            
+            try {
+                // Read from the DETECTION canvas (separate canvas, never cleared)
+                if (!detectionCanvas.width || !detectionCanvas.height) {
+                    return false;
+                }
+                
+                // Calculate pixel coordinates in detection canvas
+                const pixelX = Math.floor(centerX * detectionCanvas.width);
+                const pixelY = Math.floor(centerY * detectionCanvas.height);
+                const x = Math.max(0, Math.min(detectionCanvas.width - sampleSize, Math.floor(pixelX - sampleSize / 2)));
+                const y = Math.max(0, Math.min(detectionCanvas.height - sampleSize, Math.floor(pixelY - sampleSize / 2)));
+                
+                // Get pixel data from detection canvas
+                const imageData = detectionCtx.getImageData(x, y, sampleSize, sampleSize);
+                
+                // Analyze for teeth using pixel analysis
+                const hasTeethFromPixels = analyzeTeethPixels(imageData);
+                
+                // ALSO check brightness-based detection (backup method)
+                // If mouth brightness is very high relative to nose, it's likely teeth
+                const mouthColor = analyzeMouthPixelColor(landmarks);
+                // normalizedBrightness > threshold means mouth is brighter than nose (likely teeth)
+                const hasTeethFromBrightness = mouthColor.normalizedBrightness > extremeBrightnessThreshold;
+                
+                // Teeth detected if EITHER method detects it
+                const hasTeeth = hasTeethFromPixels || hasTeethFromBrightness;
+                
+                // Cache the result
+                cachedTeethShowing = hasTeeth;
+                lastTeethDetectionTime = performance.now();
+                
+                return hasTeeth;
+            } catch (e) {
+                // If pixel sampling fails, use cached value if recent
+                const timeSinceLastDetection = performance.now() - lastTeethDetectionTime;
+                if (timeSinceLastDetection < 200) {
+                    return cachedTeethShowing;
+                }
+                return false;
+            }
+        }
+        
+        // Main function - uses cached value calculated synchronously in onResults
+        function detectTeethShowing(landmarks) {
+            // Use the cached value calculated synchronously in onResults
+            // This was calculated right after getting landmarks, so it's guaranteed to be ready
+            if (currentLandmarksForTeeth === landmarks) {
+                return currentTeethShowing;
+            }
+            
+            // Fallback: detect synchronously (shouldn't happen in normal flow)
+            return detectTeethShowingSync(landmarks);
+        }
+        
         function detectTongueOut(landmarks) {
-            // Enhanced tongue detection using pixel color analysis
-            // Tongue = lighter flesh tones with some color saturation
+            // TONGUE DETECTION: Based on brightness value inside mouth area
+            // Brightness >= threshold = P (tongue/light)
+            // Brightness < threshold = O (dark mouth) - handled by detectMouthOpen
+            // Only triggers if no other symbols are active
             
             const upperLip = landmarks[13];
             const lowerLip = landmarks[14];
@@ -485,44 +1146,79 @@
             const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
             const mouthOpenRatio = mouthHeight / mouthWidth;
             
-            // First check: mouth must be moderately open
-            const isMouthOpen = mouthOpenRatio > 0.25 && mouthOpenRatio < 0.7;
+            // Check if other triggers are active - if so, disregard tongue
+            const teethShowing = detectTeethShowing(landmarks);
+            const isKissing = detectKissingFace(landmarks);
+            const isMouthOpen = detectMouthOpen(landmarks);
+            const isFrowning = detectFrown(landmarks);
+            const isExtremeFrown = detectExtremeFrown(landmarks);
             
-            if (!isMouthOpen) {
+            // If other triggers are active, don't detect tongue
+            if (teethShowing || isKissing || isMouthOpen || isFrowning || isExtremeFrown) {
                 return false;
             }
             
-            // Analyze pixel color in mouth region
+            // Mouth must be OPEN for tongue to appear (P)
+            // Use a stricter threshold to ensure mouth is actually open, not just slightly parted
+            // This prevents P from appearing when mouth is closed, allowing X to appear instead
+            const isMouthOpenEnough = mouthOpenRatio > 0.12; // Stricter threshold - mouth must be clearly open
+            if (!isMouthOpenEnough) {
+                return false; // Don't show P if mouth is closed
+            }
+            
+            // Check brightness value inside mouth area (with lighting compensation)
             const mouthColor = analyzeMouthPixelColor(landmarks);
             
-            // Tongue detection refined:
-            // Tongue has flesh tones: medium-high brightness (80-180) + some saturation
-            // Dark cavity: very low brightness (< 60) + low saturation
-            const hasTongueBrightness = mouthColor.brightness > 70 && mouthColor.brightness < 200;
-            const hasFlesHTone = mouthColor.saturation > 20; // Flesh has color, cavity is dark/desaturated
+            // Use lighting-compensated brightness (normalized relative to nose)
+            // Convert normalized brightness (0-2) to 0-1 scale for threshold comparison
+            // normalizedBrightness of 1.0 = same brightness as nose
+            // normalizedBrightness > 1.0 = brighter than nose (likely tongue/teeth)
+            // normalizedBrightness < 1.0 = darker than nose (likely dark mouth)
+            const normalizedBrightness = mouthColor.normalizedBrightness / 2.0; // Convert 0-2 range to 0-1
             
-            return isMouthOpen && hasTongueBrightness && hasFlesHTone;
+            // Tongue (P) detected if brightness is above threshold (light)
+            // O (dark mouth) is detected if brightness is below threshold
+            return normalizedBrightness >= mouthBrightnessThreshold;
         }
         
         function detectMouthOpen(landmarks) {
-            const upperLip = landmarks[13];
-            const lowerLip = landmarks[14];
-            const mouthLeft = landmarks[61];
-            const mouthRight = landmarks[291];
+            // O (Open mouth) detection: Wide open mouth with dark cavity
+            // Don't show O if top teeth are showing
             
+            // Check if top teeth are showing - if so, don't show O
+            const teethShowing = detectTeethShowing(landmarks);
+            if (teethShowing) {
+                return false; // Don't show O if teeth are showing
+            }
+            
+            const upperLip = landmarks[13];  // Red dot - upper lip center
+            const lowerLip = landmarks[14];  // Red dot - lower lip center
+            
+            // Get face width as reference for normalization
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
+            // O = RED DOTS WIDEN APART (vertical distance increases)
             const mouthHeight = Math.abs(lowerLip.y - upperLip.y);
-            const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
-            const mouthOpenRatio = mouthHeight / mouthWidth;
             
-            // Mouth is fully open if ratio is very high (shocked/surprised face)
-            // Also check for dark cavity (no tongue visible)
+            // Normalize by face width - ratio is now independent of camera distance
+            const normalizedHeight = mouthHeight / faceWidth;
+            const redDotsWide = normalizedHeight > oThreshold;
+            
+            // Check brightness value inside mouth area (with lighting compensation)
             const mouthColor = analyzeMouthPixelColor(landmarks);
             
-            // Very wide open + dark inside (mouth cavity) = shocked expression (O)
-            // Dark cavity: low brightness + low saturation (black/dark brown)
-            const isDarkCavity = mouthColor.brightness < 70 && mouthColor.saturation < 30;
+            // Use lighting-compensated brightness (normalized relative to nose)
+            // Convert normalized brightness (0-2) to 0-1 scale for threshold comparison
+            const normalizedBrightness = mouthColor.normalizedBrightness / 2.0; // Convert 0-2 range to 0-1
             
-            return mouthOpenRatio > 0.5 && isDarkCavity;
+            // O (dark mouth) detected if brightness is below threshold
+            // P (tongue/light) is detected if brightness is above threshold (handled by detectTongueOut)
+            const isDarkCavity = normalizedBrightness < mouthBrightnessThreshold;
+            
+            // O triggered if mouth is wide open AND dark (brightness below threshold) AND no teeth showing
+            return redDotsWide && isDarkCavity;
         }
         
         function detectSmileOpen(landmarks) {
@@ -532,22 +1228,29 @@
             const upperLip = landmarks[13];
             const lowerLip = landmarks[14];
             
+            // Get face width as reference for normalization
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
             // Average Y position of mouth corners
             const cornersY = (mouthLeftCorner.y + mouthRightCorner.y) / 2;
             const upperLipY = upperLip.y;
             
             // When smiling, corners are raised relative to upper lip
             const smileIndicator = upperLipY - cornersY;
+            const normalizedSmileIndicator = smileIndicator / faceWidth;
             
             // Check mouth width increases when smiling
             const mouthWidth = Math.abs(mouthRightCorner.x - mouthLeftCorner.x);
+            const normalizedMouthWidth = mouthWidth / faceWidth;
             
             // Check mouth height (open but not fully open)
             const mouthHeight = Math.abs(lowerLip.y - upperLip.y);
             const mouthOpenRatio = mouthHeight / mouthWidth;
             
             // Smile with lips open: corners raised, mouth wide, and moderately open (but not fully)
-            return smileIndicator > 0.01 && mouthWidth > 0.08 && mouthOpenRatio > 0.1 && mouthOpenRatio < 0.4;
+            return normalizedSmileIndicator > 0.04 && normalizedMouthWidth > 0.30 && mouthOpenRatio > 0.1 && mouthOpenRatio < 0.4;
         }
         
         function detectSmileClosed(landmarks) {
@@ -557,22 +1260,62 @@
             const upperLip = landmarks[13];
             const lowerLip = landmarks[14];
             
+            // Get face width as reference for normalization
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
             // Average Y position of mouth corners
             const cornersY = (mouthLeftCorner.y + mouthRightCorner.y) / 2;
             const upperLipY = upperLip.y;
             
             // When smiling, corners are raised relative to upper lip
             const smileIndicator = upperLipY - cornersY;
+            const normalizedSmileIndicator = smileIndicator / faceWidth;
             
             // Check mouth width increases when smiling
             const mouthWidth = Math.abs(mouthRightCorner.x - mouthLeftCorner.x);
+            const normalizedMouthWidth = mouthWidth / faceWidth;
             
             // Check mouth is closed
             const mouthHeight = Math.abs(lowerLip.y - upperLip.y);
             const mouthOpenRatio = mouthHeight / mouthWidth;
             
             // Smile with lips closed: corners raised, mouth wide, but closed
-            return smileIndicator > 0.008 && mouthWidth > 0.075 && mouthOpenRatio < 0.1;
+            return normalizedSmileIndicator > 0.03 && normalizedMouthWidth > 0.27 && mouthOpenRatio < 0.1;
+        }
+        
+        function detectExtremeSmile(landmarks) {
+            // Detect extreme smile using cheek tracking - cheeks move up when smiling
+            // Also requires teeth to be showing
+            
+            // Cheek landmarks that move up when smiling
+            const leftCheek = landmarks[205];  // Left mid-cheek
+            const rightCheek = landmarks[425]; // Right mid-cheek
+            const noseTip = landmarks[4];      // Reference point
+            
+            // Get face width for normalization
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
+            // Calculate cheek positions relative to nose tip
+            // When smiling, cheeks move up (lower Y value)
+            const leftCheekRelativeY = leftCheek.y - noseTip.y;
+            const rightCheekRelativeY = rightCheek.y - noseTip.y;
+            const avgCheekRelativeY = (leftCheekRelativeY + rightCheekRelativeY) / 2;
+            
+            // Normalize by face width
+            const normalizedCheekRaise = Math.abs(avgCheekRelativeY) / faceWidth;
+            
+            // Cheeks move up significantly when extreme smiling (negative relative Y means above nose)
+            // Use a threshold to detect if cheeks are raised
+            const cheeksRaised = avgCheekRelativeY < -0.02; // Cheeks above nose tip (negative Y)
+            
+            // Extreme smile requires: cheeks raised AND teeth showing
+            const teethShowing = detectTeethShowing(landmarks);
+            
+            return cheeksRaised && teethShowing;
         }
         
         function detectFrown(landmarks) {
@@ -582,15 +1325,44 @@
             const upperLip = landmarks[13];
             const lowerLip = landmarks[14];
             
+            // Get face width as reference for normalization
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
             // Average Y position of mouth corners
             const cornersY = (mouthLeftCorner.y + mouthRightCorner.y) / 2;
             const lowerLipY = lowerLip.y;
             
             // When frowning, corners are lower (higher Y value) relative to lower lip
             const frownIndicator = cornersY - lowerLipY;
+            const normalizedFrownIndicator = frownIndicator / faceWidth;
             
-            // Frown detected if corners are lowered
-            return frownIndicator > 0.008;
+            // Frown detected if corners are lowered (uses adjustable threshold)
+            return normalizedFrownIndicator > frownThreshold;
+        }
+        
+        function detectExtremeFrown(landmarks) {
+            // Detect extreme frown - very pronounced downward corners
+            const mouthLeftCorner = landmarks[61];
+            const mouthRightCorner = landmarks[291];
+            const lowerLip = landmarks[14];
+            
+            // Get face width for normalization
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
+            // Average Y position of mouth corners
+            const cornersY = (mouthLeftCorner.y + mouthRightCorner.y) / 2;
+            const lowerLipY = lowerLip.y;
+            
+            // When extremely frowning, corners are much lower relative to lower lip
+            const frownIndicator = cornersY - lowerLipY;
+            const normalizedFrownIndicator = frownIndicator / faceWidth;
+            
+            // Extreme frown detected if corners are very lowered
+            return normalizedFrownIndicator > extremeFrownThreshold;
         }
         
         function detectPursedLips(landmarks) {
@@ -600,60 +1372,138 @@
             const mouthLeft = landmarks[61];
             const mouthRight = landmarks[291];
             
+            // Get face width as reference for normalization
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
             const mouthHeight = Math.abs(lowerLip.y - upperLip.y);
             const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
             const mouthOpenRatio = mouthHeight / mouthWidth;
+            const normalizedMouthWidth = mouthWidth / faceWidth;
             
             // Pursed lips: mouth is very narrow/closed and width is reduced, but mouth is tight/flat
-            return mouthOpenRatio < 0.08 && mouthWidth < 0.065 && mouthWidth > 0.04;
+            return mouthOpenRatio < 0.08 && normalizedMouthWidth < 0.24 && normalizedMouthWidth > 0.15;
         }
         
+        // Track previous corner ratio for motion detection
+        let previousCornerRatio = null;
+        
         function detectKissingFace(landmarks) {
-            // Detect kissing face - lips puckered forward (corners close together)
+            // Simple kissing detection: GREEN CORNERS MOVE TOGETHER
+            // Only triggers when mouth is CLOSED
+            
+            const mouthLeft = landmarks[61];   // Left corner (green dot)
+            const mouthRight = landmarks[291]; // Right corner (green dot)
             const upperLip = landmarks[13];
             const lowerLip = landmarks[14];
-            const mouthLeft = landmarks[61];
-            const mouthRight = landmarks[291];
             
+            // Get face width as reference for normalization
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
+            // Check if mouth is closed first
             const mouthHeight = Math.abs(lowerLip.y - upperLip.y);
             const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
             const mouthOpenRatio = mouthHeight / mouthWidth;
+            // Use stricter threshold to ensure mouth is truly closed (not just slightly open)
+            // This ensures X only appears when mouth is closed, preventing conflict with P
+            const isMouthClosed = mouthOpenRatio < 0.08; // Mouth is closed if ratio is small
             
-            // Kissing face: mouth corners are very close together (narrow width)
-            // Mouth forms a small pucker/pout shape
-            // Made more lenient to detect better
-            const isNarrow = mouthWidth < 0.055; // Increased threshold
-            const hasSmallOpening = mouthOpenRatio > 0.2 && mouthOpenRatio < 1.5; // Wider range
-            
-            return isNarrow && hasSmallOpening;
-        }
-        
-        function checkAndTriggerTears(landmarks, eyeX, eyeY, color, fontSize) {
-            const isSad = detectFrown(landmarks);
-            const currentTime = Date.now();
-            
-            if (isSad) {
-                if (sadFaceStartTime === null) {
-                    sadFaceStartTime = currentTime;
-                }
-                
-                const sadDuration = (currentTime - sadFaceStartTime) / 1000;
-                
-                // After 2 seconds of being sad, start spawning tears
-                if (sadDuration >= 2) {
-                    // Spawn a new tear every 1 second
-                    if (currentTime - lastTearTime >= 1000) {
-                        createSingleTear(eyeX, eyeY, color, fontSize);
-                        lastTearTime = currentTime;
-                    }
-                }
-            } else {
-                sadFaceStartTime = null;
-                lastTearTime = 0;
+            // Don't trigger X if mouth is open - X requires closed mouth
+            if (!isMouthClosed) {
+                return false;
             }
+            
+            // X = CORNERS CLOSE TOGETHER (horizontal distance decreases)
+            const cornerDistance = Math.abs(mouthRight.x - mouthLeft.x);
+            
+            // Normalize by face width - ratio is now independent of camera distance
+            const normalizedCornerDistance = cornerDistance / faceWidth;
+            const cornersClose = normalizedCornerDistance < xThreshold; // Uses adjustable threshold
+            
+            // Detect motion: corners moving closer together
+            let cornersMovingTogether = false;
+            if (previousCornerRatio !== null) {
+                const ratioDecrease = previousCornerRatio - normalizedCornerDistance;
+                cornersMovingTogether = ratioDecrease > 0.025; // Slightly more sensitive motion detection
+            }
+            previousCornerRatio = normalizedCornerDistance;
+            
+            // X detected if corners are close OR actively moving together (and mouth is closed)
+            return cornersClose || cornersMovingTogether;
         }
         
-        function createSingleTear(startX, startY, color, fontSize) {
+        function detectEyebrowRaised(landmarks) {
+            // Detect if eyebrows are raised really high
+            // MediaPipe eyebrow landmarks: left eyebrow ~70-76, right eyebrow ~300-306
+            // Use outer eyebrow points for detection
+            const leftEyebrowOuter = landmarks[70];   // Left eyebrow outer
+            const leftEyebrowInner = landmarks[107]; // Left eyebrow inner
+            const rightEyebrowOuter = landmarks[300];  // Right eyebrow outer
+            const rightEyebrowInner = landmarks[336]; // Right eyebrow inner
+            
+            // Use eye landmarks as reference
+            const leftEyeTop = landmarks[159];  // Left eye top
+            const rightEyeTop = landmarks[386]; // Right eye top
+            const noseTip = landmarks[4];      // Nose tip as reference
+            
+            // Get face width for normalization
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
+            // Calculate eyebrow center positions
+            const leftEyebrowCenterY = (leftEyebrowOuter.y + leftEyebrowInner.y) / 2;
+            const rightEyebrowCenterY = (rightEyebrowOuter.y + rightEyebrowInner.y) / 2;
+            
+            // Calculate distance from eyebrow to eye (negative means eyebrow is above eye)
+            const leftEyebrowToEye = leftEyebrowCenterY - leftEyeTop.y;
+            const rightEyebrowToEye = rightEyebrowCenterY - rightEyeTop.y;
+            
+            // Normalize by face width
+            const normalizedLeftRaise = leftEyebrowToEye / faceWidth;
+            const normalizedRightRaise = rightEyebrowToEye / faceWidth;
+            
+            // Eyebrows are raised high when they're significantly above the eye
+            // Use a threshold - negative values mean eyebrow is above eye
+            const leftRaised = normalizedLeftRaise < -0.03;  // Eyebrow significantly above eye
+            const rightRaised = normalizedRightRaise < -0.03; // Eyebrow significantly above eye
+            
+            return {
+                left: leftRaised,
+                right: rightRaised
+            };
+        }
+        
+        function checkAndTriggerTears(landmarks, leftEyeX, leftEyeY, rightEyeX, rightEyeY, color, fontSize, leftEyeClosed, rightEyeClosed) {
+            // Only create tears if Extreme Frown D is active (D rotated -90 degrees, not from teeth)
+            const isExtremeFrown = detectExtremeFrown(landmarks);
+            
+            if (!isExtremeFrown) {
+                previousLeftEyeClosed = leftEyeClosed;
+                previousRightEyeClosed = rightEyeClosed;
+                return;
+            }
+            
+            // Check for blinks (eye just closed)
+            const leftEyeJustBlinked = !previousLeftEyeClosed && leftEyeClosed;
+            const rightEyeJustBlinked = !previousRightEyeClosed && rightEyeClosed;
+            
+            // Create tears from both eyes when they blink
+            if (leftEyeJustBlinked) {
+                createSingleTear(leftEyeX, leftEyeY, color, fontSize, landmarks, 'left');
+            }
+            if (rightEyeJustBlinked) {
+                createSingleTear(rightEyeX, rightEyeY, color, fontSize, landmarks, 'right');
+            }
+            
+            previousLeftEyeClosed = leftEyeClosed;
+            previousRightEyeClosed = rightEyeClosed;
+        }
+        
+        function createSingleTear(startX, startY, color, fontSize, landmarks, eyeSide) {
             const container = document.querySelector('.container');
             
             const tear = document.createElement('div');
@@ -668,24 +1518,23 @@
             tear.style.pointerEvents = 'none';
             tear.style.zIndex = '7';
             tear.style.transform = 'translate(-50%, -50%)';
-            tear.style.transition = 'top 3s linear, opacity 0.1s linear';
+            tear.style.transition = 'none'; // Remove transition so we can update position manually
             
             container.appendChild(tear);
             
             const tearData = {
                 element: tear,
                 startTime: Date.now(),
-                startY: startY
+                startX: startX,
+                startY: startY,
+                eyeSide: eyeSide, // 'left' or 'right'
+                initialOffsetX: 0,
+                initialOffsetY: 0
             };
             
             activeTears.push(tearData);
             
-            // Start falling immediately
-            setTimeout(() => {
-                tear.style.top = (startY + 200) + 'px'; // Fall 200px over 3 seconds
-            }, 10);
-            
-            // Remove after 3 seconds
+            // Remove after 1.5 seconds (disappear earlier)
             setTimeout(() => {
                 tear.style.opacity = '0';
                 setTimeout(() => {
@@ -694,7 +1543,127 @@
                     }
                     activeTears = activeTears.filter(t => t.element !== tear);
                 }, 100);
-            }, 3000);
+            }, 1500);
+        }
+        
+        // Update tear positions to track face movement
+        function updateTearPositions(landmarks) {
+            if (!landmarks || activeTears.length === 0) return;
+            
+            const canvasRect = canvas.getBoundingClientRect();
+            const scaleX = canvasRect.width / canvas.width;
+            const scaleY = canvasRect.height / canvas.height;
+            const scale = Math.min(scaleX, scaleY);
+            
+            // Get eye positions for tracking (use smoothed positions for consistency)
+            const leftEyeX = smoothedLeftEyePos.x;
+            const leftEyeY = smoothedLeftEyePos.y;
+            const rightEyeX = smoothedRightEyePos.x;
+            const rightEyeY = smoothedRightEyePos.y;
+            
+            // Update each tear's position relative to face movement
+            activeTears.forEach(tearData => {
+                const tear = tearData.element;
+                const timeElapsed = (Date.now() - tearData.startTime) / 1000;
+                
+                // Get current eye position based on which eye the tear came from
+                let currentEyeX, currentEyeY;
+                if (tearData.eyeSide === 'left') {
+                    currentEyeX = leftEyeX;
+                    currentEyeY = leftEyeY;
+                } else {
+                    currentEyeX = rightEyeX;
+                    currentEyeY = rightEyeY;
+                }
+                
+                // Calculate offset from initial eye position (maintains relative position)
+                if (tearData.initialOffsetX === 0 && tearData.initialOffsetY === 0) {
+                    // Store initial offset on first update
+                    tearData.initialOffsetX = tearData.startX - (tearData.eyeSide === 'left' ? leftEyeX : rightEyeX);
+                    tearData.initialOffsetY = tearData.startY - (tearData.eyeSide === 'left' ? leftEyeY : rightEyeY);
+                }
+                
+                // Update position: track eye movement + fall down
+                const fallDistance = 100 * (timeElapsed / 1.5); // Fall 100px over 1.5 seconds (disappear earlier)
+                tear.style.left = (currentEyeX + tearData.initialOffsetX) + 'px';
+                tear.style.top = (currentEyeY + tearData.initialOffsetY + fallDistance) + 'px';
+            });
+        }
+        
+        function drawLandmarks(landmarks) {
+            // Draw comprehensive mouth tracking points
+            
+            // Outer mouth contour (green) - corners and outer lips
+            const outerMouthLandmarks = [
+                61,   // Left corner
+                146, 91, 181, 84, 17, 314, 405, 321, 375, // Upper outer lip
+                291,  // Right corner  
+                409, 270, 269, 267, 0, 37, 39, 40, 185   // Lower outer lip
+            ];
+            ctx.fillStyle = '#00ff00';
+            outerMouthLandmarks.forEach(idx => {
+                if (landmarks[idx]) {
+                    const x = (1 - landmarks[idx].x) * canvas.width;
+                    const y = landmarks[idx].y * canvas.height;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+            
+            // Inner mouth contour (yellow) - inner lips
+            const innerMouthLandmarks = [
+                78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308  // Inner lip line
+            ];
+            ctx.fillStyle = '#ffff00';
+            innerMouthLandmarks.forEach(idx => {
+                if (landmarks[idx]) {
+                    const x = (1 - landmarks[idx].x) * canvas.width;
+                    const y = landmarks[idx].y * canvas.height;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+            
+            // Key reference points (red) - upper and lower lip centers
+            const keyPoints = [13, 14]; // Upper lip center, Lower lip center
+            ctx.fillStyle = '#ff0000';
+            keyPoints.forEach(idx => {
+                if (landmarks[idx]) {
+                    const x = (1 - landmarks[idx].x) * canvas.width;
+                    const y = landmarks[idx].y * canvas.height;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+            
+            // Eye landmarks (blue)
+            const eyeLandmarks = [33, 133, 159, 145, 362, 263, 386, 374];
+            ctx.fillStyle = '#0000ff';
+            eyeLandmarks.forEach(idx => {
+                if (landmarks[idx]) {
+                    const x = (1 - landmarks[idx].x) * canvas.width;
+                    const y = landmarks[idx].y * canvas.height;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+            
+            // Cheek landmarks (magenta) - for kissing detection
+            const cheekLandmarks = [205, 425, 50, 280]; // Mid-cheeks and lower cheeks
+            ctx.fillStyle = '#ff00ff';
+            cheekLandmarks.forEach(idx => {
+                if (landmarks[idx]) {
+                    const x = (1 - landmarks[idx].x) * canvas.width;
+                    const y = landmarks[idx].y * canvas.height;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
         }
         
         function drawFaceLandmarks(landmarks) {
@@ -731,6 +1700,12 @@
             ctx.stroke();
         }
         
+        // Helper function to apply transform with scale if hidden
+        function applyTransformWithScale(element, baseTransform) {
+            const scale = element.classList.contains('hidden') ? ' scale(1.6)' : '';
+            element.style.transform = baseTransform + scale;
+        }
+        
         function updateFaceLetters(landmarks) {
             const canvasRect = canvas.getBoundingClientRect();
             const scaleX = canvasRect.width / canvas.width;
@@ -741,6 +1716,12 @@
             const eyeRatios = getIndividualEyeAspectRatios(landmarks);
             const leftEyeClosed = eyeRatios.left < BLINK_THRESHOLD;
             const rightEyeClosed = eyeRatios.right < BLINK_THRESHOLD;
+            const isExtremeSmile = detectExtremeSmile(landmarks);
+            const eyeSquint = detectIndividualEyeSquint(landmarks); // Independent eye squint detection
+            
+            // Calculate teeth showing ONCE - use for both eyes and mouth
+            // This is the SAME detection that determines if mouth shows D
+            const teethShowing = detectTeethShowing(landmarks);
             
             // Get face distance and calculate font size scaling
             const faceWidth = getFaceDistance(landmarks);
@@ -767,6 +1748,11 @@
             const rightEyeCenterX = (rightEyeLeft.x + rightEyeRight.x) / 2;
             const rightEyeCenterY = (rightEyeTop.y + rightEyeBottom.y) / 2;
             
+            // Get nose tip (landmark 4)
+            const noseTip = landmarks[4];
+            const noseCenterX = noseTip.x;
+            const noseCenterY = noseTip.y;
+            
             // Get mouth center
             const upperLip = landmarks[13];
             const lowerLip = landmarks[14];
@@ -782,14 +1768,20 @@
             const rightEyeScreenX = canvasRect.left + (canvasRect.width / 2) + (((1 - rightEyeCenterX) * canvas.width - canvas.width / 2) * scale);
             const rightEyeScreenY = canvasRect.top + (canvasRect.height / 2) + ((rightEyeCenterY * canvas.height - canvas.height / 2) * scale);
             
+            const noseScreenX = canvasRect.left + (canvasRect.width / 2) + (((1 - noseCenterX) * canvas.width - canvas.width / 2) * scale);
+            const noseScreenY = canvasRect.top + (canvasRect.height / 2) + ((noseCenterY * canvas.height - canvas.height / 2) * scale);
+            
             const mouthScreenX = canvasRect.left + (canvasRect.width / 2) + (((1 - mouthCenterX) * canvas.width - canvas.width / 2) * scale);
             const mouthScreenY = canvasRect.top + (canvasRect.height / 2) + ((mouthCenterY * canvas.height - canvas.height / 2) * scale);
             
+            // Use smoother movement when video is hidden
+            const smoothingFactor = webcamVisible ? FACE_LETTER_SMOOTHING : FACE_LETTER_SMOOTHING_HIDDEN;
+            
             // Smooth the eye positions to reduce jitter
-            smoothedLeftEyePos.x += (leftEyeScreenX - smoothedLeftEyePos.x) * FACE_LETTER_SMOOTHING;
-            smoothedLeftEyePos.y += (leftEyeScreenY - smoothedLeftEyePos.y) * FACE_LETTER_SMOOTHING;
-            smoothedRightEyePos.x += (rightEyeScreenX - smoothedRightEyePos.x) * FACE_LETTER_SMOOTHING;
-            smoothedRightEyePos.y += (rightEyeScreenY - smoothedRightEyePos.y) * FACE_LETTER_SMOOTHING;
+            smoothedLeftEyePos.x += (leftEyeScreenX - smoothedLeftEyePos.x) * smoothingFactor;
+            smoothedLeftEyePos.y += (leftEyeScreenY - smoothedLeftEyePos.y) * smoothingFactor;
+            smoothedRightEyePos.x += (rightEyeScreenX - smoothedRightEyePos.x) * smoothingFactor;
+            smoothedRightEyePos.y += (rightEyeScreenY - smoothedRightEyePos.y) * smoothingFactor;
             
             // Update left eye (en dash when closed, no rotation)
             leftEyeElement.style.display = 'block';
@@ -798,12 +1790,66 @@
             leftEyeElement.style.fontSize = eyeFontSize + 'px';
             leftEyeElement.style.color = textColor;
             
+            // Use the teethShowing variable calculated above - this is what makes mouth show D
+            const extremeSmileDActive = teethShowing;
+            
+            // Check if one eye is closed (winking) - only one eye closed, not both
+            const oneEyeClosed = (leftEyeClosed && !rightEyeClosed) || (!leftEyeClosed && rightEyeClosed);
+            const bothEyesClosed = leftEyeClosed && rightEyeClosed;
+            
+            // DEBUG: Log detection state when both eyes are closed OR when teeth are detected
+            if (bothEyesClosed || teethShowing) {
+                console.log('EYES DEBUG - teethShowing:', teethShowing, 'extremeSmileDActive:', extremeSmileDActive, 'leftEyeClosed:', leftEyeClosed, 'rightEyeClosed:', rightEyeClosed, 'bothEyesClosed:', bothEyesClosed);
+            }
+            
+            // Update brightness display
+            const mouthColor = analyzeMouthPixelColor(landmarks);
+            const normalizedBrightness = mouthColor.brightness / 255;
+            const currentBrightnessEl = document.getElementById('currentBrightnessValue');
+            const rawBrightnessEl = document.getElementById('rawBrightnessValue');
+            const brightnessBarEl = document.getElementById('brightnessBar');
+            if (currentBrightnessEl) currentBrightnessEl.textContent = normalizedBrightness.toFixed(3);
+            if (rawBrightnessEl) rawBrightnessEl.textContent = Math.round(mouthColor.brightness);
+            if (brightnessBarEl) {
+                const brightnessPercent = Math.min(100, Math.max(0, normalizedBrightness * 100));
+                brightnessBarEl.style.width = brightnessPercent + '%';
+            }
+            
+            // LEFT EYE LOGIC - WHEN D EXTREME SMILE IS ACTIVE:
+            // NEVER show hyphens, ALWAYS show < when closed, O when open
+            let leftEyeChar = 'O';
+            if (extremeSmileDActive) {
+                // D extreme smile is ACTIVE - NEVER hyphens allowed
             if (leftEyeClosed) {
-                leftEyeElement.textContent = '–';
-                leftEyeElement.style.transform = 'translate(-50%, -50%)';
+                    leftEyeChar = '<';  // Closed = accent
             } else {
-                leftEyeElement.textContent = 'O';
-                leftEyeElement.style.transform = 'translate(-50%, -50%)';
+                    leftEyeChar = 'O';  // Open = O
+                }
+            } else {
+                // D extreme smile is NOT active - normal logic
+                if (leftEyeClosed) {
+                    if (oneEyeClosed) {
+                        // Winking (only this eye closed): show accent
+                        leftEyeChar = '<';
+                    } else {
+                        // Both eyes closed: show hyphen
+                        leftEyeChar = '–';
+                    }
+                } else {
+                    // Eye open: show O
+                    leftEyeChar = 'O';
+                }
+            }
+            leftEyeElement.textContent = leftEyeChar;
+            applyTransformWithScale(leftEyeElement, 'translate(-50%, -50%)');
+            
+            // FORCE REPAINT: Access offsetHeight to trigger browser reflow
+            // This ensures the DOM update is rendered even when console is closed
+            void leftEyeElement.offsetHeight;
+            
+            // DEBUG: Log what was set
+            if (bothEyesClosed) {
+                console.log('LEFT EYE - extremeSmileDActive:', extremeSmileDActive, 'SET TO:', leftEyeChar, '(should be < if D active, – if not)');
             }
             
             // Update right eye (en dash when closed, no rotation)
@@ -813,28 +1859,79 @@
             rightEyeElement.style.fontSize = eyeFontSize + 'px';
             rightEyeElement.style.color = textColor;
             
-            if (rightEyeClosed) {
-                rightEyeElement.textContent = '–';
-                rightEyeElement.style.transform = 'translate(-50%, -50%)';
+            // RIGHT EYE LOGIC - WHEN D EXTREME SMILE IS ACTIVE:
+            // NEVER show hyphens, ALWAYS show > when closed, O when open
+            let rightEyeChar = 'O';
+            if (extremeSmileDActive) {
+                // D extreme smile is ACTIVE - NEVER hyphens allowed
+                if (rightEyeClosed) {
+                    rightEyeChar = '>';  // Closed = accent
+                } else {
+                    rightEyeChar = 'O';  // Open = O
+                }
             } else {
-                rightEyeElement.textContent = 'O';
-                rightEyeElement.style.transform = 'translate(-50%, -50%)';
+                // D extreme smile is NOT active - normal logic
+                if (rightEyeClosed) {
+                    if (oneEyeClosed) {
+                        // Winking (only this eye closed): show accent
+                        rightEyeChar = '>';
+                    } else {
+                        // Both eyes closed: show hyphen
+                        rightEyeChar = '–';
+                    }
+                } else {
+                    // Eye open: show O
+                    rightEyeChar = 'O';
+                }
+            }
+            rightEyeElement.textContent = rightEyeChar;
+            applyTransformWithScale(rightEyeElement, 'translate(-50%, -50%)');
+            
+            // FORCE REPAINT: Access offsetHeight to trigger browser reflow
+            // This ensures the DOM update is rendered even when console is closed
+            void rightEyeElement.offsetHeight;
+            
+            // DEBUG: Log what was set
+            if (bothEyesClosed) {
+                console.log('RIGHT EYE - extremeSmileDActive:', extremeSmileDActive, 'SET TO:', rightEyeChar, '(should be > if D active, – if not)');
             }
 
             
-            // Check for sad face and trigger tears (use smoothed position)
-            checkAndTriggerTears(landmarks, smoothedRightEyePos.x, smoothedRightEyePos.y, textColor, eyeFontSize);
+            // Check for tears on blink when Extreme Frown D is active (use smoothed positions)
+            checkAndTriggerTears(landmarks, smoothedLeftEyePos.x, smoothedLeftEyePos.y, smoothedRightEyePos.x, smoothedRightEyePos.y, textColor, eyeFontSize, leftEyeClosed, rightEyeClosed);
+            
+            // Update tear positions to track face movement
+            updateTearPositions(landmarks);
+            
+            // Smooth the nose position to reduce jitter
+            smoothedNosePos.x += (noseScreenX - smoothedNosePos.x) * smoothingFactor;
+            smoothedNosePos.y += (noseScreenY - smoothedNosePos.y) * smoothingFactor;
+            
+            // Update nose: Always show L (slightly smaller, moved up slightly)
+            noseElement.style.display = 'block';
+            noseElement.style.left = smoothedNosePos.x + 'px';
+            noseElement.style.top = (smoothedNosePos.y - eyeFontSize * 0.15) + 'px'; // Move up by 15% of eye font size
+            noseElement.style.fontSize = (eyeFontSize * 0.7) + 'px'; // 70% of eye size
+            noseElement.style.color = textColor;
+            noseElement.textContent = 'L';
+            applyTransformWithScale(noseElement, 'translate(-50%, -50%)');
+            
+            // Update eyebrows: HIDDEN for now
+            leftEyebrowElement.style.display = 'none';
+            rightEyebrowElement.style.display = 'none';
             
             // Smooth the mouth position to reduce jitter
-            smoothedMouthPos.x += (mouthScreenX - smoothedMouthPos.x) * FACE_LETTER_SMOOTHING;
-            smoothedMouthPos.y += (mouthScreenY - smoothedMouthPos.y) * FACE_LETTER_SMOOTHING;
+            smoothedMouthPos.x += (mouthScreenX - smoothedMouthPos.x) * smoothingFactor;
+            smoothedMouthPos.y += (mouthScreenY - smoothedMouthPos.y) * smoothingFactor;
             
-            // Update mouth: Check tongue, smile, frown, pursed lips, kissing face, and mouth open states
+            // Update mouth: Check teeth first (highest priority), then tongue, smile, frown, etc.
+            // Note: teethShowing is already calculated above and reused here
             const tongueOut = detectTongueOut(landmarks);
             const isKissing = detectKissingFace(landmarks);
             const isPursedLips = detectPursedLips(landmarks);
             const isSmilingOpen = detectSmileOpen(landmarks);
             const isSmilingClosed = detectSmileClosed(landmarks);
+            const isExtremeFrown = detectExtremeFrown(landmarks);
             const isFrowning = detectFrown(landmarks);
             const isMouthOpen = detectMouthOpen(landmarks);
             
@@ -844,38 +1941,56 @@
             mouthElement.style.fontSize = mouthFontSize + 'px';
             mouthElement.style.color = textColor;
             
-            if (tongueOut) {
-                // Tongue out: P rotated 90 degrees
+            // Teeth showing = D rotated 90 degrees - highest priority, prevents tongue (P) and O
+            // Also check brightness: if mouth is very bright relative to nose, show D
+            const mouthColorForBrightness = analyzeMouthPixelColor(landmarks);
+            const isVeryBright = mouthColorForBrightness.normalizedBrightness > extremeBrightnessThreshold; // Brighter than threshold = likely teeth
+            
+            if (teethShowing || isVeryBright) {
+                // Teeth showing OR very bright mouth: D rotated 90 degrees - OVERRIDES EVERYTHING
+                mouthElement.textContent = 'D';
+                applyTransformWithScale(mouthElement, 'translate(-50%, -50%) rotate(90deg)');
+                // DEBUG
+                if (tongueOut || isMouthOpen) {
+                    console.log('MOUTH DEBUG - teethShowing/brightness OVERRIDES - teethShowing:', teethShowing, 'isVeryBright:', isVeryBright, 'tongueOut:', tongueOut, 'isMouthOpen:', isMouthOpen);
+                }
+            } else if (isExtremeFrown) {
+                // Extreme frowning: D rotated -90 degrees (prevents X)
+                mouthElement.textContent = 'D';
+                applyTransformWithScale(mouthElement, 'translate(-50%, -50%) rotate(-90deg)');
+            } else if (isFrowning) {
+                // Frowning: ) rotated -90 degrees (prevents X)
+                mouthElement.textContent = ')';
+                applyTransformWithScale(mouthElement, 'translate(-50%, -50%) rotate(-90deg)');
+            } else if (isMouthOpen) {
+                // Mouth fully open with dark cavity: O (no rotation) - takes priority over tongue (P)
+                mouthElement.textContent = 'O';
+                applyTransformWithScale(mouthElement, 'translate(-50%, -50%)');
+            } else if (tongueOut && !teethShowing) {
+                // Tongue out: P rotated 90 degrees (ONLY if no teeth showing, not frowning, and not dark mouth)
+                // Double-check: teeth showing should already prevent tongueOut from being true, but be explicit
                 mouthElement.textContent = 'P';
-                mouthElement.style.transform = 'translate(-50%, -50%) rotate(90deg)';
-            } else if (isKissing) {
-                // Kissing face (lips puckered): X (no rotation)
+                applyTransformWithScale(mouthElement, 'translate(-50%, -50%) rotate(90deg)');
+            } else if (isKissing && !isFrowning && !isExtremeFrown) {
+                // Kissing face (lips puckered): X (no rotation) - only if not frowning
                 mouthElement.textContent = 'X';
-                mouthElement.style.transform = 'translate(-50%, -50%)';
-            } else if (isPursedLips) {
-                // Pursed lips tight together: X rotated 90 degrees
+                applyTransformWithScale(mouthElement, 'translate(-50%, -50%)');
+            } else if (isPursedLips && !isFrowning && !isExtremeFrown) {
+                // Pursed lips tight together: X rotated 90 degrees - only if not frowning
                 mouthElement.textContent = 'X';
-                mouthElement.style.transform = 'translate(-50%, -50%) rotate(90deg)';
+                applyTransformWithScale(mouthElement, 'translate(-50%, -50%) rotate(90deg)');
             } else if (isSmilingOpen) {
                 // Smiling with lips open: D rotated 90 degrees
                 mouthElement.textContent = 'D';
-                mouthElement.style.transform = 'translate(-50%, -50%) rotate(90deg)';
+                applyTransformWithScale(mouthElement, 'translate(-50%, -50%) rotate(90deg)');
             } else if (isSmilingClosed) {
                 // Smiling with lips closed: ( rotated -90 degrees
                 mouthElement.textContent = '(';
-                mouthElement.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
-            } else if (isFrowning) {
-                // Frowning: ) rotated -90 degrees
-                mouthElement.textContent = ')';
-                mouthElement.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
-            } else if (isMouthOpen) {
-                // Mouth fully open: O (no rotation)
-                mouthElement.textContent = 'O';
-                mouthElement.style.transform = 'translate(-50%, -50%)';
+                applyTransformWithScale(mouthElement, 'translate(-50%, -50%) rotate(-90deg)');
             } else {
-                // Default neutral: em dash
-                mouthElement.textContent = '—';
-                mouthElement.style.transform = 'translate(-50%, -50%)';
+                // Default neutral: smile ( rotated -90 degrees
+                mouthElement.textContent = '(';
+                applyTransformWithScale(mouthElement, 'translate(-50%, -50%) rotate(-90deg)');
             }
         }
         

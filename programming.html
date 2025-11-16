@@ -25,7 +25,9 @@ body {
 .container {
     display: inline-block;
 }
-
+.type-face {
+    rotate: 1.8deg;
+}
 .pretty-fly {
     rotate: -1.8deg;
 }
@@ -37,6 +39,9 @@ body {
 }
 .thy-typer {
     rotate: -2deg;
+}
+.face-mask {
+    rotate: 2deg;
 }
 .back {
     rotate: -2deg;
@@ -90,12 +95,17 @@ a:hover {
 
 <body>
     <div class="container">
+
+        <div class="type-face">
+            <a href="./programming/type-face/">type face</a>
+        </div>
+
         <div class="pretty-fly">
             <a href="./programming/pretty-fly/">pretty fly</a>
         </div>
 
-        <div class="type-face">
-            <a href="./programming/type-face/">type face</a>
+        <div class="face-mask">
+            <a href="./programming/face-mask/index.html">face mask</a>
         </div>
 
         <div class="from-from">
@@ -128,11 +138,12 @@ a:hover {
         // Map class names to their corresponding PNG files
         const imageMap = {
             'pretty-fly': './assets/img/pretty-fly.png',
-            'type-face': './/assets/img/type-face.png',
+            'type-face': './assets/img/type-face.png',
             'from-from': './assets/img/from-from.png',
             'pattern-1': './assets/img/pattern-1.png',
             'thy-typer': './assets/img/thy-typer.png',
-            'back': './assets/img/back.png'
+            'back': './assets/img/back.png',
+            'face-mask': './assets/img/face-mask.png'
         };
 
         // Add hover effects for each class
