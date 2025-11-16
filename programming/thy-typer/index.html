@@ -63,12 +63,33 @@
             background: rgb(65, 65, 65);
             box-shadow: none;
         }
+        .typeface-credit {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            z-index: 10;
+            pointer-events: auto;
+        }
+        .typeface-credit a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        .typeface-credit a:hover {
+            color: rgba(255, 255, 255, 1);
+        }
     </style>
 </head>
 <body>
     <div id="canvas-container">
         <canvas id="canvas" width="1080" height="1350"></canvas>
         <input type="text" id="text-input" placeholder="Type your text here...">
+    </div>
+    <div class="typeface-credit">
+        Typeface by <a href="https://www.instagram.com/deskofsonia/" target="_blank" rel="noopener noreferrer">Desk of Sonia</a>
     </div>
     <script src="script.js"></script>
 </body>
