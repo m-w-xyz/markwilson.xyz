@@ -14,7 +14,7 @@
     <style>
         @font-face {
             font-family: 'Penray';
-            src: url('../../assets/fonts/Penray-Extrabold.otf') format('opentype');
+            src: url('Penray-Extrabold.otf') format('opentype');
             font-weight: normal;
             font-style: normal;
         }
@@ -66,10 +66,9 @@
         }
         
         .hide-video-control {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
             z-index: 10;
         }
         
@@ -166,8 +165,8 @@
         <div id="rightEyebrow" class="nose-letter" style="display: none;">(</div>
         <div id="nose" class="nose-letter">L</div>
         <div id="mouth" class="mouth-letter">(</div>
-        <div class="hide-video-control">
-            <button id="hideCameraButton" class="hide-camera-button">Show camera</button>
+        <div class="hide-video-control" style="bottom: 15px;">
+            <button id="hideCameraButton" class="hide-camera-button">Hide camera</button>
         </div>
         <div class="threshold-controls" style="display: none;">
             <div class="threshold-control">
@@ -280,6 +279,18 @@
         const leftEyebrowElement = document.getElementById('leftEyebrow');
         const rightEyebrowElement = document.getElementById('rightEyebrow');
         
+        // Initialize camera as hidden by default
+        video.style.opacity = '0';
+        canvas.style.opacity = '0';
+        video.classList.add('hidden');
+        canvas.classList.add('hidden');
+        leftEyeElement.classList.add('hidden');
+        rightEyeElement.classList.add('hidden');
+        noseElement.classList.add('hidden');
+        mouthElement.classList.add('hidden');
+        hideCameraButton.classList.add('active');
+        hideCameraButton.textContent = 'Show camera';
+        
         // Initialize eye, nose and mouth positions to center of canvas
         function initializeFaceElements() {
             const centerX = window.innerWidth / 2;
@@ -306,20 +317,6 @@
         const textColor = '#ffffff'; // Always white
         
         let webcamVisible = false; // Camera hidden by default
-        
-        // Initialize camera as hidden on page load
-        function initializeCameraVisibility() {
-            video.style.opacity = '0';
-            canvas.style.opacity = '0';
-            video.classList.add('hidden');
-            canvas.classList.add('hidden');
-            leftEyeElement.classList.add('hidden');
-            rightEyeElement.classList.add('hidden');
-            noseElement.classList.add('hidden');
-            mouthElement.classList.add('hidden');
-            hideCameraButton.classList.add('active');
-            hideCameraButton.textContent = 'Show camera';
-        }
         let handAngularVelocity = 0;
         let smoothedHandAngularVelocity = 0;
         let lastHandAngle = null;
@@ -427,11 +424,11 @@
             video.style.opacity = webcamVisible ? '1' : '0';
             canvas.style.opacity = webcamVisible ? '1' : '0';
             
-            // Remove scaling class to prevent smooth rotation transition
-            leftEyeElement.classList.remove('scaling');
-            rightEyeElement.classList.remove('scaling');
-            noseElement.classList.remove('scaling');
-            mouthElement.classList.remove('scaling');
+            // Add scaling class for smooth transition
+            leftEyeElement.classList.add('scaling');
+            rightEyeElement.classList.add('scaling');
+            noseElement.classList.add('scaling');
+            mouthElement.classList.add('scaling');
             
             // Add/remove classes for scaling
             if (webcamVisible) {
@@ -453,6 +450,14 @@
                 hideCameraButton.classList.add('active');
                 hideCameraButton.textContent = 'Show camera';
             }
+            
+            // Remove scaling class after transition completes
+            setTimeout(() => {
+                leftEyeElement.classList.remove('scaling');
+                rightEyeElement.classList.remove('scaling');
+                noseElement.classList.remove('scaling');
+                mouthElement.classList.remove('scaling');
+            }, 600);
         });
         
         const faceMesh = new FaceMesh({
@@ -644,44 +649,7 @@
             }
         });
         
-        // Check if in iframe and wait for parent camera permission
-        function startCameraWithPermission() {
-            if (window.parent !== window.self) {
-                // We're in an iframe - request permission from parent
-                window.parent.postMessage('requestCameraStream', '*');
-                
-                // Wait for parent confirmation
-                const permissionHandler = (event) => {
-                    if (event.data && event.data.type === 'cameraStreamReady') {
-                        window.removeEventListener('message', permissionHandler);
-                        // Small delay to ensure permission is established
-                        setTimeout(() => {
-                            camera.start();
-                        }, 100);
-                    } else if (event.data && event.data.type === 'cameraStreamError') {
-                        window.removeEventListener('message', permissionHandler);
-                        // Fallback: start anyway
-                        camera.start();
-                    }
-                };
-                
-                window.addEventListener('message', permissionHandler);
-                
-                // Timeout fallback
-                setTimeout(() => {
-                    window.removeEventListener('message', permissionHandler);
-                    camera.start();
-                }, 2000);
-            } else {
-                // Not in iframe, start normally
-                camera.start();
-            }
-        }
-        
-        startCameraWithPermission();
-        
-        // Initialize camera as hidden on page load
-        initializeCameraVisibility();
+        camera.start();
         
         function detectMouthOpen(landmarks) {
             const upperLip = landmarks[13];
@@ -926,8 +894,18 @@
             const centerX = (mouthLeft.x + mouthRight.x) / 2;
             const centerY = (upperLip.y + lowerLip.y) / 2;
             
-            // Sample larger area for more reliable detection
-            const sampleSize = 40; // Increased for better preview
+            // Get face width to adapt sample size for close faces
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
+            // Adaptive sample size: larger when face is close (faceWidth > 0.4)
+            // This ensures we sample enough pixels even when face is very close
+            let sampleSize = 40; // Default
+            if (faceWidth > 0.4) {
+                // Face is very close - use larger sample size
+                sampleSize = Math.min(80, Math.floor(40 * (faceWidth / 0.3))); // Scale up to 80px max
+            }
             
             try {
                 // Read from detection canvas for consistency with teeth detection
@@ -1190,7 +1168,22 @@
             
             const mouthHeight = Math.abs(lowerLip.y - upperLip.y);
             const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
-            const mouthOpenRatio = mouthHeight / mouthWidth;
+            
+            // Get face width for adaptive threshold
+            const leftFace = landmarks[234];
+            const rightFace = landmarks[454];
+            const faceWidth = Math.abs(rightFace.x - leftFace.x);
+            
+            // Adaptive mouth open ratio check: when face is very close, use absolute threshold
+            let isMouthOpenEnough;
+            if (faceWidth > 0.4) {
+                // Face is very close - use absolute mouth height threshold
+                isMouthOpenEnough = mouthHeight > 0.05; // Absolute threshold for close faces
+            } else {
+                // Normal distance - use ratio
+                const mouthOpenRatio = mouthHeight / Math.max(mouthWidth, 0.01); // Prevent division by zero
+                isMouthOpenEnough = mouthOpenRatio > 0.12; // Stricter threshold - mouth must be clearly open
+            }
             
             // Check if other triggers are active - if so, disregard tongue
             const teethShowing = detectTeethShowing(landmarks);
@@ -1205,9 +1198,6 @@
             }
             
             // Mouth must be OPEN for tongue to appear (P)
-            // Use a stricter threshold to ensure mouth is actually open, not just slightly parted
-            // This prevents P from appearing when mouth is closed, allowing X to appear instead
-            const isMouthOpenEnough = mouthOpenRatio > 0.12; // Stricter threshold - mouth must be clearly open
             if (!isMouthOpenEnough) {
                 return false; // Don't show P if mouth is closed
             }
@@ -1248,9 +1238,21 @@
             // O = RED DOTS WIDEN APART (vertical distance increases)
             const mouthHeight = Math.abs(lowerLip.y - upperLip.y);
             
-            // Normalize by face width - ratio is now independent of camera distance
-            const normalizedHeight = mouthHeight / faceWidth;
-            const redDotsWide = normalizedHeight > oThreshold;
+            // When face is very close (faceWidth > 0.4), use absolute mouth height as fallback
+            // This prevents the normalized ratio from becoming too small when face is extremely close
+            let redDotsWide;
+            if (faceWidth > 0.4) {
+                // Face is very close - use absolute mouth height threshold
+                // When close, mouth height in normalized coords should be > 0.05 for open mouth
+                const absoluteThreshold = 0.05;
+                redDotsWide = mouthHeight > absoluteThreshold;
+            } else {
+                // Normal distance - use normalized ratio
+                // Ensure faceWidth is not too small to avoid division issues
+                const safeFaceWidth = Math.max(faceWidth, 0.1);
+                const normalizedHeight = mouthHeight / safeFaceWidth;
+                redDotsWide = normalizedHeight > oThreshold;
+            }
             
             // Check brightness value inside mouth area (with lighting compensation)
             const mouthColor = analyzeMouthPixelColor(landmarks);
@@ -1351,12 +1353,15 @@
             const rightCheekRelativeY = rightCheek.y - noseTip.y;
             const avgCheekRelativeY = (leftCheekRelativeY + rightCheekRelativeY) / 2;
             
-            // Normalize by face width
-            const normalizedCheekRaise = Math.abs(avgCheekRelativeY) / faceWidth;
-            
-            // Cheeks move up significantly when extreme smiling (negative relative Y means above nose)
-            // Use a threshold to detect if cheeks are raised
-            const cheeksRaised = avgCheekRelativeY < -0.02; // Cheeks above nose tip (negative Y)
+            // When face is very close, use adaptive threshold
+            let cheeksRaised;
+            if (faceWidth > 0.4) {
+                // Face is very close - use slightly more lenient absolute threshold
+                cheeksRaised = avgCheekRelativeY < -0.015; // Slightly adjusted for close faces
+            } else {
+                // Normal distance - use standard threshold
+                cheeksRaised = avgCheekRelativeY < -0.02; // Cheeks above nose tip (negative Y)
+            }
             
             // Extreme smile requires: cheeks raised AND teeth showing
             const teethShowing = detectTeethShowing(landmarks);
@@ -1382,10 +1387,19 @@
             
             // When frowning, corners are lower (higher Y value) relative to lower lip
             const frownIndicator = cornersY - lowerLipY;
-            const normalizedFrownIndicator = frownIndicator / faceWidth;
             
-            // Frown detected if corners are lowered (uses adjustable threshold)
-            return normalizedFrownIndicator > frownThreshold;
+            // When face is very close (faceWidth > 0.4), use absolute threshold
+            if (faceWidth > 0.4) {
+                // Face is very close - use absolute threshold
+                // When close, frown indicator should be > 0.005 for regular frown
+                const absoluteThreshold = 0.005;
+                return frownIndicator > absoluteThreshold;
+            } else {
+                // Normal distance - use normalized ratio
+                const safeFaceWidth = Math.max(faceWidth, 0.1);
+                const normalizedFrownIndicator = frownIndicator / safeFaceWidth;
+                return normalizedFrownIndicator > frownThreshold;
+            }
         }
         
         function detectExtremeFrown(landmarks) {
@@ -1405,10 +1419,21 @@
             
             // When extremely frowning, corners are much lower relative to lower lip
             const frownIndicator = cornersY - lowerLipY;
-            const normalizedFrownIndicator = frownIndicator / faceWidth;
             
-            // Extreme frown detected if corners are very lowered
-            return normalizedFrownIndicator > extremeFrownThreshold;
+            // When face is very close (faceWidth > 0.4), use absolute threshold
+            // This prevents the normalized ratio from becoming unreliable when face is extremely close
+            if (faceWidth > 0.4) {
+                // Face is very close - use absolute threshold
+                // When close, frown indicator should be > 0.015 for extreme frown
+                const absoluteThreshold = 0.015;
+                return frownIndicator > absoluteThreshold;
+            } else {
+                // Normal distance - use normalized ratio
+                // Ensure faceWidth is not too small to avoid division issues
+                const safeFaceWidth = Math.max(faceWidth, 0.1);
+                const normalizedFrownIndicator = frownIndicator / safeFaceWidth;
+                return normalizedFrownIndicator > extremeFrownThreshold;
+            }
         }
         
         function detectPursedLips(landmarks) {
