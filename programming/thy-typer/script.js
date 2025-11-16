@@ -12,7 +12,7 @@ function resizeCanvas() {
 }
 
 // Load custom font
-const font = new FontFace('CourtRegular', 'url(court-regular.OTF)');
+const font = new FontFace('CourtRegular', 'url(../../assets/fonts/court-Regular.otf)');
 font.load().then(() => {
     document.fonts.add(font);
 }).catch(err => {

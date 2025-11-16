@@ -20,11 +20,23 @@
 <style>
 body {
     background-color: #000000;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
 }
 
 .container {
-    display: inline-block;
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    z-index: 100;
 }
+
 .type-face {
     rotate: 1.8deg;
 }
@@ -61,34 +73,30 @@ a {
 a:hover {
     color: #FBC6EF;
 }
+a.active {
+    color: #FBC6EF;
+}
 ::selection {
     color: #FBC6EF;
 }
 
-
-/* Image overlay for hover effect */
-.image-overlay {
+/* Project iframe container */
+.project-iframe-container {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
+    height: 100vh;
+    z-index: 1;
+    background-color: #000000;
+}
+
+.project-iframe-container iframe {
+    width: 100%;
     height: 100%;
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    pointer-events: none;
+    border: none;
 }
 
-.image-overlay.active {
-    display: flex;
-}
-
-.image-overlay img {
-    max-width: 90vw;
-    max-height: 90vh;
-    object-fit: contain;
-}
 </style>
 
 </head>
@@ -97,69 +105,192 @@ a:hover {
     <div class="container">
 
         <div class="type-face">
-            <a href="./programming/type-face/">type face</a>
+            <a href="./programming/type-face/" data-project="type-face">type face</a>
         </div>
 
         <div class="pretty-fly">
-            <a href="./programming/pretty-fly/">pretty fly</a>
+            <a href="./programming/pretty-fly/" data-project="pretty-fly">pretty fly</a>
         </div>
 
         <div class="face-mask">
-            <a href="./programming/face-mask/index.html">face mask</a>
+            <a href="./programming/face-mask/index.html" data-project="face-mask">face mask</a>
         </div>
 
         <div class="from-from">
-            <a href="./programming/from-from/"><span style="font-style: italic;">from</span> from</a>
+            <a href="./programming/from-from/" data-project="from-from"><span style="font-style: italic;">from</span> from</a>
         </div>
 
         <div class="pattern-1">
-            <a href="./programming/pattern-1/">pattern 1</a>
+            <a href="./programming/pattern-1/" data-project="pattern-1">pattern 1</a>
         </div>
 
         <div class="thy-typer">
-            <a href="./programming/thy-typer/">thy typer</a>
+            <a href="./programming/thy-typer/" data-project="thy-typer">thy typer</a>
         </div>
 
         <div class="back">
-            <a href="https://markwilson.xyz"> 🡠 🡠 🡠 back
-            </p>
+            <a href="https://markwilson.xyz"> 🡠 🡠 🡠 back</a>
         </div>
     </div>
 
-    <!-- Image overlay -->
-    <div class="image-overlay" id="imageOverlay">
-        <img src="./programming/pretty-fly.png" alt="pretty fly">
+    <!-- Project iframe container -->
+    <div class="project-iframe-container">
+        <iframe id="project-iframe" src=""></iframe>
     </div>
 
     <script>
-        const imageOverlay = document.getElementById('imageOverlay');
-        const overlayImg = imageOverlay.querySelector('img');
+        const projectIframe = document.getElementById('project-iframe');
+        const navContainer = document.querySelector('.container');
+        const iframeContainer = document.querySelector('.project-iframe-container');
 
-        // Map class names to their corresponding PNG files
-        const imageMap = {
-            'pretty-fly': './assets/img/pretty-fly.png',
-            'type-face': './assets/img/type-face.png',
-            'from-from': './assets/img/from-from.png',
-            'pattern-1': './assets/img/pattern-1.png',
-            'thy-typer': './assets/img/thy-typer.png',
-            'back': './assets/img/back.png',
-            'face-mask': './assets/img/face-mask.png'
+        // Function to update iframe position based on nav width
+        function updateIframePosition() {
+            const navWidth = navContainer.offsetWidth;
+            const iframeLeft = navWidth + 8; // 8px gap
+            iframeContainer.style.left = iframeLeft + 'px';
+            iframeContainer.style.width = `calc(100% - ${iframeLeft}px)`;
+        }
+
+        // Update on load and resize
+        updateIframePosition();
+        window.addEventListener('resize', updateIframePosition);
+        
+        // Also update after a short delay to ensure nav is fully rendered
+        setTimeout(updateIframePosition, 100);
+
+        // Map project names to their URLs
+        const projectMap = {
+            'type-face': './programming/type-face/',
+            'pretty-fly': './programming/pretty-fly/',
+            'face-mask': './programming/face-mask/index.html',
+            'from-from': './programming/from-from/',
+            'pattern-1': './programming/pattern-1/',
+            'thy-typer': './programming/thy-typer/'
         };
 
-        // Add hover effects for each class
-        Object.keys(imageMap).forEach(className => {
-            const link = document.querySelector(`.${className} a`);
-            if (link && imageOverlay && overlayImg) {
-                link.addEventListener('mouseenter', () => {
-                    overlayImg.src = imageMap[className];
-                    imageOverlay.classList.add('active');
-                });
+        // Projects that use camera
+        const cameraProjects = ['type-face', 'face-mask', 'from-from'];
 
-                link.addEventListener('mouseleave', () => {
-                    imageOverlay.classList.remove('active');
+        let activeProject = null;
+        let cameraStream = null;
+        let cameraReady = false;
+
+        // Request camera stream once and keep it active
+        async function initializeCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                cameraReady = true;
+                console.log('Camera stream initialized and ready to share');
+            } catch (error) {
+                console.log('Camera initialization error:', error.message);
+                cameraReady = false;
+            }
+        }
+
+        // Initialize camera when page loads
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            initializeCamera();
+        }
+
+        // Listen for messages from iframes
+        window.addEventListener('message', (event) => {
+            // Verify origin for security
+            if (event.origin !== window.location.origin) return;
+            
+            if (event.data === 'requestCameraStream') {
+                // Iframe is requesting camera stream
+                if (cameraStream && cameraReady) {
+                    // Clone the stream tracks so iframe can use it
+                    const clonedTracks = cameraStream.getVideoTracks().map(track => {
+                        const settings = track.getSettings();
+                        return {
+                            id: track.id,
+                            label: track.label,
+                            kind: track.kind,
+                            enabled: track.enabled,
+                            muted: track.muted,
+                            readyState: track.readyState,
+                            settings: settings
+                        };
+                    });
+                    
+                    // Send stream info to iframe
+                    projectIframe.contentWindow.postMessage({
+                        type: 'cameraStreamReady',
+                        tracks: clonedTracks
+                    }, window.location.origin);
+                } else {
+                    // Camera not ready yet, wait and retry
+                    setTimeout(() => {
+                        if (cameraStream && cameraReady) {
+                            projectIframe.contentWindow.postMessage({
+                                type: 'cameraStreamReady'
+                            }, window.location.origin);
+                        } else {
+                            projectIframe.contentWindow.postMessage({
+                                type: 'cameraStreamError',
+                                message: 'Camera not available'
+                            }, window.location.origin);
+                        }
+                    }, 500);
+                }
+            }
+        });
+
+        // Handle project link clicks
+        Object.keys(projectMap).forEach(projectName => {
+            const link = document.querySelector(`a[data-project="${projectName}"]`);
+            if (link) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    // Remove active class from all links
+                    document.querySelectorAll('a[data-project]').forEach(a => {
+                        a.classList.remove('active');
+                    });
+                    
+                    // Add active class to clicked link
+                    link.classList.add('active');
+                    
+                    // Load project in iframe
+                    projectIframe.src = projectMap[projectName];
+                    activeProject = projectName;
+                    
+                    // If it's a camera project, notify iframe when it loads
+                    if (cameraProjects.includes(projectName)) {
+                        projectIframe.addEventListener('load', () => {
+                            if (cameraStream && cameraReady) {
+                                projectIframe.contentWindow.postMessage({
+                                    type: 'cameraStreamReady'
+                                }, window.location.origin);
+                            }
+                        }, { once: true });
+                    }
                 });
             }
         });
+
+        // Set first project (type-face) as active on page load
+        const firstLink = document.querySelector('a[data-project="type-face"]');
+        if (firstLink) {
+            firstLink.classList.add('active');
+            projectIframe.src = projectMap['type-face'];
+            activeProject = 'type-face';
+            
+            // Notify iframe when it loads (type-face uses camera)
+            projectIframe.addEventListener('load', () => {
+                if (cameraStream && cameraReady) {
+                    projectIframe.contentWindow.postMessage({
+                        type: 'cameraStreamReady'
+                    }, window.location.origin);
+                }
+            }, { once: true });
+        }
     </script>
 
 </body>

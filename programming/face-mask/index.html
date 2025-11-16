@@ -14,7 +14,7 @@
     <style>
         @font-face {
             font-family: 'Penray';
-            src: url('Penray-Extrabold.otf') format('opentype');
+            src: url('../../assets/fonts/Penray-Extrabold.otf') format('opentype');
             font-weight: normal;
             font-style: normal;
         }
@@ -410,7 +410,41 @@
             }
         });
         
-        camera.start();
+        // Check if in iframe and wait for parent camera permission
+        function startCameraWithPermission() {
+            if (window.parent !== window.self) {
+                // We're in an iframe - request permission from parent
+                window.parent.postMessage('requestCameraStream', '*');
+                
+                // Wait for parent confirmation
+                const permissionHandler = (event) => {
+                    if (event.data && event.data.type === 'cameraStreamReady') {
+                        window.removeEventListener('message', permissionHandler);
+                        // Small delay to ensure permission is established
+                        setTimeout(() => {
+                            camera.start();
+                        }, 100);
+                    } else if (event.data && event.data.type === 'cameraStreamError') {
+                        window.removeEventListener('message', permissionHandler);
+                        // Fallback: start anyway
+                        camera.start();
+                    }
+                };
+                
+                window.addEventListener('message', permissionHandler);
+                
+                // Timeout fallback
+                setTimeout(() => {
+                    window.removeEventListener('message', permissionHandler);
+                    camera.start();
+                }, 2000);
+            } else {
+                // Not in iframe, start normally
+                camera.start();
+            }
+        }
+        
+        startCameraWithPermission();
         
         function detectMouthOpen(landmarks) {
             const upperLip = landmarks[13];
