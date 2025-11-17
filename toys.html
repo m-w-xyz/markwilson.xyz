@@ -35,6 +35,51 @@ body {
     flex-direction: column;
     justify-content: flex-start;
     z-index: 100;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease-in-out;
+}
+
+.container.hidden {
+    transform: translateX(-100%);
+}
+
+.nav-toggle {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 101;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #6a6a6a;
+    color: #dbdbdb;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    border-radius: 0;
+    transition: all 0.2s ease;
+    display: none;
+}
+
+.nav-toggle:hover {
+    color: #FBC6EF;
+    border-color: #FBC6EF;
+}
+
+.nav-toggle.visible {
+    display: block;
+}
+
+/* Desktop: allow hiding nav too */
+@media (min-width: 769px) {
+    .nav-toggle {
+        display: block;
+        z-index: 102;
+    }
+    
+    .container.hidden ~ .nav-toggle {
+        left: 8px;
+    }
 }
 
 .type-face {
@@ -89,6 +134,7 @@ a.active {
     height: 100vh;
     z-index: 1;
     background-color: #000000;
+    transition: left 0.3s ease-in-out, width 0.3s ease-in-out;
 }
 
 .project-iframe-container iframe {
@@ -97,94 +143,32 @@ a.active {
     border: none;
 }
 
-/* Mobile-only nav toggle */
-.mobile-nav-toggle {
-    display: none;
-    position: fixed;
-    top: 12px;
-    left: 12px;
-    z-index: 200;
-    background: rgba(0, 0, 0, 0.8);
-    border: 2px solid #6a6a6a;
-    color: #ffffff;
-    width: 44px;
-    height: 44px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 20px;
-    align-items: center;
-    justify-content: center;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    transition: all 0.2s ease;
-}
-
-.mobile-nav-toggle:hover {
-    background: rgba(0, 0, 0, 0.9);
-    border-color: #7a7a7a;
-}
-
-.mobile-nav-toggle:active {
-    background: rgba(0, 0, 0, 1);
-}
-
-/* Mobile-only styles */
+/* Mobile styles */
 @media (max-width: 768px) {
-    .mobile-nav-toggle {
-        display: flex;
-    }
-    
     .container {
-        position: fixed;
-        left: -280px;
-        top: 0;
-        height: 100vh;
-        height: 100dvh; /* Dynamic viewport height for mobile */
-        width: 260px;
-        background: rgba(0, 0, 0, 0.95);
-        backdrop-filter: blur(10px);
-        padding: 60px 16px 16px 16px;
-        transition: left 0.3s ease;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        z-index: 200;
+        width: 250px;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
     }
     
-    .container.nav-open {
-        left: 0;
+    .nav-toggle {
+        display: block;
     }
     
     .project-iframe-container {
         left: 0 !important;
         width: 100% !important;
-        height: 100vh;
-        height: 100dvh; /* Dynamic viewport height for mobile - accounts for browser UI */
-        bottom: 0;
-        box-sizing: border-box;
     }
     
-    .project-iframe-container iframe {
-        height: calc(100vh - env(safe-area-inset-bottom, 0));
-        height: calc(100dvh - env(safe-area-inset-bottom, 0)); /* Account for safe area on mobile */
-        width: 100%;
-        display: block;
-    }
-    
-    /* Ensure body uses dynamic viewport height on mobile */
-    body {
-        min-height: 100vh;
-        min-height: 100dvh;
-    }
-}
-
-/* Ensure desktop behavior is unchanged */
-@media (min-width: 769px) {
-    .mobile-nav-toggle {
-        display: none !important;
-    }
-    
-    .container {
+    .container.hidden ~ .project-iframe-container {
         left: 0 !important;
+        width: 100% !important;
+    }
+    
+    /* Make nav links more touch-friendly on mobile */
+    .container a {
+        padding: 8px 0;
+        font-size: 14px;
     }
 }
 
@@ -193,11 +177,7 @@ a.active {
 </head>
 
 <body>
-    <!-- Mobile-only nav toggle button -->
-    <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation">
-        ☰
-    </button>
-    
+    <button class="nav-toggle" id="navToggle">☰ Menu</button>
     <div class="container" id="navContainer">
 
         <div class="type-face">
@@ -236,74 +216,72 @@ a.active {
 
     <script>
         const projectIframe = document.getElementById('project-iframe');
-        const navContainer = document.getElementById('navContainer');
+        const navContainer = document.querySelector('.container');
         const iframeContainer = document.querySelector('.project-iframe-container');
-        const mobileNavToggle = document.getElementById('mobileNavToggle');
+        const navToggle = document.getElementById('navToggle');
+        
+        // Toggle navigation visibility
+        let navVisible = window.innerWidth > 768; // Hidden on mobile by default
+        function toggleNav() {
+            navVisible = !navVisible;
+            navContainer.classList.toggle('hidden', !navVisible);
+            updateIframePosition();
+        }
+        
+        // Set initial state
+        if (window.innerWidth <= 768) {
+            navContainer.classList.add('hidden');
+        }
+        
+        navToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleNav();
+        });
+        
+        // Close nav when clicking outside on mobile
+        if (window.innerWidth <= 768) {
+            document.addEventListener('click', (e) => {
+                if (navVisible && !navContainer.contains(e.target) && !navToggle.contains(e.target)) {
+                    toggleNav();
+                }
+            });
+        }
 
         // Function to update iframe position based on nav width
         function updateIframePosition() {
-            // Only adjust iframe position on desktop (mobile uses full width)
-            if (window.innerWidth > 768) {
-                const navWidth = navContainer.offsetWidth;
-                const iframeLeft = navWidth + 8; // 8px gap
-                iframeContainer.style.left = iframeLeft + 'px';
-                iframeContainer.style.width = `calc(100% - ${iframeLeft}px)`;
-            } else {
-                // Mobile: iframe takes full width
+            if (window.innerWidth <= 768) {
+                // Mobile: iframe is always full width, nav overlays
                 iframeContainer.style.left = '0';
                 iframeContainer.style.width = '100%';
-            }
-        }
-
-        // Mobile nav toggle functionality
-        function toggleMobileNav() {
-            if (window.innerWidth <= 768) {
-                navContainer.classList.toggle('nav-open');
-            }
-        }
-        
-        // Close mobile nav when clicking outside or on a link
-        function closeMobileNav() {
-            if (window.innerWidth <= 768) {
-                navContainer.classList.remove('nav-open');
-            }
-        }
-        
-        // Event listeners for mobile nav
-        if (mobileNavToggle) {
-            mobileNavToggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleMobileNav();
-            });
-        }
-        
-        // Close nav when clicking on a project link (mobile only)
-        document.querySelectorAll('a[data-project]').forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth <= 768) {
-                    closeMobileNav();
+                navToggle.classList.add('visible');
+            } else {
+                // Desktop: nav takes space, iframe adjusts
+                if (navVisible) {
+                    const navWidth = navContainer.offsetWidth;
+                    const iframeLeft = navWidth + 8; // 8px gap
+                    iframeContainer.style.left = iframeLeft + 'px';
+                    iframeContainer.style.width = `calc(100% - ${iframeLeft}px)`;
+                } else {
+                    iframeContainer.style.left = '0';
+                    iframeContainer.style.width = '100%';
                 }
-            });
-        });
-        
-        // Close nav when clicking outside (mobile only)
-        document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 768 && 
-                navContainer.classList.contains('nav-open') &&
-                !navContainer.contains(e.target) &&
-                !mobileNavToggle.contains(e.target)) {
-                closeMobileNav();
+                navToggle.classList.remove('visible');
             }
-        });
+        }
 
         // Update on load and resize
         updateIframePosition();
         window.addEventListener('resize', () => {
-            updateIframePosition();
-            // Close nav when switching from mobile to desktop
-            if (window.innerWidth > 768) {
-                navContainer.classList.remove('nav-open');
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+                navToggle.classList.add('visible');
+                navVisible = false; // Hidden by default on mobile
+                navContainer.classList.add('hidden');
+            } else {
+                // Desktop: toggle button always visible, nav can be toggled
+                navToggle.style.display = 'block';
             }
+            updateIframePosition();
         });
         
         // Also update after a short delay to ensure nav is fully rendered
@@ -327,22 +305,8 @@ a.active {
         let cameraStream = null;
         let cameraReady = false;
 
-        // Detect if we're on mobile
-        function isMobile() {
-            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                   (window.innerWidth <= 768 && 'ontouchstart' in window);
-        }
-
-        // Request camera stream once and keep it active (desktop only)
-        // On mobile, iframes must request camera access directly due to browser security restrictions
+        // Request camera stream once and keep it active
         async function initializeCamera() {
-            // Skip camera initialization on mobile - iframes will request directly
-            if (isMobile()) {
-                console.log('Mobile detected: iframes will request camera access directly');
-                cameraReady = false;
-                return;
-            }
-            
             try {
                 cameraStream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
@@ -358,7 +322,7 @@ a.active {
             }
         }
 
-        // Initialize camera when page loads (desktop only)
+        // Initialize camera when page loads
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             initializeCamera();
         }
@@ -369,16 +333,7 @@ a.active {
             if (event.origin !== window.location.origin) return;
             
             if (event.data === 'requestCameraStream') {
-                // On mobile, tell iframe to request camera directly (browser security restriction)
-                if (isMobile()) {
-                    projectIframe.contentWindow.postMessage({
-                        type: 'requestCameraDirectly',
-                        message: 'Mobile detected: request camera access directly'
-                    }, window.location.origin);
-                    return;
-                }
-                
-                // Desktop: share camera stream from parent
+                // Iframe is requesting camera stream
                 if (cameraStream && cameraReady) {
                     // Clone the stream tracks so iframe can use it
                     const clonedTracks = cameraStream.getVideoTracks().map(track => {

@@ -45,21 +45,27 @@
             border-color: #666;
             box-shadow: 0 6px 16px rgba(0,0,0,0.15);
         }
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             #input-container {
                 bottom: 20px;
                 width: calc(100% - 40px); /* 20px padding on each side */
             }
             #text-input {
                 padding: 12px 20px;
-                font-size: 16px; /* Prevent zoom on iOS */
+                font-size: 16px; /* Prevents zoom on iOS */
+                min-height: 44px; /* Touch-friendly */
             }
         }
         
-        /* Touch-friendly input */
-        #text-input {
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
+        @media (max-width: 480px) {
+            #input-container {
+                bottom: 15px;
+                width: calc(100% - 30px);
+            }
+            #text-input {
+                padding: 10px 16px;
+                font-size: 16px;
+            }
         }
     </style>
 </head>

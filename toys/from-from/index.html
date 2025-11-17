@@ -56,12 +56,13 @@
       
       .word {
         font-size: 10vw;
+        line-height: 1.1;
       }
     }
     
     @media (max-width: 480px) {
       body {
-        padding: 10px;
+        padding: 15px;
       }
       
       .word {
@@ -361,24 +362,15 @@
         // We're in an iframe - request permission from parent
         window.parent.postMessage('requestCameraStream', '*');
         
-        // Wait for parent response
+        // Wait for parent confirmation
         const permissionHandler = (event) => {
-          // Mobile: parent tells us to request camera directly
-          if (event.data && event.data.type === 'requestCameraDirectly') {
-            window.removeEventListener('message', permissionHandler);
-            // Request camera directly (mobile only)
-            camera.start();
-          }
-          // Desktop: parent shares camera stream
-          else if (event.data && event.data.type === 'cameraStreamReady') {
+          if (event.data && event.data.type === 'cameraStreamReady') {
             window.removeEventListener('message', permissionHandler);
             // Small delay to ensure permission is established
             setTimeout(() => {
               camera.start();
             }, 100);
-          } 
-          // Error: fallback to direct request
-          else if (event.data && event.data.type === 'cameraStreamError') {
+          } else if (event.data && event.data.type === 'cameraStreamError') {
             window.removeEventListener('message', permissionHandler);
             // Fallback: start anyway
             camera.start();
@@ -387,7 +379,7 @@
         
         window.addEventListener('message', permissionHandler);
         
-        // Timeout fallback - request directly if no response
+        // Timeout fallback
         setTimeout(() => {
           window.removeEventListener('message', permissionHandler);
           camera.start();
