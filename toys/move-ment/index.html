@@ -229,8 +229,8 @@
   </style>
 </head>
 <body>
+  <button id="toggle-panel">✕</button>
   <div id="side-panel">
-    <button id="toggle-panel">✕</button>
     <div id="panel-content">
       <label class="panel-label">Text
         <input id="sentence-input" type="text" value="MAKE IT MOVE" maxlength="40" />
@@ -314,12 +314,20 @@
     // Panel state and controls
     const panel = document.getElementById('side-panel');
     const toggleBtn = document.getElementById('toggle-panel');
-    toggleBtn.onclick = () => {
-      panel.classList.toggle('collapsed');
+    
+    function updateButtonPosition() {
       const isCollapsed = panel.classList.contains('collapsed');
       toggleBtn.textContent = isCollapsed ? '☰' : '✕';
       toggleBtn.style.right = isCollapsed ? '2px' : '240px';
+    }
+    
+    toggleBtn.onclick = () => {
+      panel.classList.toggle('collapsed');
+      updateButtonPosition();
     };
+    
+    // Set initial button position
+    updateButtonPosition();
     
     // Mapping functions: 0-10 to actual ranges
     const mapSpeed = (val) => 0.0001 + (val / 10) * (0.003 - 0.0001);
