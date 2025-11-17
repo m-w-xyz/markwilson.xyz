@@ -23,18 +23,20 @@
     #side-panel {
       position: fixed;
       top: 0; right: 0;
-      height: 100vh;
+      height: auto;
+      max-height: 100vh;
       width: 240px;
       background: #1a1a1a;
       color: #fff;
       border-radius: 0;
       z-index: 20;
-      transition: transform 0.3s cubic-bezier(.4,2,.6,1);
+      transition: transform 0.3s ease-in-out;
       font-family: 'TWKLausanne', Arial, Helvetica, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       padding: 1px;
+      overflow-y: auto;
     }
     #side-panel.collapsed { transform: translateX(238px); }
     #toggle-panel {
@@ -228,7 +230,7 @@
 </head>
 <body>
   <div id="side-panel">
-    <button id="toggle-panel">☰</button>
+    <button id="toggle-panel">✕</button>
     <div id="panel-content">
       <label class="panel-label">Text
         <input id="sentence-input" type="text" value="MAKE IT MOVE" maxlength="40" />
@@ -312,7 +314,10 @@
     // Panel state and controls
     const panel = document.getElementById('side-panel');
     const toggleBtn = document.getElementById('toggle-panel');
-    toggleBtn.onclick = () => panel.classList.toggle('collapsed');
+    toggleBtn.onclick = () => {
+      panel.classList.toggle('collapsed');
+      toggleBtn.textContent = panel.classList.contains('collapsed') ? '☰' : '✕';
+    };
     
     // Mapping functions: 0-10 to actual ranges
     const mapSpeed = (val) => 0.0001 + (val / 10) * (0.003 - 0.0001);
