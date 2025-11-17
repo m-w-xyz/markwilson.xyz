@@ -97,12 +97,108 @@ a.active {
     border: none;
 }
 
+/* Mobile-only nav toggle */
+.mobile-nav-toggle {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #6a6a6a;
+    color: #ffffff;
+    width: 44px;
+    height: 44px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 20px;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: all 0.2s ease;
+}
+
+.mobile-nav-toggle:hover {
+    background: rgba(0, 0, 0, 0.9);
+    border-color: #7a7a7a;
+}
+
+.mobile-nav-toggle:active {
+    background: rgba(0, 0, 0, 1);
+}
+
+/* Mobile-only styles */
+@media (max-width: 768px) {
+    .mobile-nav-toggle {
+        display: flex;
+    }
+    
+    .container {
+        position: fixed;
+        left: -280px;
+        top: 0;
+        height: 100vh;
+        height: 100dvh; /* Dynamic viewport height for mobile */
+        width: 260px;
+        background: rgba(0, 0, 0, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 60px 16px 16px 16px;
+        transition: left 0.3s ease;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+    }
+    
+    .container.nav-open {
+        left: 0;
+    }
+    
+    .project-iframe-container {
+        left: 0 !important;
+        width: 100% !important;
+        height: 100vh;
+        height: 100dvh; /* Dynamic viewport height for mobile - accounts for browser UI */
+        bottom: 0;
+        box-sizing: border-box;
+    }
+    
+    .project-iframe-container iframe {
+        height: calc(100vh - env(safe-area-inset-bottom, 0));
+        height: calc(100dvh - env(safe-area-inset-bottom, 0)); /* Account for safe area on mobile */
+        width: 100%;
+        display: block;
+    }
+    
+    /* Ensure body uses dynamic viewport height on mobile */
+    body {
+        min-height: 100vh;
+        min-height: 100dvh;
+    }
+}
+
+/* Ensure desktop behavior is unchanged */
+@media (min-width: 769px) {
+    .mobile-nav-toggle {
+        display: none !important;
+    }
+    
+    .container {
+        left: 0 !important;
+    }
+}
+
 </style>
 
 </head>
 
 <body>
-    <div class="container">
+    <!-- Mobile-only nav toggle button -->
+    <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation">
+        ☰
+    </button>
+    
+    <div class="container" id="navContainer">
 
         <div class="type-face">
             <a href="./toys/type-face/" data-project="type-face">type face</a>
@@ -140,20 +236,75 @@ a.active {
 
     <script>
         const projectIframe = document.getElementById('project-iframe');
-        const navContainer = document.querySelector('.container');
+        const navContainer = document.getElementById('navContainer');
         const iframeContainer = document.querySelector('.project-iframe-container');
+        const mobileNavToggle = document.getElementById('mobileNavToggle');
 
         // Function to update iframe position based on nav width
         function updateIframePosition() {
-            const navWidth = navContainer.offsetWidth;
-            const iframeLeft = navWidth + 8; // 8px gap
-            iframeContainer.style.left = iframeLeft + 'px';
-            iframeContainer.style.width = `calc(100% - ${iframeLeft}px)`;
+            // Only adjust iframe position on desktop (mobile uses full width)
+            if (window.innerWidth > 768) {
+                const navWidth = navContainer.offsetWidth;
+                const iframeLeft = navWidth + 8; // 8px gap
+                iframeContainer.style.left = iframeLeft + 'px';
+                iframeContainer.style.width = `calc(100% - ${iframeLeft}px)`;
+            } else {
+                // Mobile: iframe takes full width
+                iframeContainer.style.left = '0';
+                iframeContainer.style.width = '100%';
+            }
         }
+
+        // Mobile nav toggle functionality
+        function toggleMobileNav() {
+            if (window.innerWidth <= 768) {
+                navContainer.classList.toggle('nav-open');
+            }
+        }
+        
+        // Close mobile nav when clicking outside or on a link
+        function closeMobileNav() {
+            if (window.innerWidth <= 768) {
+                navContainer.classList.remove('nav-open');
+            }
+        }
+        
+        // Event listeners for mobile nav
+        if (mobileNavToggle) {
+            mobileNavToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleMobileNav();
+            });
+        }
+        
+        // Close nav when clicking on a project link (mobile only)
+        document.querySelectorAll('a[data-project]').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    closeMobileNav();
+                }
+            });
+        });
+        
+        // Close nav when clicking outside (mobile only)
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768 && 
+                navContainer.classList.contains('nav-open') &&
+                !navContainer.contains(e.target) &&
+                !mobileNavToggle.contains(e.target)) {
+                closeMobileNav();
+            }
+        });
 
         // Update on load and resize
         updateIframePosition();
-        window.addEventListener('resize', updateIframePosition);
+        window.addEventListener('resize', () => {
+            updateIframePosition();
+            // Close nav when switching from mobile to desktop
+            if (window.innerWidth > 768) {
+                navContainer.classList.remove('nav-open');
+            }
+        });
         
         // Also update after a short delay to ensure nav is fully rendered
         setTimeout(updateIframePosition, 100);

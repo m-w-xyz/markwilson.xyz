@@ -52,7 +52,14 @@
             }
             #text-input {
                 padding: 12px 20px;
+                font-size: 16px; /* Prevent zoom on iOS */
             }
+        }
+        
+        /* Touch-friendly input */
+        #text-input {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
     </style>
 </head>

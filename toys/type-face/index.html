@@ -153,6 +153,68 @@
         .eye-letter.scaling, .mouth-letter.scaling, .nose-letter.scaling {
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .eye-letter, .mouth-letter, .nose-letter {
+                font-size: 60px;
+            }
+            
+            .hide-video-control {
+                bottom: 10px;
+                left: 10px;
+            }
+            
+            .hide-camera-button {
+                padding: 12px 18px;
+                font-size: 13px;
+            }
+            
+            .threshold-controls {
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                min-width: auto;
+                max-width: calc(100% - 20px);
+                font-size: 10px;
+                padding: 8px;
+            }
+            
+            .threshold-control label {
+                font-size: 10px;
+            }
+            
+            .threshold-value {
+                font-size: 10px;
+                min-width: 40px;
+            }
+            
+            .threshold-control input[type="range"] {
+                height: 24px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .eye-letter, .mouth-letter, .nose-letter {
+                font-size: 40px;
+            }
+            
+            .hide-camera-button {
+                padding: 10px 15px;
+                font-size: 12px;
+            }
+        }
+        
+        /* Touch-friendly button styles */
+        .hide-camera-button {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        
+        .threshold-control input[type="range"] {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
     </style>
 </head>
 <body>
@@ -649,7 +711,42 @@
             }
         });
         
-        camera.start();
+        // Handle camera initialization for mobile and iframe scenarios
+        function startCamera() {
+            // Check if in iframe and wait for parent camera permission
+            if (window.parent !== window.self) {
+                // We're in an iframe - request permission from parent
+                window.parent.postMessage('requestCameraStream', '*');
+                
+                // Wait for parent confirmation
+                const permissionHandler = (event) => {
+                    if (event.data && event.data.type === 'cameraStreamReady') {
+                        window.removeEventListener('message', permissionHandler);
+                        // Small delay to ensure permission is established
+                        setTimeout(() => {
+                            camera.start();
+                        }, 100);
+                    } else if (event.data && event.data.type === 'cameraStreamError') {
+                        window.removeEventListener('message', permissionHandler);
+                        // Fallback: start anyway
+                        camera.start();
+                    }
+                };
+                
+                window.addEventListener('message', permissionHandler);
+                
+                // Timeout fallback
+                setTimeout(() => {
+                    window.removeEventListener('message', permissionHandler);
+                    camera.start();
+                }, 2000);
+            } else {
+                // Not in iframe, start normally
+                camera.start();
+            }
+        }
+        
+        startCamera();
         
         function detectMouthOpen(landmarks) {
             const upperLip = landmarks[13];

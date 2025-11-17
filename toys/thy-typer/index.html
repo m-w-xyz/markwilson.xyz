@@ -54,6 +54,39 @@
             color: #ffffff;
             outline: none;
             transition: all 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        
+        @media (max-width: 768px) {
+            #text-input {
+                width: calc(100% - 40px);
+                max-width: none;
+                bottom: 15px;
+                padding: 12px;
+                font-size: 16px; /* Prevent zoom on iOS */
+            }
+            
+            .typeface-credit {
+                bottom: 15px;
+                right: 15px;
+                font-size: 10px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #text-input {
+                width: calc(100% - 20px);
+                bottom: 10px;
+                padding: 10px;
+                font-size: 16px;
+            }
+            
+            .typeface-credit {
+                bottom: 10px;
+                right: 10px;
+                font-size: 9px;
+            }
         }
         #text-input::placeholder {
             color: rgba(190, 190, 190, 0.5);
