@@ -189,12 +189,17 @@ a.active {
 @media (max-width: 768px) {
     .container {
         z-index: 200;
-        width: 200px;
-        padding: 8px 16px;
+        width: 130px;
+        padding: 8px 6px;
     }
     
     .nav-toggle {
         display: flex;
+        border: none;
+    }
+    
+    .nav-close-button {
+        border: none;
     }
     
     .project-iframe-container {
@@ -210,7 +215,8 @@ a.active {
     /* Make nav links more touch-friendly on mobile */
     .container a {
         padding: 8px 0;
-        font-size: 14px;
+        font-size: 13px;
+        white-space: nowrap;
     }
     
     /* Add extra spacing between nav items on mobile */
