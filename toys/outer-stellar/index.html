@@ -679,7 +679,7 @@ gtag('config', 'G-C437JD01VX');
         dotRotationAngles.push(0); // Initialize rotation angle for each dot
       }
     }
-    window.addEventListener('resize', makeHexagonDots);
+    // Don't reset dots on resize - preserve user's dot positions
     makeHexagonDots();
     
     // Flash effect on load - make all dots flash quickly then fade
