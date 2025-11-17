@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>outer stellar</title>
+
+  <link rel="icon" type="gif" href="assets/img/favicon-1.gif">
+
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-C437JD01VX"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+
+gtag('config', 'G-C437JD01VX');
+
+
+</script>
+
+
+  <style>
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #fff;
+    }
+    body { width: 100vw; height: 100vh; }
+    canvas { display: block; }
+    #ui-panel {
+      position: fixed;
+      top: 16px; right: 16px;
+      background: #000;
+      border: none;
+      border-radius: 0;
+      padding: 1px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      font-family: 'Inter', Arial, Helvetica, sans-serif;
+      min-width: 180px;
+      max-width: 90vw;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    #ui-panel-header {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin: 0;
+      padding: 1px;
+    }
+    #ui-panel-close {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 0;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    #ui-panel-close:hover {
+      opacity: 0.7;
+    }
+    #ui-panel-minimized {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: 30px;
+      height: 30px;
+      background: #000;
+      border: none;
+      border-radius: 0;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    #ui-panel-minimized:hover {
+      opacity: 0.7;
+    }
+    #ui-panel h2 {
+      margin: 0;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    #ui-panel label {
+      font-size: 10px;
+      font-weight: 400;
+      color: #fff;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 1px;
+      margin: 0;
+      padding: 1px;
+    }
+    #ui-panel label span {
+      min-width: 80px;
+      margin: 0;
+      padding: 0;
+    }
+    #ui-panel input[type=color] {
+      width: 32px; height: 24px; 
+      border: none !important; 
+      border-radius: 0 !important; 
+      cursor: pointer;
+      outline: none;
+      box-shadow: none !important;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+    #ui-panel input[type=color]::-webkit-color-swatch-wrapper {
+      padding: 0;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    #ui-panel input[type=color]::-webkit-color-swatch {
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+    #ui-panel input[type=color]::-moz-color-swatch {
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+    .reset-button, .download-button, .glow-toggle-button {
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 0;
+      padding: 1px;
+      margin: 1px;
+      font-size: 9px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: 'Inter', Arial, Helvetica, sans-serif;
+    }
+    .reset-button:hover, .download-button:hover, .glow-toggle-button:hover {
+      opacity: 0.8;
+    }
+    .glow-toggle-button.active {
+      background: #666;
+      color: #fff;
+    }
+    .ui-note {
+      font-size: 8px;
+      color: #999;
+      margin: 1px;
+      padding: 1px;
+      text-align: center;
+      font-style: italic;
+    }
+    .slider-container {
+      position: relative;
+      flex: 1;
+      height: 24px;
+      display: flex;
+      align-items: center;
+    }
+    .slider-track {
+      position: absolute;
+      width: 100%;
+      height: 16px;
+      background: #333;
+      border-radius: 0;
+      z-index: 1;
+    }
+    #ui-panel input[type=range] {
+      position: absolute;
+      width: 100%;
+      height: 16px;
+      margin: 0;
+      background: transparent;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer;
+      z-index: 2;
+    }
+    #ui-panel input[type=range]::-webkit-slider-track {
+      height: 16px;
+      background: #333;
+      border-radius: 0;
+    }
+    #ui-panel input[type=range]::-moz-range-track {
+      height: 16px;
+      background: #333;
+      border-radius: 0;
+    }
+    #ui-panel input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 0;
+      height: 0;
+      background: transparent;
+    }
+    #ui-panel input[type=range]::-moz-range-thumb {
+      width: 0;
+      height: 0;
+      background: transparent;
+      border: none;
+    }
+    .slider-handle {
+      position: absolute;
+      width: 36px;
+      height: 18px;
+      background: #fff;
+      border: none;
+      border-radius: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #000;
+      font-weight: 500;
+      pointer-events: none;
+      z-index: 3;
+      transform: translateX(-50%);
+    }
+    #ui-panel input[type=text] {
+      background: #1a1a1a;
+      border: none;
+      color: #fff;
+      padding: 4px 6px;
+      border-radius: 0;
+      font-size: 10px;
+      width: 50px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="flame-canvas"></canvas>
+  <button id="ui-panel-minimized">☰</button>
+  <div id="ui-panel">
+    <div id="ui-panel-header">
+      <button id="ui-panel-close">−</button>
+    </div>
+    <label><span>Inner Color</span> <input type="color" id="flame-inner" value="#00ffb3"></label>
+    <label><span>Outer Color</span> <input type="color" id="flame-outer" value="#1e90ff"></label>
+    <label><span>Intensity</span> 
+      <div class="slider-container">
+        <div class="slider-track"></div>
+        <input type="range" id="flame-intensity" min="0.1" max="10" step="0.01" value="2">
+        <div class="slider-handle" id="intensity-handle">2.00</div>
+      </div>
+    </label>
+    <label><span>Dot Size</span> 
+      <div class="slider-container">
+        <div class="slider-track"></div>
+        <input type="range" id="dot-size" min="2" max="80" step="1" value="35">
+        <div class="slider-handle" id="dot-size-handle">35</div>
+      </div>
+    </label>
+    <label><span>Rotation</span> 
+      <div class="slider-container">
+        <div class="slider-track"></div>
+        <input type="range" id="rotation-speed" min="0" max="5" step="0.01" value="2">
+        <div class="slider-handle" id="rotation-handle">2.00</div>
+      </div>
+    </label>
+    <label><span>Background</span> <input type="color" id="bg-color" value="#000000"></label>
+    <label><span>Dot color</span> <input type="color" id="dot-color" value="#000000"></label>
+    <button class="glow-toggle-button" id="glow-toggle-button">Turn on glow</button>
+    <button class="reset-button" id="coordinates-toggle-button">Show coordinates</button>
+    <button class="reset-button" id="reverse-rotation-button">Reverse rotation</button>
+    <button class="reset-button" id="reset-button">Reset</button>
+    <button class="download-button" id="download-button">Download JPEG</button>
+    <div class="ui-note">Wave a hand in front of your camera</div>
+  </div>
+  <script>
+    // UI controls
+    const flameInnerInput = document.getElementById('flame-inner');
+    const flameOuterInput = document.getElementById('flame-outer');
+    const flameIntensityInput = document.getElementById('flame-intensity');
+    const dotSizeInput = document.getElementById('dot-size');
+    const rotationSpeedInput = document.getElementById('rotation-speed');
+    const bgColorInput = document.getElementById('bg-color');
+    const dotColorInput = document.getElementById('dot-color');
+    const intensityHandle = document.getElementById('intensity-handle');
+    const dotSizeHandle = document.getElementById('dot-size-handle');
+    const rotationHandle = document.getElementById('rotation-handle');
+    const glowToggleButton = document.getElementById('glow-toggle-button');
+    const coordinatesToggleButton = document.getElementById('coordinates-toggle-button');
+    const reverseRotationButton = document.getElementById('reverse-rotation-button');
+    
+    let flameInner = '#00ffb3', flameOuter = '#1e90ff', flameIntensity = 2, bgColor = '#000000';
+    let dotColor = '#000000';
+    let rotationSpeed = 2;
+    let rotationAngle = 0;
+    let dotRotationAngles = []; // Track individual rotation angles for each dot
+    let glowReversed = true; // When true, mouse/hand removes glow instead of adding it (default: on)
+    let showCoordinates = false; // Toggle for showing coordinates
+    let rotationDirection = 1; // 1 for clockwise, -1 for counterclockwise
+    
+    // Flash effect variables
+    let pageLoadTime = Date.now();
+    let flashStartTime = Date.now();
+    const flashDuration = 2000; // 2 seconds for flash and fade
+    
+    // Function to trigger flash effect (called when UI settings change)
+    // Only triggers when glow is turned off (glowReversed = false)
+    function triggerFlash() {
+      if (!glowReversed) {
+        flashStartTime = Date.now();
+      }
+    }
+    
+    flameInnerInput.oninput = e => {
+      flameInner = e.target.value;
+      if (!glowReversed) triggerFlash();
+    };
+    flameOuterInput.oninput = e => {
+      flameOuter = e.target.value;
+      if (!glowReversed) triggerFlash();
+    };
+    bgColorInput.oninput = e => {
+      bgColor = e.target.value;
+      if (!glowReversed) triggerFlash();
+    };
+    dotColorInput.oninput = e => {
+      dotColor = e.target.value;
+      if (!glowReversed) triggerFlash();
+    };
+    
+    // Custom slider update function
+    function updateSliderHandle(slider, handle, min, max) {
+      const value = parseFloat(slider.value);
+      const percent = ((value - min) / (max - min)) * 100;
+      const container = slider.closest('.slider-container');
+      const containerWidth = container.offsetWidth;
+      const handleWidth = 36; // Width of the handle in pixels
+      const minLeft = (handleWidth / 2) / containerWidth * 100;
+      const maxLeft = 100 - (handleWidth / 2) / containerWidth * 100;
+      const constrainedPercent = Math.max(minLeft, Math.min(maxLeft, percent));
+      handle.style.left = constrainedPercent + '%';
+      handle.textContent = value.toFixed(2);
+    }
+    
+    // Track active slider for dragging outside bounds
+    let activeSlider = null;
+    
+    function handleSliderInput(slider, handle, min, max, callback) {
+      return (e) => {
+        callback(+e.target.value);
+        updateSliderHandle(slider, handle, min, max);
+      };
+    }
+    
+    function handleSliderMouseDown(slider) {
+      return () => {
+        activeSlider = slider;
+      };
+    }
+    
+    flameIntensityInput.oninput = handleSliderInput(flameIntensityInput, intensityHandle, 0.1, 10, (val) => {
+      flameIntensity = val;
+      if (!glowReversed) triggerFlash();
+    });
+    dotSizeInput.oninput = (e) => {
+      dotRadius = +e.target.value;
+      updateSliderHandle(dotSizeInput, dotSizeHandle, 2, 80);
+      dotSizeHandle.textContent = Math.round(dotRadius).toString();
+      if (!glowReversed) triggerFlash();
+    };
+    rotationSpeedInput.oninput = handleSliderInput(rotationSpeedInput, rotationHandle, 0, 5, (val) => {
+      rotationSpeed = val;
+      if (!glowReversed) triggerFlash();
+    });
+    
+    flameIntensityInput.onmousedown = handleSliderMouseDown(flameIntensityInput);
+    dotSizeInput.onmousedown = handleSliderMouseDown(dotSizeInput);
+    rotationSpeedInput.onmousedown = handleSliderMouseDown(rotationSpeedInput);
+    
+    // Allow dragging even when cursor moves off slider
+    document.addEventListener('mousemove', (e) => {
+      if (activeSlider) {
+        const rect = activeSlider.getBoundingClientRect();
+        const container = activeSlider.closest('.slider-container');
+        const containerWidth = container.offsetWidth;
+        const handleWidth = 36;
+        const minLeft = (handleWidth / 2) / containerWidth * 100;
+        const maxLeft = 100 - (handleWidth / 2) / containerWidth * 100;
+        
+        // Calculate mouse position as percentage of slider
+        const mousePercent = ((e.clientX - rect.left) / rect.width) * 100;
+        
+        // Constrain mouse position to handle bounds
+        // When handle is at minLeft, value should be min
+        // When handle is at maxLeft, value should be max
+        const constrainedPercent = Math.max(minLeft, Math.min(maxLeft, mousePercent));
+        
+        // Map constrained handle position to value
+        const handleRange = maxLeft - minLeft;
+        const valuePercent = (constrainedPercent - minLeft) / handleRange; // 0 to 1
+        
+        const min = parseFloat(activeSlider.min);
+        const max = parseFloat(activeSlider.max);
+        const value = min + valuePercent * (max - min);
+        
+        activeSlider.value = value;
+        activeSlider.dispatchEvent(new Event('input'));
+      }
+    });
+    
+    document.addEventListener('mouseup', () => {
+      activeSlider = null;
+    });
+    
+    // Initialize slider handle positions
+    updateSliderHandle(flameIntensityInput, intensityHandle, 0.1, 10);
+    updateSliderHandle(dotSizeInput, dotSizeHandle, 2, 80);
+    dotSizeHandle.textContent = '35';
+    updateSliderHandle(rotationSpeedInput, rotationHandle, 0, 5);
+    
+    // Download JPEG button
+    document.getElementById('download-button').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'glowing-dots.jpg';
+      link.href = canvas.toDataURL('image/jpeg', 0.95);
+      link.click();
+    });
+    
+    // Minimize button (toggle UI panel)
+    const uiPanel = document.getElementById('ui-panel');
+    const uiPanelMinimized = document.getElementById('ui-panel-minimized');
+    document.getElementById('ui-panel-close').addEventListener('click', () => {
+      uiPanel.style.display = 'none';
+      uiPanelMinimized.style.display = 'flex';
+    });
+    uiPanelMinimized.addEventListener('click', () => {
+      uiPanel.style.display = 'flex';
+      uiPanelMinimized.style.display = 'none';
+    });
+    
+    // Reset button
+    const defaultValues = {
+      flameInner: '#00ffb3',
+      flameOuter: '#1e90ff',
+      flameIntensity: 2,
+      bgColor: '#000000',
+      dotColor: '#000000',
+      dotSize: 35,
+      rotationSpeed: 2
+    };
+    
+    document.getElementById('reset-button').addEventListener('click', () => {
+      flameInner = defaultValues.flameInner;
+      flameOuter = defaultValues.flameOuter;
+      flameIntensity = defaultValues.flameIntensity;
+      bgColor = defaultValues.bgColor;
+      dotColor = defaultValues.dotColor;
+      dotRadius = defaultValues.dotSize;
+      rotationSpeed = defaultValues.rotationSpeed;
+      
+      flameInnerInput.value = defaultValues.flameInner;
+      flameOuterInput.value = defaultValues.flameOuter;
+      flameIntensityInput.value = defaultValues.flameIntensity;
+      bgColorInput.value = defaultValues.bgColor;
+      dotColorInput.value = defaultValues.dotColor;
+      dotSizeInput.value = defaultValues.dotSize;
+      rotationSpeedInput.value = defaultValues.rotationSpeed;
+      
+      updateSliderHandle(flameIntensityInput, intensityHandle, 0.1, 10);
+      updateSliderHandle(dotSizeInput, dotSizeHandle, 2, 80);
+      updateSliderHandle(rotationSpeedInput, rotationHandle, 0, 5);
+      
+      // Reset rotation angles
+      rotationAngle = 0;
+      dotRotationAngles = [];
+      
+      // Reset dots to original hexagonal arrangement
+      makeHexagonDots();
+      
+      // Reset glow toggle to default (on)
+      glowReversed = true;
+      glowToggleButton.classList.add('active');
+      glowToggleButton.textContent = 'Turn off glow';
+      
+      // Reset coordinates toggle
+      showCoordinates = false;
+      coordinatesToggleButton.classList.remove('active');
+      coordinatesToggleButton.textContent = 'Show coordinates';
+      
+      // Reset rotation direction
+      rotationDirection = 1;
+      reverseRotationButton.classList.remove('active');
+      reverseRotationButton.textContent = 'Reverse rotation';
+    });
+    
+    // Initialize glow toggle button (default: on)
+    glowToggleButton.classList.add('active');
+    glowToggleButton.textContent = 'Turn off glow';
+    
+    // Glow toggle button
+    glowToggleButton.addEventListener('click', () => {
+      glowReversed = !glowReversed;
+      if (glowReversed) {
+        glowToggleButton.classList.add('active');
+        glowToggleButton.textContent = 'Turn off glow';
+      } else {
+        glowToggleButton.classList.remove('active');
+        glowToggleButton.textContent = 'Turn on glow';
+      }
+      // Don't trigger flash when toggling glow button
+    });
+    
+    // Coordinates toggle button
+    coordinatesToggleButton.addEventListener('click', () => {
+      showCoordinates = !showCoordinates;
+      if (showCoordinates) {
+        coordinatesToggleButton.classList.add('active');
+        coordinatesToggleButton.textContent = 'Hide coordinates';
+      } else {
+        coordinatesToggleButton.classList.remove('active');
+        coordinatesToggleButton.textContent = 'Show coordinates';
+      }
+    });
+    
+    // Reverse rotation button
+    reverseRotationButton.addEventListener('click', () => {
+      rotationDirection *= -1;
+      if (rotationDirection === -1) {
+        reverseRotationButton.classList.add('active');
+        reverseRotationButton.textContent = 'Normal rotation';
+      } else {
+        reverseRotationButton.classList.remove('active');
+        reverseRotationButton.textContent = 'Reverse rotation';
+      }
+    });
+
+    // Canvas setup
+    const canvas = document.getElementById('flame-canvas');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Dot hand pattern (relative positions, centered)
+    const handDotPattern = [
+      // Thumb (left)
+      {x: -60, y: 0}, {x: -50, y: -30}, {x: -40, y: -60},
+      // Index
+      {x: -20, y: -70}, {x: 0, y: -80}, {x: 20, y: -70},
+      // Middle
+      {x: 40, y: -60}, {x: 50, y: -30}, {x: 60, y: 0},
+      // Palm (bottom row)
+      {x: -40, y: 40}, {x: -20, y: 55}, {x: 0, y: 60}, {x: 20, y: 55}, {x: 40, y: 40}
+    ];
+    let dots = [];
+    function updateHandDots() {
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      dots = handDotPattern.map(pt => ({
+        x: cx + pt.x * 2.2, // scale up for visibility
+        y: cy + pt.y * 2.2,
+        flameRadius: 0,
+        targetRadius: 0
+      }));
+    }
+    window.addEventListener('resize', updateHandDots);
+    updateHandDots();
+    let dotRadius = 35;
+
+    // Easing function
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    // Hand tracking setup
+    let handLandmarks = [];
+    let handPresent = false;
+    const video = document.createElement('video');
+    video.setAttribute('autoplay', '');
+    video.setAttribute('playsinline', '');
+    video.style.display = 'none';
+    document.body.appendChild(video);
+    const script1 = document.createElement('script');
+    script1.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js';
+    document.head.appendChild(script1);
+    const script2 = document.createElement('script');
+    script2.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js';
+    document.head.appendChild(script2);
+    function setupHandTracking() {
+      if (!window.Hands || !window.Camera) {
+        setTimeout(setupHandTracking, 200);
+        return;
+      }
+      const hands = new Hands({
+        locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+      hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.7,
+        minTrackingConfidence: 0.7
+      });
+      hands.onResults(results => {
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+          handLandmarks = results.multiHandLandmarks[0].map(pt => ({
+            x: canvas.width - pt.x * canvas.width, // mirror X
+            y: pt.y * canvas.height
+          }));
+          handPresent = true;
+        } else {
+          handPresent = false;
+          handLandmarks = [];
+        }
+      });
+      const camera = new Camera(video, {
+        onFrame: async () => {
+          await hands.send({image: video});
+        },
+        width: 640,
+        height: 480
+      });
+      camera.start();
+    }
+    setupHandTracking();
+
+    // Flame/heatmap effect
+    function hexToRgba(hex, alpha=1) {
+      let c = hex.replace('#','');
+      if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+      const num = parseInt(c, 16);
+      return `rgba(${(num>>16)&255},${(num>>8)&255},${num&255},${alpha})`;
+    }
+    // --- Dot interaction: add and drag dots ---
+    // Start with a hexagonal pattern of 6 dots
+    // Store base positions for rotation (relative to center)
+    let baseDotPositions = [];
+    function updateBasePositionForDot(dot, index) {
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const baseX = dot.x - cx;
+      const baseY = dot.y - cy;
+      if (index < baseDotPositions.length) {
+        baseDotPositions[index] = {x: baseX, y: baseY};
+      } else {
+        baseDotPositions.push({x: baseX, y: baseY});
+      }
+    }
+    function makeHexagonDots() {
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const r = Math.min(canvas.width, canvas.height) * 0.12; // Much closer together
+      dots = [];
+      baseDotPositions = [];
+      dotRotationAngles = [];
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * 2 * Math.PI - Math.PI / 2; // Start from top
+        const baseX = Math.cos(angle) * r;
+        const baseY = Math.sin(angle) * r;
+        baseDotPositions.push({x: baseX, y: baseY});
+        dots.push({
+          x: cx + baseX,
+          y: cy + baseY,
+          flameRadius: 0,
+          targetRadius: glowReversed ? 220 * flameIntensity : 0 // Start with target if glow is on
+        });
+        dotRotationAngles.push(0); // Initialize rotation angle for each dot
+      }
+    }
+    window.addEventListener('resize', makeHexagonDots);
+    makeHexagonDots();
+    
+    // Flash effect on load - make all dots flash quickly then fade
+    function applyFlashEffect() {
+      const elapsed = Date.now() - flashStartTime;
+      if (elapsed < flashDuration) {
+        const progress = elapsed / flashDuration;
+        // Quick flash (first 20% of duration), then fade
+        if (progress < 0.2) {
+          // Flash phase - set all dots to high flame radius
+          const flashIntensity = 1 - (progress / 0.2); // Fade from 1 to 0
+          for (const dot of dots) {
+            dot.flameRadius = 300 * flashIntensity;
+            dot.targetRadius = 300 * flashIntensity;
+          }
+        } else {
+          // Fade phase - gradually reduce
+          const fadeProgress = (progress - 0.2) / 0.8; // 0 to 1 over remaining 80%
+          const fadeIntensity = 1 - fadeProgress;
+          for (const dot of dots) {
+            dot.flameRadius = 300 * fadeIntensity;
+            dot.targetRadius = 300 * fadeIntensity;
+          }
+        }
+      }
+    }
+
+    let draggingDot = null;
+    let dragOffset = {x: 0, y: 0};
+    let lastClickTime = 0;
+    let lastClickDot = null;
+    
+    canvas.addEventListener('mousedown', e => {
+      const mx = e.offsetX, my = e.offsetY;
+      let clickedDot = null;
+      
+      for (const dot of dots) {
+        const d = Math.hypot(dot.x - mx, dot.y - my);
+        if (d < dotRadius + 8) {
+          clickedDot = dot;
+          break;
+        }
+      }
+      
+      if (clickedDot) {
+        const currentTime = Date.now();
+        // Check for double-click (within 300ms and same dot)
+        if (currentTime - lastClickTime < 300 && lastClickDot === clickedDot) {
+          // Remove the dot
+          const index = dots.indexOf(clickedDot);
+          if (index > -1) {
+            dots.splice(index, 1);
+            // Also remove base position and rotation angle if they exist
+            if (index < baseDotPositions.length) {
+              baseDotPositions.splice(index, 1);
+            }
+            if (index < dotRotationAngles.length) {
+              dotRotationAngles.splice(index, 1);
+            }
+          }
+          lastClickTime = 0;
+          lastClickDot = null;
+          return;
+        }
+        // Single click - start dragging
+        draggingDot = clickedDot;
+        dragOffset.x = clickedDot.x - mx;
+        dragOffset.y = clickedDot.y - my;
+        lastClickTime = currentTime;
+        lastClickDot = clickedDot;
+        return;
+      }
+      // If not clicking on a dot, add a new dot at cursor position
+      // Start with some initial glow for immediate responsiveness
+      const initialGlow = glowReversed ? 220 * flameIntensity * 0.3 : 0;
+      const newDot = {x: mx, y: my, flameRadius: initialGlow, targetRadius: glowReversed ? 220 * flameIntensity : 250, isNewDot: true};
+      dots.push(newDot);
+      dotRotationAngles.push(0); // Initialize rotation angle for new dot
+      
+      // Calculate base position accounting for current rotation
+      // We need to inverse-rotate the click position to get the correct base position
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const relX = mx - cx;
+      const relY = my - cy;
+      
+      // Inverse rotation: rotate by -rotationAngle
+      const cos = Math.cos(-rotationAngle);
+      const sin = Math.sin(-rotationAngle);
+      const baseX = relX * cos - relY * sin;
+      const baseY = relX * sin + relY * cos;
+      
+      // Store the inverse-rotated base position
+      const index = dots.length - 1;
+      if (index < baseDotPositions.length) {
+        baseDotPositions[index] = {x: baseX, y: baseY};
+      } else {
+        baseDotPositions.push({x: baseX, y: baseY});
+      }
+      
+      // If rotation is active, immediately apply it so dot appears at click position
+      // (The base position is already inverse-rotated, so applying rotation gives us the click position)
+      if (rotationSpeed > 0) {
+        const rotCos = Math.cos(rotationAngle);
+        const rotSin = Math.sin(rotationAngle);
+        newDot.x = cx + baseX * rotCos - baseY * rotSin;
+        newDot.y = cy + baseX * rotSin + baseY * rotCos;
+      }
+      
+      // Make new dot glow (will animate up slowly)
+      lastClickTime = 0;
+      lastClickDot = null;
+    });
+    // Track mouse position for flame effect
+    let mouseX = -1, mouseY = -1;
+    canvas.addEventListener('mousemove', e => {
+      mouseX = e.offsetX;
+      mouseY = e.offsetY;
+      if (draggingDot) {
+        draggingDot.x = e.offsetX + dragOffset.x;
+        draggingDot.y = e.offsetY + dragOffset.y;
+        // Update base position when dragging (accounting for current dot's rotation)
+        const index = dots.indexOf(draggingDot);
+        if (index >= 0) {
+          const cx = canvas.width / 2;
+          const cy = canvas.height / 2;
+          const relX = draggingDot.x - cx;
+          const relY = draggingDot.y - cy;
+          
+          // Inverse rotation: rotate by -dotRotationAngles[index] to get base position
+          const currentAngle = dotRotationAngles[index] || 0;
+          const cos = Math.cos(-currentAngle);
+          const sin = Math.sin(-currentAngle);
+          const baseX = relX * cos - relY * sin;
+          const baseY = relX * sin + relY * cos;
+          
+          if (index < baseDotPositions.length) {
+            baseDotPositions[index] = {x: baseX, y: baseY};
+          } else {
+            baseDotPositions.push({x: baseX, y: baseY});
+          }
+          // Ensure rotation angle exists for this dot
+          if (index >= dotRotationAngles.length) {
+            dotRotationAngles.push(0);
+          }
+        }
+      }
+    });
+    canvas.addEventListener('mouseleave', () => {
+      mouseX = -1;
+      mouseY = -1;
+    });
+    window.addEventListener('mouseup', () => { draggingDot = null; });
+
+    // --- Higher fidelity hand tracking: use all landmarks for flame ---
+    function updateFlames() {
+      for (const dot of dots) {
+        // Find closest hand landmark
+        let minDist = Infinity;
+        if (handPresent && handLandmarks.length > 0) {
+          for (const pt of handLandmarks) {
+            const dist = Math.sqrt((pt.x - dot.x) ** 2 + (pt.y - dot.y) ** 2);
+            if (dist < minDist) minDist = dist;
+          }
+        } else {
+          minDist = 9999;
+        }
+        
+        // Also check mouse distance
+        let mouseDist = 9999;
+        if (mouseX >= 0 && mouseY >= 0) {
+          mouseDist = Math.sqrt((mouseX - dot.x) ** 2 + (mouseY - dot.y) ** 2);
+        }
+        
+        // When "Turn on glow" is active, use reverse proximity logic
+        if (glowReversed) {
+          // Reversed mode: proximity removes glow instead of adding it
+          // Use the closer of hand or mouse
+          const closestDist = Math.min(minDist, mouseDist);
+          
+          // Reverse logic: close = less glow, far = full glow
+          let baseRadius = 220 * flameIntensity; // Start with full glow
+          if (closestDist < 150) {
+            // Close = reduce glow based on proximity
+            baseRadius = 220 * flameIntensity * (closestDist / 150);
+          }
+          // else: far = keep full glow
+          
+          dot.targetRadius = Math.max(0, baseRadius);
+          if (dot.isNewDot) dot.isNewDot = false;
+          
+          // Ease the radius - quickly decrease when close, quickly increase when far (for responsiveness)
+          if (dot.targetRadius < dot.flameRadius) {
+            // Quickly decrease (fade out when close)
+            dot.flameRadius = lerp(dot.flameRadius, dot.targetRadius, 0.35);
+          } else {
+            // Quickly increase (fade in when far) - faster for new dots
+            const lerpRate = dot.isNewDot ? 0.5 : 0.25;
+            dot.flameRadius = lerp(dot.flameRadius, dot.targetRadius, lerpRate);
+          }
+        } else {
+          // Normal mode: proximity-based glow (when glow is turned off)
+          // Mouse and hand movements work normally - proximity adds glow
+          // Use the closer of hand or mouse
+          const closestDist = Math.min(minDist, mouseDist);
+          
+          // Set target flame radius based on proximity and intensity
+          let baseRadius = 0;
+          if (closestDist < 150) baseRadius = 220 * (1 - closestDist / 150) * flameIntensity; // Increased radius of influence
+          else baseRadius = 0;
+          
+          // For new dots, prioritize the flash effect
+          if (dot.isNewDot && dot.targetRadius > baseRadius) {
+            // Keep the flash target, but let it fade naturally
+            // Remove the flag after a short time or when flash is complete
+            if (dot.flameRadius >= dot.targetRadius * 0.95) {
+              dot.isNewDot = false;
+              dot.targetRadius = Math.max(0, baseRadius);
+            }
+          } else {
+            dot.targetRadius = Math.max(0, baseRadius);
+            if (dot.isNewDot) dot.isNewDot = false;
+          }
+          
+          // Ease the radius - quickly increase, slowly decrease
+          if (dot.targetRadius > dot.flameRadius) {
+            // For new dots, use faster lerp for immediate responsiveness
+            const lerpRate = dot.isNewDot ? 0.5 : 0.35;
+            dot.flameRadius = lerp(dot.flameRadius, dot.targetRadius, lerpRate);
+          } else {
+            // Slowly decrease (fade out)
+            dot.flameRadius = lerp(dot.flameRadius, dot.targetRadius, 0.08);
+          }
+        }
+      }
+    }
+    // --- Gradient flame: inner less blurry, outer more blurry/wider with eased trail effect ---
+    function drawFlame() {
+      ctx.save();
+      
+      // Draw solid background first (always fresh)
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Fade previous frame's content (creates trail effect)
+      // Stop fading after 3.1 seconds (opacity should be 0)
+      const timeSinceLoad = Date.now() - pageLoadTime;
+      const fadeDuration = 3100; // 3.1 seconds
+      
+      if (timeSinceLoad < fadeDuration) {
+        // Use destination-over to blend faded content behind background
+        ctx.globalCompositeOperation = 'destination-over';
+        // Fade over 3 seconds, then stop (opacity becomes 0)
+        const fadeProgress = Math.min(1, timeSinceLoad / 3000); // 0 to 1 over 3 seconds
+        const fadeAlpha = 0.985 * (1 - fadeProgress); // Gradually reduce fade alpha to 0
+        ctx.globalAlpha = fadeAlpha;
+        
+        // Draw a subtle overlay to fade previous flames
+        const fadeGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        fadeGradient.addColorStop(0, hexToRgba(flameInner, 0.05));
+        fadeGradient.addColorStop(0.5, hexToRgba(flameOuter, 0.04));
+        fadeGradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = fadeGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      
+      // Reset for drawing new flames
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      
+      for (const dot of dots) {
+        if (dot.flameRadius > 0.5) {
+          // Scale glow radius relative to dot size (default 35)
+          const dotSizeScale = dotRadius / 35; // Scale factor: 2px = 0.057, 35px = 1.0, 80px = 2.29
+          
+          // Inner flame (less blurry, size scales with dot size)
+          let innerFlameSize = dot.flameRadius * 0.35 * dotSizeScale;
+          // Ensure minimum glow size for visibility, especially for small dots
+          // Minimum should be proportional to flame intensity and dot size
+          const minInnerSize = Math.max(4, dotRadius * 0.5) * (flameIntensity / 2); // Scale with intensity
+          innerFlameSize = Math.max(innerFlameSize, minInnerSize);
+          const gradInner = ctx.createRadialGradient(dot.x, dot.y, 0, dot.x, dot.y, innerFlameSize);
+          gradInner.addColorStop(0, hexToRgba(flameInner, 0.95));
+          gradInner.addColorStop(1, hexToRgba(flameInner, 0));
+          ctx.globalAlpha = 1;
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, innerFlameSize, 0, 2 * Math.PI);
+          ctx.closePath();
+          ctx.fillStyle = gradInner;
+          ctx.filter = 'blur(12px)';
+          ctx.fill();
+          ctx.filter = 'none';
+          
+          // Outer flame (more blurry, smaller) - scale with dot size, reduced radius
+          let outerFlameSize = dot.flameRadius * 0.6 * dotSizeScale; // Reduced from 0.85 to 0.6
+          // Ensure minimum outer glow size for visibility
+          // Minimum should be proportional to flame intensity and dot size
+          const minOuterSize = Math.max(6, dotRadius * 0.7) * (flameIntensity / 2); // Scale with intensity
+          outerFlameSize = Math.max(outerFlameSize, minOuterSize);
+          const gradOuter = ctx.createRadialGradient(dot.x, dot.y, dot.flameRadius * 0.3, dot.x, dot.y, outerFlameSize);
+          gradOuter.addColorStop(0, hexToRgba(flameOuter, 0.35));
+          gradOuter.addColorStop(1, hexToRgba(flameOuter, 0));
+          ctx.globalAlpha = 1;
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, outerFlameSize, 0, 2 * Math.PI);
+          ctx.closePath();
+          ctx.fillStyle = gradOuter;
+          ctx.filter = 'blur(48px)';
+          ctx.fill();
+          ctx.filter = 'none';
+        }
+      }
+      ctx.restore();
+    }
+    function drawDots() {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = dotColor;
+      ctx.font = '7.5px Inter, Arial, Helvetica, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      for (const dot of dots) {
+        // Draw dot
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, dotRadius, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Draw coordinates to the right of the dot (if enabled)
+        if (showCoordinates) {
+          const coordText = `(${Math.round(dot.x)}, ${Math.round(dot.y)})`;
+          ctx.fillText(coordText, dot.x + dotRadius + 3, dot.y);
+        }
+      }
+      ctx.restore();
+    }
+    function animate() {
+      // Apply rotation to all dots
+      if (rotationSpeed > 0) {
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        // Ensure base positions and rotation angles exist for all dots
+        while (baseDotPositions.length < dots.length) {
+          const dot = dots[baseDotPositions.length];
+          updateBasePositionForDot(dot, baseDotPositions.length);
+        }
+        while (dotRotationAngles.length < dots.length) {
+          dotRotationAngles.push(0);
+        }
+        
+        // Calculate max distance (diagonal of canvas) for speed calculation
+        const maxDist = Math.sqrt(canvas.width * canvas.width + canvas.height * canvas.height) / 2;
+        
+        // Rotate all dots with speed based on distance from center
+        for (let i = 0; i < dots.length && i < baseDotPositions.length; i++) {
+          // Skip rotation for dot that's currently being dragged
+          if (draggingDot === dots[i]) {
+            continue;
+          }
+          
+          const base = baseDotPositions[i];
+          // Calculate distance from center
+          const distFromCenter = Math.sqrt(base.x * base.x + base.y * base.y);
+          // Speed multiplier: closer to center = faster (1.0), further = slower (approaches 0.05)
+          // Use a very strong curve to make outer dots rotate much slower
+          const normalizedDist = Math.min(1, distFromCenter / maxDist);
+          // Use exponential curve for more dramatic speed difference
+          const speedMultiplier = Math.pow(1 - normalizedDist, 2.5); // Furthest dots rotate at ~5% speed, creates very noticeable difference
+          
+          // Update individual rotation angle for this dot at its own speed
+          dotRotationAngles[i] += rotationSpeed * 0.001 * speedMultiplier * rotationDirection;
+          if (dotRotationAngles[i] > Math.PI * 2) dotRotationAngles[i] -= Math.PI * 2;
+          if (dotRotationAngles[i] < 0) dotRotationAngles[i] += Math.PI * 2;
+          
+          // Apply rotation using the dot's individual angle
+          const cos = Math.cos(dotRotationAngles[i]);
+          const sin = Math.sin(dotRotationAngles[i]);
+          
+          // Rotate base position around center
+          dots[i].x = cx + base.x * cos - base.y * sin;
+          dots[i].y = cy + base.x * sin + base.y * cos;
+        }
+      }
+      
+      updateFlames();
+      
+      drawFlame();
+      drawDots();
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html> 
