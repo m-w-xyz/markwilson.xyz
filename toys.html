@@ -49,18 +49,20 @@ body {
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid #6a6a6a;
     color: #dbdbdb;
-    padding: 8px 12px;
+    padding: 8px;
     cursor: pointer;
     font-family: Arial, sans-serif;
-    font-size: 14px;
+    font-size: 18px;
     border-radius: 0;
     transition: all 0.2s ease;
     margin-bottom: 8px;
     min-height: 44px; /* Touch-friendly */
-    width: auto;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
+    line-height: 1;
 }
 
 .nav-close-button:hover {
@@ -83,13 +85,18 @@ body {
     background: rgba(0, 0, 0, 0.8);
     border: 2px solid #6a6a6a;
     color: #dbdbdb;
-    padding: 8px 12px;
+    padding: 8px;
     cursor: pointer;
     font-family: Arial, sans-serif;
-    font-size: 12px;
+    font-size: 18px;
     border-radius: 0;
     transition: all 0.2s ease;
+    width: 40px;
+    height: 40px;
     display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 }
 
 .nav-toggle:hover {
@@ -98,18 +105,21 @@ body {
 }
 
 .nav-toggle.visible {
-    display: block;
+    display: flex;
 }
 
-/* Desktop: allow hiding nav too */
+/* Desktop: hide toggle button, nav always visible */
 @media (min-width: 769px) {
     .nav-toggle {
-        display: block;
-        z-index: 102;
+        display: none !important;
     }
     
-    .container.hidden ~ .nav-toggle {
-        left: 8px;
+    .container {
+        transform: none !important; /* Always visible on desktop */
+    }
+    
+    .container.hidden {
+        transform: none !important; /* Override hidden state on desktop */
     }
 }
 
@@ -183,7 +193,7 @@ a.active {
     }
     
     .nav-toggle {
-        display: block;
+        display: flex;
     }
     
     .project-iframe-container {
@@ -201,6 +211,11 @@ a.active {
         padding: 8px 0;
         font-size: 14px;
     }
+    
+    /* Add extra spacing between nav items on mobile */
+    .container > div {
+        margin-bottom: 5px;
+    }
 }
 
 </style>
@@ -208,9 +223,9 @@ a.active {
 </head>
 
 <body>
-    <button class="nav-toggle" id="navToggle">☰ Menu</button>
+    <button class="nav-toggle" id="navToggle">☰</button>
     <div class="container" id="navContainer">
-        <button class="nav-close-button" id="navCloseButton">✕ Close</button>
+        <button class="nav-close-button" id="navCloseButton">✕</button>
 
         <div class="type-face">
             <a href="./toys/type-face/" data-project="type-face">type face</a>
@@ -252,17 +267,24 @@ a.active {
         const iframeContainer = document.querySelector('.project-iframe-container');
         const navToggle = document.getElementById('navToggle');
         
-        // Toggle navigation visibility
+        // Toggle navigation visibility (mobile only)
         let navVisible = window.innerWidth > 768; // Hidden on mobile by default
         function toggleNav() {
-            navVisible = !navVisible;
-            navContainer.classList.toggle('hidden', !navVisible);
-            updateIframePosition();
+            // Only allow toggling on mobile
+            if (window.innerWidth <= 768) {
+                navVisible = !navVisible;
+                navContainer.classList.toggle('hidden', !navVisible);
+                updateIframePosition();
+            }
         }
         
         // Set initial state
         if (window.innerWidth <= 768) {
             navContainer.classList.add('hidden');
+            navVisible = false;
+        } else {
+            navContainer.classList.remove('hidden');
+            navVisible = true;
         }
         
         const navCloseButton = document.getElementById('navCloseButton');
@@ -274,9 +296,7 @@ a.active {
         
         navCloseButton.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (window.innerWidth <= 768) {
-                toggleNav();
-            }
+            toggleNav(); // Only works on mobile anyway
         });
         
         // Close nav when clicking outside on mobile
@@ -311,17 +331,11 @@ a.active {
                 iframeContainer.style.width = '100%';
                 navToggle.classList.add('visible');
             } else {
-                // Desktop: nav takes space, iframe adjusts
-                if (navVisible) {
-                    const navWidth = navContainer.offsetWidth;
-                    const iframeLeft = navWidth + 8; // 8px gap
-                    iframeContainer.style.left = iframeLeft + 'px';
-                    iframeContainer.style.width = `calc(100% - ${iframeLeft}px)`;
-                } else {
-                    iframeContainer.style.left = '0';
-                    iframeContainer.style.width = '100%';
-                }
-                navToggle.classList.remove('visible');
+                // Desktop: nav always visible, iframe adjusts to nav width
+                const navWidth = navContainer.offsetWidth;
+                const iframeLeft = navWidth + 8; // 8px gap
+                iframeContainer.style.left = iframeLeft + 'px';
+                iframeContainer.style.width = `calc(100% - ${iframeLeft}px)`;
             }
         }
 
@@ -331,11 +345,14 @@ a.active {
             const isMobile = window.innerWidth <= 768;
             if (isMobile) {
                 navToggle.classList.add('visible');
-                navVisible = false; // Hidden by default on mobile
-                navContainer.classList.add('hidden');
+                if (!navVisible) {
+                    navContainer.classList.add('hidden');
+                }
             } else {
-                // Desktop: toggle button always visible, nav can be toggled
-                navToggle.style.display = 'block';
+                // Desktop: nav always visible, no toggle button
+                navToggle.classList.remove('visible');
+                navContainer.classList.remove('hidden');
+                navVisible = true;
             }
             updateIframePosition();
         });
