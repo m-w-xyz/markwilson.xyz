@@ -242,55 +242,69 @@ a.active {
             }
         });
 
+        // Function to load a project
+        function loadProject(projectName, updateURL = true) {
+            const link = document.querySelector(`a[data-project="${projectName}"]`);
+            if (link && projectMap[projectName]) {
+                // Remove active class from all links
+                document.querySelectorAll('a[data-project]').forEach(a => {
+                    a.classList.remove('active');
+                });
+                
+                // Add active class to selected link
+                link.classList.add('active');
+                
+                // Load project in iframe
+                projectIframe.src = projectMap[projectName];
+                activeProject = projectName;
+                
+                // Update URL without reloading (if requested)
+                if (updateURL) {
+                    const newURL = projectName === 'type-face' 
+                        ? window.location.pathname 
+                        : `${window.location.pathname}?project=${projectName}`;
+                    window.history.pushState({ project: projectName }, '', newURL);
+                }
+                
+                // If it's a camera project, notify iframe when it loads
+                if (cameraProjects.includes(projectName)) {
+                    projectIframe.addEventListener('load', () => {
+                        if (cameraStream && cameraReady) {
+                            projectIframe.contentWindow.postMessage({
+                                type: 'cameraStreamReady'
+                            }, window.location.origin);
+                        }
+                    }, { once: true });
+                }
+            }
+        }
+
         // Handle project link clicks
         Object.keys(projectMap).forEach(projectName => {
             const link = document.querySelector(`a[data-project="${projectName}"]`);
             if (link) {
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
-                    
-                    // Remove active class from all links
-                    document.querySelectorAll('a[data-project]').forEach(a => {
-                        a.classList.remove('active');
-                    });
-                    
-                    // Add active class to clicked link
-                    link.classList.add('active');
-                    
-                    // Load project in iframe
-                    projectIframe.src = projectMap[projectName];
-                    activeProject = projectName;
-                    
-                    // If it's a camera project, notify iframe when it loads
-                    if (cameraProjects.includes(projectName)) {
-                        projectIframe.addEventListener('load', () => {
-                            if (cameraStream && cameraReady) {
-                                projectIframe.contentWindow.postMessage({
-                                    type: 'cameraStreamReady'
-                                }, window.location.origin);
-                            }
-                        }, { once: true });
-                    }
+                    loadProject(projectName);
                 });
             }
         });
 
-        // Set first project (type-face) as active on page load
-        const firstLink = document.querySelector('a[data-project="type-face"]');
-        if (firstLink) {
-            firstLink.classList.add('active');
-            projectIframe.src = projectMap['type-face'];
-            activeProject = 'type-face';
-            
-            // Notify iframe when it loads (type-face uses camera)
-            projectIframe.addEventListener('load', () => {
-                if (cameraStream && cameraReady) {
-                    projectIframe.contentWindow.postMessage({
-                        type: 'cameraStreamReady'
-                    }, window.location.origin);
-                }
-            }, { once: true });
-        }
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', (e) => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const projectParam = urlParams.get('project');
+            const projectToLoad = projectParam && projectMap[projectParam] ? projectParam : 'type-face';
+            loadProject(projectToLoad, false); // Don't update URL since browser already did
+        });
+
+        // Check for URL parameter to determine which project to load on page load
+        const initialUrlParams = new URLSearchParams(window.location.search);
+        const initialProjectParam = initialUrlParams.get('project');
+        const projectToLoad = initialProjectParam && projectMap[initialProjectParam] ? initialProjectParam : 'type-face';
+        
+        // Load the project (defaults to type-face if no parameter)
+        loadProject(projectToLoad, false); // Don't update URL on initial load
     </script>
 
 </body>
