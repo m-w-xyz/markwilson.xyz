@@ -44,6 +44,37 @@ body {
     transform: translateX(-100%);
 }
 
+.nav-close-button {
+    align-self: flex-end;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid #6a6a6a;
+    color: #dbdbdb;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    border-radius: 0;
+    transition: all 0.2s ease;
+    margin-bottom: 8px;
+    min-height: 44px; /* Touch-friendly */
+    width: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-close-button:hover {
+    color: #FBC6EF;
+    border-color: #FBC6EF;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+@media (min-width: 769px) {
+    .nav-close-button {
+        display: none; /* Hide on desktop */
+    }
+}
+
 .nav-toggle {
     position: fixed;
     top: 8px;
@@ -179,6 +210,7 @@ a.active {
 <body>
     <button class="nav-toggle" id="navToggle">☰ Menu</button>
     <div class="container" id="navContainer">
+        <button class="nav-close-button" id="navCloseButton">✕ Close</button>
 
         <div class="type-face">
             <a href="./toys/type-face/" data-project="type-face">type face</a>
@@ -233,9 +265,18 @@ a.active {
             navContainer.classList.add('hidden');
         }
         
+        const navCloseButton = document.getElementById('navCloseButton');
+        
         navToggle.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleNav();
+        });
+        
+        navCloseButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (window.innerWidth <= 768) {
+                toggleNav();
+            }
         });
         
         // Close nav when clicking outside on mobile
@@ -246,6 +287,21 @@ a.active {
                 }
             });
         }
+        
+        // Close nav when a nav link is clicked on mobile
+        const navLinks = document.querySelectorAll('.container a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                if (window.innerWidth <= 768) {
+                    // Small delay to allow project to load, then close nav
+                    setTimeout(() => {
+                        if (navVisible) {
+                            toggleNav();
+                        }
+                    }, 100);
+                }
+            });
+        });
 
         // Function to update iframe position based on nav width
         function updateIframePosition() {
