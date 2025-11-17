@@ -327,8 +327,22 @@ a.active {
         let cameraStream = null;
         let cameraReady = false;
 
-        // Request camera stream once and keep it active
+        // Detect if we're on mobile
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   (window.innerWidth <= 768 && 'ontouchstart' in window);
+        }
+
+        // Request camera stream once and keep it active (desktop only)
+        // On mobile, iframes must request camera access directly due to browser security restrictions
         async function initializeCamera() {
+            // Skip camera initialization on mobile - iframes will request directly
+            if (isMobile()) {
+                console.log('Mobile detected: iframes will request camera access directly');
+                cameraReady = false;
+                return;
+            }
+            
             try {
                 cameraStream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
@@ -344,7 +358,7 @@ a.active {
             }
         }
 
-        // Initialize camera when page loads
+        // Initialize camera when page loads (desktop only)
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             initializeCamera();
         }
@@ -355,7 +369,16 @@ a.active {
             if (event.origin !== window.location.origin) return;
             
             if (event.data === 'requestCameraStream') {
-                // Iframe is requesting camera stream
+                // On mobile, tell iframe to request camera directly (browser security restriction)
+                if (isMobile()) {
+                    projectIframe.contentWindow.postMessage({
+                        type: 'requestCameraDirectly',
+                        message: 'Mobile detected: request camera access directly'
+                    }, window.location.origin);
+                    return;
+                }
+                
+                // Desktop: share camera stream from parent
                 if (cameraStream && cameraReady) {
                     // Clone the stream tracks so iframe can use it
                     const clonedTracks = cameraStream.getVideoTracks().map(track => {
