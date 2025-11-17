@@ -10,6 +10,7 @@
     
 
     <link rel="icon" type="image/gif" href="assets/img/favicon-1.gif">
+    <link rel="preload" href="Penray-Extrabold.otf" as="font" type="font/otf" crossorigin="anonymous">
     
     <style>
         @font-face {
@@ -17,6 +18,14 @@
             src: url('Penray-Extrabold.otf') format('opentype');
             font-weight: normal;
             font-style: normal;
+            font-display: block; /* Prevent flash of fallback text */
+        }
+        
+        /* Hide text elements until font is loaded */
+        body:not(.font-loaded) .eye-letter,
+        body:not(.font-loaded) .mouth-letter,
+        body:not(.font-loaded) .nose-letter {
+            visibility: hidden;
         }
         
         body {
@@ -275,6 +284,31 @@
     </div>
 
     <script>
+        // Wait for font to load before showing text elements
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => {
+                // Check if Penray font is actually loaded
+                if (document.fonts.check('1em Penray')) {
+                    document.body.classList.add('font-loaded');
+                } else {
+                    // Fallback: wait a bit more and try again
+                    setTimeout(() => {
+                        if (document.fonts.check('1em Penray')) {
+                            document.body.classList.add('font-loaded');
+                        } else {
+                            // If font still not loaded after 2 seconds, show text anyway
+                            document.body.classList.add('font-loaded');
+                        }
+                    }, 500);
+                }
+            });
+        } else {
+            // Fallback for browsers without Font Loading API
+            setTimeout(() => {
+                document.body.classList.add('font-loaded');
+            }, 1000);
+        }
+        
         /*
          * NOTE ON FACIAL EXPRESSION DETECTION:
          * 
