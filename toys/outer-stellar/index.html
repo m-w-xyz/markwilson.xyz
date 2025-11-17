@@ -954,15 +954,22 @@ gtag('config', 'G-C437JD01VX');
       
       for (const dot of dots) {
         if (dot.flameRadius > 0.5) {
-          // Scale glow radius relative to dot size (default 35)
-          const dotSizeScale = dotRadius / 35; // Scale factor: 2px = 0.057, 35px = 1.0, 80px = 2.29
+          // Calculate glow sizes with guaranteed minimums that never disappear
           
-          // Inner flame (less blurry, size scales with dot size)
-          let innerFlameSize = dot.flameRadius * 0.35 * dotSizeScale;
-          // Ensure minimum glow size for visibility, especially for small dots
-          // Minimum should be proportional to flame intensity and dot size
-          const minInnerSize = Math.max(4, dotRadius * 0.5) * (flameIntensity / 2); // Scale with intensity
-          innerFlameSize = Math.max(innerFlameSize, minInnerSize);
+          // Dot size scaling factor (35px = 1.0)
+          const dotSizeScale = dotRadius / 35;
+          
+          // INNER GLOW - scales with flame radius and dot size
+          // Base inner size from flame radius
+          const baseInnerFromFlame = dot.flameRadius * 0.35;
+          // Scale with dot size
+          let innerFlameSize = baseInnerFromFlame * dotSizeScale;
+          // Guaranteed minimum inner size - ensures visibility at all dot sizes
+          const absoluteMinInner = 4 * (flameIntensity / 2);
+          const proportionalMinInner = dotRadius * 0.4 * (flameIntensity / 2);
+          innerFlameSize = Math.max(innerFlameSize, Math.max(absoluteMinInner, proportionalMinInner));
+          
+          // Draw inner glow
           const gradInner = ctx.createRadialGradient(dot.x, dot.y, 0, dot.x, dot.y, innerFlameSize);
           gradInner.addColorStop(0, hexToRgba(flameInner, 0.95));
           gradInner.addColorStop(1, hexToRgba(flameInner, 0));
@@ -975,12 +982,25 @@ gtag('config', 'G-C437JD01VX');
           ctx.fill();
           ctx.filter = 'none';
           
-          // Outer flame (more blurry, smaller) - scale with dot size, reduced radius
-          let outerFlameSize = dot.flameRadius * 0.6 * dotSizeScale; // Reduced from 0.85 to 0.6
-          // Ensure minimum outer glow size for visibility
-          // Minimum should be proportional to flame intensity and dot size
-          const minOuterSize = Math.max(6, dotRadius * 0.7) * (flameIntensity / 2); // Scale with intensity
-          outerFlameSize = Math.max(outerFlameSize, minOuterSize);
+          // OUTER GLOW - must never disappear, especially for small dots
+          // Base outer size from flame radius
+          const baseOuterFromFlame = dot.flameRadius * 0.6;
+          // Scale with dot size
+          let outerFlameSize = baseOuterFromFlame * dotSizeScale;
+          
+          // CRITICAL: Guaranteed minimum outer glow size that ALWAYS shows
+          // This ensures the outer glow never disappears, even at 2px dot size
+          // Use a combination of absolute minimum and proportional minimum
+          const absoluteMinOuter = 30 * (flameIntensity / 2); // Always at least this size
+          const proportionalMinOuter = dotRadius * 1.2 * (flameIntensity / 2); // Scales with dot
+          // Also ensure it's never smaller than a reasonable percentage of flame radius
+          const flameBasedMin = dot.flameRadius * 0.4; // At least 40% of flame radius
+          
+          // Take the maximum of all minimums to guarantee visibility
+          const guaranteedMinOuter = Math.max(absoluteMinOuter, proportionalMinOuter, flameBasedMin);
+          outerFlameSize = Math.max(outerFlameSize, guaranteedMinOuter);
+          
+          // Draw outer glow
           const gradOuter = ctx.createRadialGradient(dot.x, dot.y, dot.flameRadius * 0.3, dot.x, dot.y, outerFlameSize);
           gradOuter.addColorStop(0, hexToRgba(flameOuter, 0.35));
           gradOuter.addColorStop(1, hexToRgba(flameOuter, 0));
