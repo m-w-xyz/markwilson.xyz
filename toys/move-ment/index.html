@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kinetic Typography Test</title>
+  <style>
+    @font-face {
+      font-family: 'TWKLausanne';
+      src: url('TWKLausanne-500.otf') format('opentype');
+      font-weight: 500;
+      font-style: normal;
+    }
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+      font-family: 'TWKLausanne', Arial, Helvetica, sans-serif;
+    }
+    #side-panel {
+      position: fixed;
+      top: 0; right: 0;
+      height: 100vh;
+      width: 240px;
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 0;
+      z-index: 20;
+      transition: transform 0.3s cubic-bezier(.4,2,.6,1);
+      font-family: 'TWKLausanne', Arial, Helvetica, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 1px;
+    }
+    #side-panel.collapsed { transform: translateX(238px); }
+    #toggle-panel {
+      position: absolute;
+      top: 1px; left: -32px;
+      width: 32px; height: 32px;
+      background: #1a1a1a; color: #fff;
+      border: none;
+      border-radius: 0;
+      font-size: 14px;
+      cursor: pointer;
+      z-index: 21;
+      transition: background 0.2s;
+    }
+    #toggle-panel:hover { background: #2a2a2a; }
+    #panel-content {
+      margin: 1px;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      width: calc(100% - 2px);
+    }
+    .panel-label {
+      display: flex;
+      flex-direction: column;
+      font-size: 10px;
+      gap: 1px;
+      font-weight: 500;
+      letter-spacing: 0;
+      color: #ccc;
+      margin: 1px;
+    }
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 1px;
+      margin: 1px 0;
+      position: relative;
+    }
+    #panel-content input[type=range] {
+      flex: 1;
+      accent-color: #666;
+      margin: 0;
+      height: 20px;
+      background: #0a0a0a;
+      border: none;
+      -webkit-appearance: none;
+      appearance: none;
+      outline: none;
+    }
+    #panel-content input[type=range]::-webkit-slider-runnable-track {
+      height: 20px;
+      background: #0a0a0a;
+      border: none;
+    }
+    #panel-content input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 40px;
+      height: 20px;
+      background: #2a2a2a;
+      border: none;
+      cursor: pointer;
+      margin-top: 0;
+      position: relative;
+    }
+    #panel-content input[type=range]::-moz-range-track {
+      height: 20px;
+      background: #0a0a0a;
+      border: none;
+    }
+    #panel-content input[type=range]::-moz-range-thumb {
+      width: 40px;
+      height: 20px;
+      background: #2a2a2a;
+      border: none;
+      cursor: pointer;
+    }
+    .slider-thumb-value {
+      position: absolute;
+      pointer-events: none;
+      font-size: 8px;
+      color: #fff;
+      font-family: 'TWKLausanne', Arial, Helvetica, sans-serif;
+      text-align: center;
+      line-height: 20px;
+      width: 40px;
+      top: 0;
+      transform: translateX(-50%);
+    }
+    #panel-content input[type=color] {
+      width: 100%; height: 24px; border: none; margin: 1px 0; border-radius: 0; box-shadow: none; outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    #panel-content input[type=color]:focus {
+      outline: none;
+      border: none;
+    }
+    #panel-content input[type=color]::-webkit-color-swatch-wrapper {
+      padding: 0;
+      border: none;
+      outline: none;
+    }
+    #panel-content input[type=color]::-webkit-color-swatch {
+      border: none;
+      outline: none;
+    }
+    #panel-content input[type=text] {
+      background: #0a0a0a;
+      border: none;
+      color: #fff;
+      font-size: 11px;
+      outline: none;
+      letter-spacing: 0;
+      width: 100%;
+      border-radius: 0;
+      padding: 2px 4px;
+      margin: 1px 0;
+      font-family: 'TWKLausanne', Arial, Helvetica, sans-serif;
+      box-shadow: none;
+      transition: background 0.2s;
+    }
+    #panel-content input[type=text]:focus {
+      background: #1a1a1a;
+    }
+    .direction-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1px;
+      margin: 1px 0;
+    }
+    .direction-buttons button {
+      flex: 1 1 calc(33.333% - 1px);
+      min-width: 0;
+      padding: 4px 2px;
+      background: #0a0a0a;
+      color: #fff;
+      border: none;
+      border-radius: 0;
+      font-size: 8px;
+      font-family: 'TWKLausanne', Arial, Helvetica, sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .direction-buttons button:hover {
+      background: #1a1a1a;
+    }
+    .direction-buttons button.active {
+      background: #2a2a2a;
+    }
+    .panel-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1px;
+      margin: 1px 0;
+      justify-content: flex-start;
+    }
+    .panel-buttons button {
+      flex: 1 1 calc(50% - 1px);
+      min-width: 0;
+      padding: 4px 2px;
+      background: #2a2a2a;
+      color: #fff;
+      border: none;
+      border-radius: 0;
+      font-size: 9px;
+      font-family: 'TWKLausanne', Arial, Helvetica, sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: none;
+      margin: 0;
+      transition: background 0.2s;
+    }
+    .panel-buttons button:hover {
+      background: #3a3a3a;
+    }
+    #panel-content input[type=checkbox] {
+      margin: 1px;
+      width: 12px;
+      height: 12px;
+      cursor: pointer;
+    }
+    @media (max-width: 600px) {
+      #side-panel { width: 98vw; border-radius: 0; }
+      #side-panel.collapsed { transform: translateX(90vw); }
+      #panel-content { margin: 1px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="side-panel">
+    <button id="toggle-panel">☰</button>
+    <div id="panel-content">
+      <label class="panel-label">Text
+        <input id="sentence-input" type="text" value="MAKE IT MOVE" maxlength="40" />
+      </label>
+      <label class="panel-label">Speed
+        <div class="slider-container">
+          <input type="range" id="speed-slider" min="0" max="10" step="0.1" value="5.0">
+          <span class="slider-thumb-value" id="speed-value">5.0</span>
+        </div>
+      </label>
+      <label class="panel-label">Size
+        <div class="slider-container">
+          <input type="range" id="size-slider" min="0" max="10" step="0.1" value="5.0">
+          <span class="slider-thumb-value" id="size-value">5.0</span>
+        </div>
+      </label>
+      <label class="panel-label">Spacing
+        <div class="slider-container">
+          <input type="range" id="word-spacing-slider" min="0" max="10" step="0.1" value="5.0">
+          <span class="slider-thumb-value" id="word-spacing-value">5.0</span>
+        </div>
+      </label>
+      <label class="panel-label">Height
+        <div class="slider-container">
+          <input type="range" id="slit-slider" min="0" max="10" step="0.1" value="5.0">
+          <span class="slider-thumb-value" id="slit-value">5.0</span>
+        </div>
+      </label>
+      <label class="panel-label">Amplitude
+        <div class="slider-container">
+          <input type="range" id="amp-slider" min="0" max="10" step="0.1" value="5.0">
+          <span class="slider-thumb-value" id="amp-value">5.0</span>
+        </div>
+      </label>
+      <label class="panel-label">Movement
+        <div class="direction-buttons">
+          <button class="direction-btn" data-direction="horizontal">H</button>
+          <button class="direction-btn" data-direction="vertical">V</button>
+          <button class="direction-btn" data-direction="both">Both</button>
+          <button class="direction-btn" data-direction="circular">Circ</button>
+          <button class="direction-btn" data-direction="spiral">Spiral</button>
+          <button class="direction-btn" data-direction="pulse">Pulse</button>
+          <button class="direction-btn" data-direction="diagonal">Diag</button>
+          <button class="direction-btn" data-direction="twist">Twist</button>
+          <button class="direction-btn" data-direction="ripple">Ripple</button>
+        </div>
+      </label>
+      <label class="panel-label">Text Color <input type="color" id="text-color" value="#ffffff"></label>
+      <label class="panel-label">Background <input type="color" id="bg-color" value="#000000"></label>
+      <label class="panel-label" style="flex-direction:row;align-items:center;gap:1px;">Transparent Background <input type="checkbox" id="transparent-bg"></label>
+      <div class="panel-buttons">
+        <button id="randomize">Randomize</button>
+        <button id="reset">Reset</button>
+        <button id="download-png">Download PNG</button>
+        <button id="copy-png">Copy PNG</button>
+      </div>
+    </div>
+  </div>
+  <canvas id="typo-canvas"></canvas>
+  <script>
+    const canvas = document.getElementById('typo-canvas');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const input = document.getElementById('sentence-input');
+    let sentence = input.value;
+    input.addEventListener('input', () => {
+      sentence = input.value || ' ';
+    });
+
+    // Typography settings
+    ctx.font = 'bold 64px Arial, Helvetica, sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#fff';
+
+    // Panel state and controls
+    const panel = document.getElementById('side-panel');
+    const toggleBtn = document.getElementById('toggle-panel');
+    toggleBtn.onclick = () => panel.classList.toggle('collapsed');
+    
+    // Mapping functions: 0-10 to actual ranges
+    const mapSpeed = (val) => 0.0001 + (val / 10) * (0.003 - 0.0001);
+    const unmapSpeed = (val) => ((val - 0.0001) / (0.003 - 0.0001)) * 10;
+    const mapAmp = (val) => 10 + (val / 10) * (300 - 10);
+    const unmapAmp = (val) => ((val - 10) / (300 - 10)) * 10;
+    const mapSize = (val) => 14 + (val / 10) * (5000 - 14);
+    const unmapSize = (val) => ((val - 14) / (5000 - 14)) * 10;
+    const mapWordSpacing = (val) => (val / 10) * 200;
+    const unmapWordSpacing = (val) => (val / 200) * 10;
+    const mapSlitHeight = (val) => 2 + (val / 10) * (32 - 2);
+    const unmapSlitHeight = (val) => ((val - 2) / (32 - 2)) * 10;
+    
+    // Function to update slider thumb value position
+    function updateSliderValue(slider, valueSpan) {
+      const sliderEl = document.getElementById(slider);
+      const valueEl = document.getElementById(valueSpan);
+      const val = parseFloat(sliderEl.value);
+      valueEl.textContent = val.toFixed(1);
+      
+      // Position value over thumb - calculate thumb center position
+      const min = parseFloat(sliderEl.min);
+      const max = parseFloat(sliderEl.max);
+      const percent = (val - min) / (max - min);
+      const sliderWidth = sliderEl.offsetWidth;
+      const thumbWidth = 40;
+      const thumbCenter = percent * (sliderWidth - thumbWidth) + (thumbWidth / 2);
+      valueEl.style.left = thumbCenter + 'px';
+    }
+    
+    // Update slider positions on resize
+    window.addEventListener('resize', () => {
+      updateSliderValue('speed-slider', 'speed-value');
+      updateSliderValue('amp-slider', 'amp-value');
+      updateSliderValue('size-slider', 'size-value');
+      updateSliderValue('word-spacing-slider', 'word-spacing-value');
+      updateSliderValue('slit-slider', 'slit-value');
+    });
+    
+    // Default settings
+    let settings = {
+      sweepSpeed: 0.000187, // maps to 0.3
+      sweepAmp: 44.8, // maps to 1.2
+      textSize: 263.3, // maps to 0.5
+      wordSpacing: 20, // maps to 1.0
+      slitHeight: 3.5, // maps to 0.5
+      direction: 'both',
+      textColor: '#ffffff',
+      bgColor: '#000000',
+      transparentBg: false,
+    };
+    
+    // Initialize sliders with mapped values
+    document.getElementById('speed-slider').value = 0.3;
+    document.getElementById('amp-slider').value = 1.2;
+    document.getElementById('size-slider').value = 0.5;
+    document.getElementById('word-spacing-slider').value = 1.0;
+    document.getElementById('slit-slider').value = 0.5;
+    
+    // Update initial positions
+    setTimeout(() => {
+      updateSliderValue('speed-slider', 'speed-value');
+      updateSliderValue('amp-slider', 'amp-value');
+      updateSliderValue('size-slider', 'size-value');
+      updateSliderValue('word-spacing-slider', 'word-spacing-value');
+      updateSliderValue('slit-slider', 'slit-value');
+    }, 10);
+    
+    // Controls
+    document.getElementById('speed-slider').oninput = e => {
+      const mapped = mapSpeed(+e.target.value);
+      settings.sweepSpeed = mapped;
+      updateSliderValue('speed-slider', 'speed-value');
+    };
+    document.getElementById('amp-slider').oninput = e => {
+      const mapped = mapAmp(+e.target.value);
+      settings.sweepAmp = mapped;
+      updateSliderValue('amp-slider', 'amp-value');
+    };
+    document.getElementById('size-slider').oninput = e => {
+      const mapped = mapSize(+e.target.value);
+      settings.textSize = mapped;
+      updateSliderValue('size-slider', 'size-value');
+    };
+    document.getElementById('word-spacing-slider').oninput = e => {
+      const mapped = mapWordSpacing(+e.target.value);
+      settings.wordSpacing = mapped;
+      updateSliderValue('word-spacing-slider', 'word-spacing-value');
+    };
+    document.getElementById('slit-slider').oninput = e => {
+      const mapped = mapSlitHeight(+e.target.value);
+      settings.slitHeight = mapped;
+      updateSliderValue('slit-slider', 'slit-value');
+    };
+    // Direction buttons
+    const directionButtons = document.querySelectorAll('.direction-btn');
+    directionButtons.forEach(btn => {
+      btn.onclick = () => {
+        settings.direction = btn.dataset.direction;
+        directionButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      };
+    });
+    // Set initial active button
+    document.querySelector('.direction-btn[data-direction="both"]').classList.add('active');
+    document.getElementById('text-color').oninput = e => settings.textColor = e.target.value;
+    document.getElementById('bg-color').oninput = e => settings.bgColor = e.target.value;
+    document.getElementById('transparent-bg').oninput = e => settings.transparentBg = e.target.checked;
+    document.getElementById('randomize').onclick = () => {
+      settings.sweepSpeed = +(Math.random() * 0.002 + 0.0002).toFixed(4);
+      settings.sweepAmp = Math.floor(Math.random() * 250 + 30);
+      settings.textSize = Math.floor(Math.random() * 80 + 32);
+      settings.wordSpacing = Math.floor(Math.random() * 120);
+      settings.slitHeight = Math.floor(Math.random() * 20 + 2);
+      settings.direction = ['horizontal','vertical','both','circular','spiral','pulse','diagonal','twist','ripple'][Math.floor(Math.random()*9)];
+      settings.textColor = '#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+      settings.bgColor = '#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+      // Update UI
+      document.getElementById('speed-slider').value = unmapSpeed(settings.sweepSpeed);
+      updateSliderValue('speed-slider', 'speed-value');
+      document.getElementById('amp-slider').value = unmapAmp(settings.sweepAmp);
+      updateSliderValue('amp-slider', 'amp-value');
+      document.getElementById('size-slider').value = unmapSize(settings.textSize);
+      updateSliderValue('size-slider', 'size-value');
+      document.getElementById('word-spacing-slider').value = unmapWordSpacing(settings.wordSpacing);
+      updateSliderValue('word-spacing-slider', 'word-spacing-value');
+      document.getElementById('slit-slider').value = unmapSlitHeight(settings.slitHeight);
+      updateSliderValue('slit-slider', 'slit-value');
+      directionButtons.forEach(b => {
+        b.classList.remove('active');
+        if (b.dataset.direction === settings.direction) b.classList.add('active');
+      });
+      document.getElementById('text-color').value = settings.textColor;
+      document.getElementById('bg-color').value = settings.bgColor;
+      document.getElementById('transparent-bg').checked = settings.transparentBg;
+    };
+    document.getElementById('reset').onclick = () => {
+      settings = {
+        sweepSpeed: 0.000187,
+        sweepAmp: 44.8,
+        textSize: 263.3,
+        wordSpacing: 20,
+        slitHeight: 3.5,
+        direction: 'both',
+        textColor: '#ffffff',
+        bgColor: '#000000',
+        transparentBg: false,
+      };
+      document.getElementById('speed-slider').value = 0.3;
+      updateSliderValue('speed-slider', 'speed-value');
+      document.getElementById('amp-slider').value = 1.2;
+      updateSliderValue('amp-slider', 'amp-value');
+      document.getElementById('size-slider').value = 0.5;
+      updateSliderValue('size-slider', 'size-value');
+      document.getElementById('word-spacing-slider').value = 1.0;
+      updateSliderValue('word-spacing-slider', 'word-spacing-value');
+      document.getElementById('slit-slider').value = 0.5;
+      updateSliderValue('slit-slider', 'slit-value');
+      directionButtons.forEach(b => {
+        b.classList.remove('active');
+        if (b.dataset.direction === settings.direction) b.classList.add('active');
+      });
+      document.getElementById('text-color').value = settings.textColor;
+      document.getElementById('bg-color').value = settings.bgColor;
+      document.getElementById('transparent-bg').checked = settings.transparentBg;
+    };
+    // Enhanced slit-scan: break each line into strips and offset each strip
+    function render(t, forExport = false, exportCtx = null) {
+      const drawCtx = forExport ? exportCtx : ctx;
+      drawCtx.clearRect(0, 0, canvas.width, canvas.height);
+      drawCtx.save();
+      drawCtx.font = `bold ${settings.textSize}px TWKLausanne, Arial, Helvetica, sans-serif`;
+      drawCtx.textBaseline = 'top';
+      drawCtx.fillStyle = settings.textColor;
+      if (!settings.transparentBg || forExport === false) {
+        document.body.style.background = settings.bgColor;
+        drawCtx.globalAlpha = 1;
+        drawCtx.fillStyle = settings.bgColor;
+        drawCtx.fillRect(0, 0, canvas.width, canvas.height);
+        drawCtx.fillStyle = settings.textColor;
+      } else {
+        drawCtx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      const textWidth = drawCtx.measureText(sentence).width;
+      const textHeight = settings.textSize * 0.98;
+      const stripHeight = settings.slitHeight;
+      const sweepSpeed = settings.sweepSpeed;
+      const sweepAmp = settings.sweepAmp;
+      const ease = (a, b, t) => a + (b - a) * (1 - Math.cos(Math.PI * t)) / 2;
+      for (let y = -textHeight; y < canvas.height + textHeight; y += textHeight) {
+        for (let x = -textWidth; x < canvas.width + textWidth; x += textWidth + settings.wordSpacing) {
+          for (let sy = 0; sy < textHeight; sy += stripHeight) {
+            let base = y + sy;
+            let centerX = x + textWidth / 2;
+            let centerY = y + textHeight / 2;
+            let sweep = Math.sin((base) * 0.04 + t * sweepSpeed) * sweepAmp;
+            let sweep2 = Math.sin((base) * 0.01 - t * sweepSpeed * 0.7) * (sweepAmp * 0.5);
+            let dx = 0, dy = 0;
+            const dir = settings.direction;
+            
+            if (dir === 'horizontal') {
+              dx = ease(sweep, sweep2, 0.5 + 0.5 * Math.sin(t * sweepSpeed * 0.5));
+            } else if (dir === 'vertical') {
+              dy = ease(sweep2, sweep, 0.5 + 0.5 * Math.cos(t * sweepSpeed * 0.5));
+            } else if (dir === 'both') {
+              dx = ease(sweep, sweep2, 0.5 + 0.5 * Math.sin(t * sweepSpeed * 0.5));
+              dy = ease(sweep2, sweep, 0.5 + 0.5 * Math.cos(t * sweepSpeed * 0.5));
+            } else if (dir === 'circular') {
+              const angle = (base * 0.02 + t * sweepSpeed * 2) * Math.PI;
+              const radius = sweepAmp * 0.3;
+              dx = Math.cos(angle) * radius;
+              dy = Math.sin(angle) * radius;
+            } else if (dir === 'spiral') {
+              const angle = (base * 0.05 + t * sweepSpeed * 3) * Math.PI;
+              const radius = (base * 0.1 + t * sweepSpeed * 50) % sweepAmp;
+              dx = Math.cos(angle) * radius * 0.3;
+              dy = Math.sin(angle) * radius * 0.3;
+            } else if (dir === 'pulse') {
+              const pulse = Math.sin(t * sweepSpeed * 5) * 0.5 + 0.5;
+              dx = Math.sin(base * 0.05) * sweepAmp * pulse;
+              dy = Math.cos(base * 0.05) * sweepAmp * pulse;
+            } else if (dir === 'diagonal') {
+              const diag = Math.sin((base * 0.05 + t * sweepSpeed * 2) * Math.PI) * sweepAmp;
+              dx = diag * 0.707;
+              dy = diag * 0.707;
+            } else if (dir === 'twist') {
+              const twistAngle = (base * 0.08 + t * sweepSpeed * 3) * Math.PI;
+              const relX = x - centerX;
+              const relY = (y + sy) - centerY;
+              const dist = Math.sqrt(relX ** 2 + relY ** 2);
+              const twist = Math.sin(twistAngle + dist * 0.01) * sweepAmp * 0.3;
+              const perpAngle = Math.atan2(relY, relX) + Math.PI / 2;
+              dx = Math.cos(perpAngle) * twist;
+              dy = Math.sin(perpAngle) * twist;
+            } else if (dir === 'ripple') {
+              const relX = x - centerX;
+              const relY = (y + sy) - centerY;
+              const dist = Math.sqrt(relX ** 2 + relY ** 2);
+              const ripple = Math.sin((dist * 0.1 - t * sweepSpeed * 3) * Math.PI) * sweepAmp * 0.4;
+              const angle = Math.atan2(relY, relX);
+              dx = Math.cos(angle) * ripple;
+              dy = Math.sin(angle) * ripple;
+            }
+            drawCtx.save();
+            drawCtx.beginPath();
+            drawCtx.rect(x + dx, y + sy + dy, textWidth, stripHeight);
+            drawCtx.clip();
+            drawCtx.fillStyle = settings.textColor;
+            drawCtx.fillText(sentence, x + dx, y + dy);
+            drawCtx.restore();
+          }
+        }
+      }
+      drawCtx.restore();
+      if (!forExport) requestAnimationFrame(render);
+    }
+    render(0);
+
+    // PNG Export/Copy
+    document.getElementById('download-png').onclick = () => {
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = canvas.width;
+      exportCanvas.height = canvas.height;
+      const exportCtx = exportCanvas.getContext('2d');
+      render(performance.now(), true, exportCtx);
+      exportCanvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'kinetic-typography.png';
+        a.click();
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    };
+    document.getElementById('copy-png').onclick = async () => {
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = canvas.width;
+      exportCanvas.height = canvas.height;
+      const exportCtx = exportCanvas.getContext('2d');
+      render(performance.now(), true, exportCtx);
+      exportCanvas.toBlob(async blob => {
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          alert('PNG copied to clipboard!');
+        } catch (e) {
+          alert('Copy failed: ' + e);
+        }
+      }, 'image/png');
+    };
+  </script>
+</body>
+</html> 
