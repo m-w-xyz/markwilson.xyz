@@ -289,6 +289,10 @@ a.active {
             if (link) {
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
+                    // Remove URL parameter when clicking on a project
+                    const url = new URL(window.location);
+                    url.searchParams.delete('project');
+                    window.history.replaceState({}, '', url.pathname);
                     loadProject(projectName);
                 });
             }
