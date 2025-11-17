@@ -245,30 +245,41 @@ a.active {
 
         // Function to load a project
         function loadProject(projectName) {
+            if (!projectName || !projectMap[projectName]) {
+                console.error('Invalid project name:', projectName);
+                return;
+            }
+            
             const link = document.querySelector(`a[data-project="${projectName}"]`);
-            if (link && projectMap[projectName]) {
-                // Remove active class from all links
-                document.querySelectorAll('a[data-project]').forEach(a => {
-                    a.classList.remove('active');
-                });
-                
-                // Add active class to selected link
-                link.classList.add('active');
-                
-                // Load project in iframe
-                projectIframe.src = projectMap[projectName];
-                activeProject = projectName;
-                
-                // If it's a camera project, notify iframe when it loads
-                if (cameraProjects.includes(projectName)) {
-                    projectIframe.addEventListener('load', () => {
-                        if (cameraStream && cameraReady) {
-                            projectIframe.contentWindow.postMessage({
-                                type: 'cameraStreamReady'
-                            }, window.location.origin);
-                        }
-                    }, { once: true });
-                }
+            if (!link) {
+                console.error('Link not found for project:', projectName);
+                return;
+            }
+            
+            // Remove active class from all links
+            document.querySelectorAll('a[data-project]').forEach(a => {
+                a.classList.remove('active');
+            });
+            
+            // Add active class to selected link
+            link.classList.add('active');
+            
+            // Load project in iframe
+            projectIframe.src = projectMap[projectName];
+            activeProject = projectName;
+            
+            // Update iframe position after loading
+            setTimeout(updateIframePosition, 50);
+            
+            // If it's a camera project, notify iframe when it loads
+            if (cameraProjects.includes(projectName)) {
+                projectIframe.addEventListener('load', () => {
+                    if (cameraStream && cameraReady) {
+                        projectIframe.contentWindow.postMessage({
+                            type: 'cameraStreamReady'
+                        }, window.location.origin);
+                    }
+                }, { once: true });
             }
         }
 
