@@ -145,6 +145,47 @@ document.addEventListener('mouseleave', () => {
     targetFieldRadius = baseFieldRadius;
 });
 
+// Touch interaction for mobile
+document.addEventListener('touchstart', (event) => {
+    event.preventDefault(); // Prevent scrolling
+    const touch = event.touches[0];
+    mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+    mousePosition = screenToWorld(touch.clientX, touch.clientY);
+    isMouseActive = true;
+    isMouseDown = true;
+    targetFieldIntensity = 1.0;
+    targetFieldRadius = baseFieldRadius;
+}, { passive: false });
+
+document.addEventListener('touchmove', (event) => {
+    event.preventDefault(); // Prevent scrolling
+    const touch = event.touches[0];
+    mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+    mousePosition = screenToWorld(touch.clientX, touch.clientY);
+    isMouseActive = true;
+}, { passive: false });
+
+document.addEventListener('touchend', (event) => {
+    event.preventDefault();
+    isMouseDown = false;
+    targetFieldIntensity = 1.0;
+    targetFieldRadius = baseFieldRadius;
+    // Keep mouse active briefly to allow smooth transition
+    setTimeout(() => {
+        isMouseActive = false;
+    }, 100);
+}, { passive: false });
+
+document.addEventListener('touchcancel', (event) => {
+    event.preventDefault();
+    isMouseActive = false;
+    isMouseDown = false;
+    targetFieldIntensity = 1.0;
+    targetFieldRadius = baseFieldRadius;
+}, { passive: false });
+
 
 // Animation loop
 function animate() {
