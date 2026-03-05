@@ -558,17 +558,26 @@
         }
 
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          console.warn("getUserMedia not supported");
+          alert("Webcam not supported in this browser.");
+          return;
+        }
+        if (!window.isSecureContext) {
+          alert("Webcam requires a secure page (HTTPS or localhost). Run a local server (e.g. npx serve .) and open http://localhost:3000/tauranga-test.html");
           return;
         }
 
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "user" },
+            video: {
+              facingMode: "user",
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+            },
             audio: false,
           });
           webcamStream = stream;
           webcamVideo.srcObject = stream;
+          await webcamVideo.play();
           webcamActive = true;
           webcamBtn.textContent = "Webcam On";
           motionPatternBeforeWebcam = motionPattern;
@@ -578,7 +587,12 @@
           fullGridBtn.classList.add("toggle-on");
           render(accumulatedTime);
         } catch (e) {
-          console.warn("Unable to access camera", e);
+          const msg = e.name === "NotAllowedError" || e.name === "PermissionDeniedError"
+            ? "Camera permission denied. Allow camera access and try again."
+            : e.name === "NotFoundError"
+            ? "No camera found."
+            : "Could not access camera: " + (e.message || e.name);
+          alert(msg);
         }
       }
 
