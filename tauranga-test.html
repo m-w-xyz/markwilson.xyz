@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shape Text Grid</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background: #000;
+        color: #fff;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .controls {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        padding: 0.75rem 0.75rem 1rem;
+        background: #111;
+        border-radius: 0.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 260px;
+        z-index: 2;
+        font-size: 12px;
+      }
+
+      .button-row {
+        display: flex;
+        gap: 0.25rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .controls button {
+        flex: 1;
+        padding: 3px 6px;
+        border: none;
+        border-radius: 0;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        background: #1b1b1b;
+        color: #eee;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .controls button:hover {
+        background: #2a2a2a;
+      }
+
+      .controls button.small {
+        flex: 0 0 auto;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+
+      .controls label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #ccc;
+      }
+
+      .label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+      }
+
+      .controls button.toggle-on {
+        background: #f5f5f5;
+        color: #000;
+      }
+
+      .controls input[type="text"] {
+        padding: 0.5rem 0.75rem;
+        border-radius: 0;
+        border: none;
+        background: #111;
+        color: #f5f5f5;
+        font: inherit;
+        outline: none;
+      }
+
+      .controls input[type="text"]::placeholder {
+        color: #666;
+      }
+
+      .slider-row {
+        position: relative;
+        height: 18px;
+        background: #050505;
+        overflow: hidden;
+        cursor: pointer;
+      }
+
+      .controls input[type="range"] {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .controls input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 0;
+        height: 0;
+      }
+
+      .slider-value {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 40px;
+        min-width: 40px;
+        background: #3a3a3a;
+        text-align: center;
+        padding: 2px 4px;
+        font-size: 11px;
+        color: #f5f5f5;
+        pointer-events: none;
+        border-radius: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        left: 0;
+      }
+
+      .controls select {
+        width: 100%;
+        padding: 4px 6px;
+        border-radius: 0;
+        border: none;
+        background: #050505;
+        color: #f5f5f5;
+        font-size: 11px;
+      }
+
+      .canvas-wrap {
+        position: relative;
+        flex: 1;
+      }
+
+      canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        background: #000;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <div class="control-group">
+        <div class="label-row">
+          <label for="textInput">Text</label>
+          <button id="fullGridBtn" class="small">Full grid</button>
+          <button id="webcamBtn" class="small">Webcam</button>
+        </div>
+        <input
+          id="textInput"
+          type="text"
+          maxlength="40"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="Type here…"
+        />
+      </div>
+
+      <div class="control-group">
+        <label for="spacingSlider">
+          Grid spacing:
+        </label>
+        <div class="slider-row">
+          <input
+            id="spacingSlider"
+            type="range"
+            min="0"
+            max="30"
+            step="1"
+            value="0"
+          />
+          <div class="slider-value" id="spacingValue">0</div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="sizeSlider">Shape size</label>
+        <div class="slider-row">
+          <input
+            id="sizeSlider"
+            type="range"
+            min="8"
+            max="40"
+            step="1"
+            value="15"
+          />
+          <div class="slider-value" id="sizeValue">15</div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="speedSlider">
+          Tide speed
+        </label>
+        <div class="slider-row">
+          <input
+            id="speedSlider"
+            type="range"
+            min="0"
+            max="200"
+            step="1"
+            value="50"
+          />
+          <div class="slider-value" id="speedValue">0.50</div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="frequencySlider">Wave spacing</label>
+        <div class="slider-row">
+          <input
+            id="frequencySlider"
+            type="range"
+            min="5"
+            max="200"
+            step="1"
+            value="20"
+          />
+          <div class="slider-value" id="frequencyValue">0.20</div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="angleSlider">Angle</label>
+        <div class="slider-row">
+          <input
+            id="angleSlider"
+            type="range"
+            min="0"
+            max="360"
+            step="1"
+            value="0"
+          />
+          <div class="slider-value" id="angleValue">0°</div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="motionSelect">Motion pattern</label>
+        <select id="motionSelect">
+          <option value="swell">Swell</option>
+          <option value="crest">Crest</option>
+          <option value="surge">Surge</option>
+          <option value="storm">Storm</option>
+          <option value="none">None</option>
+        </select>
+      </div>
+      <div class="button-row">
+        <button id="pauseBtn" class="small">Pause</button>
+        <button id="resetBtn" class="small">Reset</button>
+        <button id="downloadBtn" class="small">Save PNG</button>
+      </div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const input = document.getElementById("textInput");
+      const spacingSlider = document.getElementById("spacingSlider");
+      const sizeSlider = document.getElementById("sizeSlider");
+      const speedSlider = document.getElementById("speedSlider");
+      const motionSelect = document.getElementById("motionSelect");
+      const frequencySlider = document.getElementById("frequencySlider");
+      const angleSlider = document.getElementById("angleSlider");
+      const fullGridBtn = document.getElementById("fullGridBtn");
+      const webcamBtn = document.getElementById("webcamBtn");
+      const spacingValue = document.getElementById("spacingValue");
+      const sizeValue = document.getElementById("sizeValue");
+      const speedValue = document.getElementById("speedValue");
+      const frequencyValue = document.getElementById("frequencyValue");
+      const angleValue = document.getElementById("angleValue");
+      const pauseBtn = document.getElementById("pauseBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const downloadBtn = document.getElementById("downloadBtn");
+
+      // Grid + shape configuration (controlled by UI)
+      let tileSize = 15; // px (rendered size of the shape)
+      let gapX = 0; // horizontal spacing
+      let gapY = 0; // vertical spacing
+      let tideSpeed = 0.5; // animation speed multiplier
+      let motionPattern = "swell";
+      let waveFrequency = 0.2; // spatial frequency factor
+      let angleDeg = 0; // motion angle in degrees
+      let angleRad = 0; // cached radians
+      let fullGrid = false; // when true, ignore text mask
+
+      // Webcam brightness + motion masks
+      const webcamVideo = document.createElement("video");
+      webcamVideo.autoplay = true;
+      webcamVideo.playsInline = true;
+      webcamVideo.muted = true;
+      webcamVideo.style.display = "none";
+      document.body.appendChild(webcamVideo);
+
+      const webcamCanvas = document.createElement("canvas");
+      const webcamCtx = webcamCanvas.getContext("2d");
+      let webcamData = null;
+      let webcamMotion = null; // per-pixel motion energy
+      let prevWebcamData = null;
+      let webcamStream = null;
+      let webcamActive = false;
+
+      // Simple fractal-style noise for "Storm" pattern
+      function stormNoise(x, y, t) {
+        let value = 0;
+        let amplitude = 1;
+        let frequency = 1;
+        let norm = 0;
+
+        for (let octave = 0; octave < 3; octave++) {
+          value +=
+            amplitude *
+            Math.sin((x * 0.03 * frequency + t * 1.3 * frequency)) *
+            Math.cos((y * 0.04 * frequency - t * 1.7 * frequency));
+          norm += amplitude;
+          amplitude *= 0.5;
+          frequency *= 2;
+        }
+
+        return value / norm; // roughly -1..1
+      }
+
+      const shapeImg = new Image();
+      // Load the SVG from the shared assets folder
+      shapeImg.src = "assets/img/shape1.svg";
+
+      let shapeReady = false;
+      shapeImg.onload = () => {
+        shapeReady = true;
+      };
+      // If the SVG fails to load, fall back to drawing the shape with canvas
+      shapeImg.onerror = () => {
+        shapeReady = false;
+      };
+
+      function resizeCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      function wrapTextToLines(text, maxChars) {
+        if (!text) return [];
+        const clean = text.trim();
+        if (!clean) return [];
+
+        const lines = [];
+        let i = 0;
+        while (i < clean.length) {
+          lines.push(clean.slice(i, i + maxChars));
+          i += maxChars;
+        }
+        return lines;
+      }
+
+      function createTextMaskCanvas(text, width, height) {
+        const offCanvas = document.createElement("canvas");
+        offCanvas.width = width;
+        offCanvas.height = height;
+        const offCtx = offCanvas.getContext("2d");
+
+        // Start from a transparent background so only text has alpha
+        offCtx.clearRect(0, 0, width, height);
+
+        if (!text) {
+          return offCanvas;
+        }
+
+        const lines = wrapTextToLines(text, 10); // wrap after 10 characters
+        if (!lines.length) return offCanvas;
+
+        // Find an appropriate font size that fits the canvas width/height
+        const maxHeight = height * 0.7;
+        // Start large; we'll shrink based on width/length and line count
+        let fontSize = maxHeight;
+        offCtx.textAlign = "center";
+        offCtx.textBaseline = "alphabetic";
+
+        // Simple down-scaling loop to fit width and height for all lines
+        while (fontSize > 10) {
+          offCtx.font = `bold ${fontSize}px Arial, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+
+          let maxLineWidth = 0;
+          for (const line of lines) {
+            const metrics = offCtx.measureText(line);
+            maxLineWidth = Math.max(maxLineWidth, metrics.width);
+          }
+
+          const lineHeight = fontSize * 1.1;
+          const totalTextHeight = lineHeight * lines.length;
+
+          if (maxLineWidth <= width * 0.9 && totalTextHeight <= maxHeight) {
+            break;
+          }
+          fontSize -= 2;
+        }
+
+        const lineHeight = fontSize * 1.1;
+        const totalTextHeight = lineHeight * lines.length;
+        const startY = height / 2 - totalTextHeight / 2 + fontSize;
+
+        offCtx.fillStyle = "white";
+        lines.forEach((line, index) => {
+          offCtx.fillText(line, width / 2, startY + index * lineHeight);
+        });
+        return offCanvas;
+      }
+
+      // Draw a fallback semicircle shape that matches the reference screenshots
+      function drawFallbackShape(context, x, y, size) {
+        const radius = size / 2;
+        const cx = x + radius;
+        const cy = y + radius;
+        context.fillStyle = "white";
+        context.beginPath();
+        context.arc(cx, cy, radius, Math.PI, 0, false);
+        context.closePath();
+        context.fill();
+      }
+
+      let accumulatedTime = 0;
+      let lastFrameTimestamp = 0;
+      let isPaused = false;
+
+      async function toggleWebcam() {
+        if (webcamActive) {
+          if (webcamStream) {
+            webcamStream.getTracks().forEach((track) => track.stop());
+          }
+          webcamStream = null;
+          webcamActive = false;
+          webcamData = null;
+          webcamBtn.textContent = "Webcam";
+          return;
+        }
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          console.warn("getUserMedia not supported");
+          return;
+        }
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" },
+            audio: false,
+          });
+          webcamStream = stream;
+          webcamVideo.srcObject = stream;
+          webcamActive = true;
+          webcamBtn.textContent = "Webcam On";
+        } catch (e) {
+          console.warn("Unable to access camera", e);
+        }
+      }
+
+      function render(time = 0) {
+        const t = time * tideSpeed;
+
+        const rect = canvas.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
+
+        if (width === 0 || height === 0) return;
+
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, width, height);
+
+        // Update webcam brightness + motion buffers if active
+        if (webcamActive && webcamVideo.readyState >= 2) {
+          webcamCanvas.width = width;
+          webcamCanvas.height = height;
+
+          // Mirror the webcam horizontally for a more natural feel
+          webcamCtx.save();
+          webcamCtx.translate(width, 0);
+          webcamCtx.scale(-1, 1);
+          webcamCtx.drawImage(webcamVideo, 0, 0, width, height);
+          webcamCtx.restore();
+
+          const frame = webcamCtx.getImageData(0, 0, width, height);
+          const data = frame.data;
+
+          // Compute simple per-pixel motion energy between frames
+          if (prevWebcamData && prevWebcamData.length === data.length) {
+            if (!webcamMotion || webcamMotion.length !== data.length / 4) {
+              webcamMotion = new Uint8ClampedArray(data.length / 4);
+            }
+            for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+              const prevL =
+                (prevWebcamData[i] +
+                  prevWebcamData[i + 1] +
+                  prevWebcamData[i + 2]) / 3;
+              const curL = (data[i] + data[i + 1] + data[i + 2]) / 3;
+              const diff = Math.min(255, Math.abs(curL - prevL) * 2);
+              webcamMotion[p] = diff;
+            }
+          } else {
+            webcamMotion = null;
+          }
+
+          // Store current frame for next motion comparison
+          prevWebcamData = new Uint8ClampedArray(data);
+          webcamData = data;
+        }
+
+        let maskData = null;
+        if (!fullGrid) {
+          const text = input.value.trim() || "A";
+          const maskCanvas = createTextMaskCanvas(text, width, height);
+          const maskCtx = maskCanvas.getContext("2d");
+          maskData = maskCtx.getImageData(0, 0, width, height).data;
+        }
+
+        // Precompute rotated coordinates for motion angle
+        const cosA = Math.cos(angleRad);
+        const sinA = Math.sin(angleRad);
+
+        // Draw grid of shapes; optionally clip to the text mask
+        // Use a slightly softer link between shape size and spacing
+        const cellWidth = tileSize + gapX;
+        const cellHeight = tileSize + gapY;
+
+        for (let y = gapY; y < height - gapY; y += cellHeight) {
+          for (let x = gapX; x < width - gapX; x += cellWidth) {
+            const sampleX = Math.round(x + cellWidth / 2);
+            const sampleY = Math.round(y + cellHeight / 2);
+
+            if (sampleX < 0 || sampleX >= width || sampleY < 0 || sampleY >= height)
+              continue;
+
+            const idx = (sampleY * width + sampleX) * 4;
+
+            if (!fullGrid && maskData) {
+              const alpha = maskData[idx + 3];
+              if (alpha <= 16) continue;
+            }
+
+            let brightness = 1;
+            if (webcamActive && webcamData) {
+              const r = webcamData[idx];
+              const g = webcamData[idx + 1];
+              const b = webcamData[idx + 2];
+              brightness = (r + g + b) / (3 * 255);
+              if (brightness < 0.05) continue;
+            }
+
+            // Extra shimmer based on local motion from the webcam
+            let shimmerBoost = 0;
+            if (webcamMotion) {
+              const pixelIndex = (sampleY * width + sampleX) | 0;
+              const motionValue = webcamMotion[pixelIndex] || 0;
+              const motionNorm = motionValue / 255;
+              if (motionNorm > 0.1) {
+                shimmerBoost =
+                  0.2 *
+                  motionNorm *
+                  (0.5 + 0.5 * Math.sin(time * 8 + x * 0.1 + y * 0.13));
+              }
+            }
+
+            // Rotate coordinates by angle for motion direction
+            const rx = x * cosA - y * sinA;
+            const ry = x * sinA + y * cosA;
+
+            // Independent pulsing scale for each cell, with sea-inspired patterns
+            let phase;
+            switch (motionPattern) {
+              case "crest":
+                // Slow vertical bands sweeping upward
+                phase = t * 0.6 + ry * 0.05 * waveFrequency;
+                break;
+              case "storm": {
+                // Fractal noise choppiness
+                const n = stormNoise(rx * waveFrequency, ry * waveFrequency, t * 0.35);
+                // Map noise directly into phase domain
+                phase = n * Math.PI * 2;
+                break;
+              }
+              case "surge":
+                // Faster, choppy waves
+                phase =
+                  t * 0.8 +
+                  Math.sin(rx * 0.06 * waveFrequency) * 0.8 +
+                  Math.cos(ry * 0.06 * waveFrequency) * 0.8;
+                break;
+                case "none":
+                  // No motion
+                  phase = 0;
+                  break;
+              case "swell":
+              default:
+                // Soft rolling tide
+                phase = t * 0.9 + (rx * 0.03 + ry * 0.05) * waveFrequency;
+                break;
+            }
+
+            let scale = 0.5 + 0.5 * Math.sin(phase); // 0..1
+            scale *= 0.3 + 0.7 * brightness;
+            scale *= 1 + shimmerBoost;
+
+            const baseX = x + (cellWidth - tileSize) / 2;
+            const baseY = y + (cellHeight - tileSize) / 2;
+            const anchorX = baseX + tileSize / 2;
+            const anchorY = baseY + tileSize;
+
+            ctx.save();
+            ctx.translate(anchorX, anchorY);
+            ctx.scale(scale, scale);
+
+            const localX = -tileSize / 2;
+            const localY = -tileSize;
+
+            if (shapeReady) {
+              ctx.drawImage(shapeImg, localX, localY, tileSize, tileSize);
+            } else {
+              drawFallbackShape(ctx, localX, localY, tileSize);
+            }
+
+            ctx.restore();
+          }
+        }
+      }
+
+      function updateSliderThumb(inputEl, valueEl) {
+        const min = Number(inputEl.min);
+        const max = Number(inputEl.max);
+        const val = Number(inputEl.value);
+        const row = inputEl.parentElement;
+        const rowWidth = row.clientWidth;
+        const thumbWidth = 40;
+
+        if (!rowWidth) return;
+
+        const ratio = max > min ? (val - min) / (max - min) : 0;
+        const clamped = Math.min(1, Math.max(0, ratio));
+        const available = rowWidth - thumbWidth;
+        const offset = available * clamped;
+
+        valueEl.style.left = `${offset}px`;
+      }
+
+      // Make sliders respond smoothly to click + drag anywhere on the row
+      function attachSmoothSlider(inputEl, valueEl) {
+        let isDragging = false;
+
+        const applyPointerPosition = (clientX) => {
+          const rect = inputEl.parentElement.getBoundingClientRect();
+          const min = Number(inputEl.min);
+          const max = Number(inputEl.max);
+          const step = Number(inputEl.step) || 1;
+
+          if (!rect.width || max <= min) return;
+
+          const ratio = (clientX - rect.left) / rect.width;
+          const clamped = Math.min(1, Math.max(0, ratio));
+          const rawValue = min + clamped * (max - min);
+          const stepped =
+            Math.round((rawValue - min) / step) * step + min;
+
+          inputEl.value = String(
+            Math.min(max, Math.max(min, stepped))
+          );
+          // Reuse existing wiring for responding to slider changes
+          inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+        };
+
+        inputEl.addEventListener("pointerdown", (e) => {
+          isDragging = true;
+          inputEl.setPointerCapture(e.pointerId);
+          e.preventDefault();
+          applyPointerPosition(e.clientX);
+        });
+
+        inputEl.addEventListener("pointermove", (e) => {
+          if (!isDragging) return;
+          e.preventDefault();
+          applyPointerPosition(e.clientX);
+        });
+
+        const stopDrag = (e) => {
+          if (!isDragging) return;
+          isDragging = false;
+          try {
+            inputEl.releasePointerCapture(e.pointerId);
+          } catch (_) {
+            // ignore if pointer not captured
+          }
+        };
+
+        inputEl.addEventListener("pointerup", stopDrag);
+        inputEl.addEventListener("pointercancel", stopDrag);
+      }
+
+      function updateFromControls() {
+        gapX = gapY = Number(spacingSlider.value);
+        tileSize = Number(sizeSlider.value);
+        tideSpeed = Number(speedSlider.value) / 100 || 0;
+        motionPattern = motionSelect.value;
+        waveFrequency = Number(frequencySlider.value) / 100 || 0.2;
+        angleDeg = Number(angleSlider.value) || 0;
+        angleRad = (angleDeg * Math.PI) / 180;
+        spacingValue.textContent = String(gapX);
+        sizeValue.textContent = String(tileSize);
+        speedValue.textContent = tideSpeed.toFixed(2);
+        frequencyValue.textContent = waveFrequency.toFixed(2);
+        angleValue.textContent = `${angleDeg}°`;
+
+        updateSliderThumb(spacingSlider, spacingValue);
+        updateSliderThumb(sizeSlider, sizeValue);
+        updateSliderThumb(speedSlider, speedValue);
+        updateSliderThumb(frequencySlider, frequencyValue);
+        updateSliderThumb(angleSlider, angleValue);
+      }
+
+      function animate(timestamp) {
+        const seconds = timestamp / 1000;
+
+        if (!lastFrameTimestamp) {
+          lastFrameTimestamp = seconds;
+        }
+
+        const delta = seconds - lastFrameTimestamp;
+        lastFrameTimestamp = seconds;
+
+        if (!isPaused) {
+          accumulatedTime += delta;
+        }
+
+        render(accumulatedTime);
+        requestAnimationFrame(animate);
+      }
+
+      // Event wiring
+      input.addEventListener("input", () => {
+        render(accumulatedTime);
+      });
+
+      window.addEventListener("resize", () => {
+        resizeCanvas();
+        render(accumulatedTime);
+      });
+
+      spacingSlider.addEventListener("input", () => {
+        updateFromControls();
+        render(accumulatedTime);
+      });
+
+      sizeSlider.addEventListener("input", () => {
+        updateFromControls();
+        render(accumulatedTime);
+      });
+
+      speedSlider.addEventListener("input", () => {
+        updateFromControls();
+        render(accumulatedTime);
+      });
+
+      motionSelect.addEventListener("change", () => {
+        updateFromControls();
+        render(accumulatedTime);
+      });
+
+      frequencySlider.addEventListener("input", () => {
+        updateFromControls();
+        render(accumulatedTime);
+      });
+
+      angleSlider.addEventListener("input", () => {
+        updateFromControls();
+        render(accumulatedTime);
+      });
+
+      fullGridBtn.addEventListener("click", () => {
+        fullGrid = !fullGrid;
+        fullGridBtn.classList.toggle("toggle-on", fullGrid);
+        render(accumulatedTime);
+      });
+
+      webcamBtn.addEventListener("click", () => {
+        toggleWebcam();
+      });
+
+      pauseBtn.addEventListener("click", () => {
+        isPaused = !isPaused;
+        pauseBtn.textContent = isPaused ? "Play" : "Pause";
+      });
+
+      resetBtn.addEventListener("click", () => {
+        input.value = "A";
+        tileSize = 15;
+        gapX = gapY = 0;
+        tideSpeed = 0.5;
+        motionPattern = "swell";
+        waveFrequency = 0.2;
+        angleDeg = 0;
+        fullGrid = false;
+        spacingSlider.value = String(gapX);
+        sizeSlider.value = String(tileSize);
+        speedSlider.value = String(tideSpeed * 100);
+        frequencySlider.value = String(waveFrequency * 100);
+        angleSlider.value = String(angleDeg);
+        motionSelect.value = motionPattern;
+        fullGridBtn.classList.remove("toggle-on");
+        if (webcamActive) {
+          toggleWebcam();
+        }
+        accumulatedTime = 0;
+        lastFrameTimestamp = 0;
+        updateFromControls();
+        render(accumulatedTime);
+      });
+
+      downloadBtn.addEventListener("click", () => {
+        const rect = canvas.getBoundingClientRect();
+        const exportCanvas = document.createElement("canvas");
+        exportCanvas.width = rect.width;
+        exportCanvas.height = rect.height;
+        const exportCtx = exportCanvas.getContext("2d");
+        exportCtx.drawImage(canvas, 0, 0, exportCanvas.width, exportCanvas.height);
+        exportCanvas.toBlob((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "tide-grid.png";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        });
+      });
+
+      // Initial setup
+      window.addEventListener("load", () => {
+        resizeCanvas();
+        input.value = "A";
+        spacingSlider.value = String(gapX);
+        sizeSlider.value = String(tileSize);
+        speedSlider.value = String(tideSpeed * 100);
+        frequencySlider.value = String(waveFrequency * 100);
+        angleSlider.value = String(angleDeg);
+        updateFromControls();
+        attachSmoothSlider(spacingSlider, spacingValue);
+        attachSmoothSlider(sizeSlider, sizeValue);
+        attachSmoothSlider(speedSlider, speedValue);
+        attachSmoothSlider(frequencySlider, frequencyValue);
+        attachSmoothSlider(angleSlider, angleValue);
+        requestAnimationFrame(animate);
+      });
+    </script>
+  </body>
+</html>
+
