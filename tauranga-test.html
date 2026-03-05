@@ -615,10 +615,20 @@
           webcamCanvas.width = w2;
           webcamCanvas.height = h2;
 
+          const vw = webcamVideo.videoWidth || 1;
+          const vh = webcamVideo.videoHeight || 1;
+          const scale = Math.min(w2 / vw, h2 / vh);
+          const dw = vw * scale;
+          const dh = vh * scale;
+          const dx = (w2 - dw) / 2;
+          const dy = (h2 - dh) / 2;
+
           webcamCtx.save();
           webcamCtx.translate(w2, 0);
           webcamCtx.scale(-1, 1);
-          webcamCtx.drawImage(webcamVideo, 0, 0, w2, h2);
+          webcamCtx.fillStyle = "black";
+          webcamCtx.fillRect(0, 0, w2, h2);
+          webcamCtx.drawImage(webcamVideo, 0, 0, vw, vh, dx, dy, dw, dh);
           webcamCtx.restore();
 
           const frame = webcamCtx.getImageData(0, 0, w2, h2);
