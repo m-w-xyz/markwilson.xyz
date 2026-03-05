@@ -992,8 +992,14 @@
 
       updateToggleButton();
 
+      const randomTextOptions = [
+        "TAURANGA", "KA PAI", "KIA ORA", "CHUR", "SHAKA BRAH", "EASY", "TOGS", "NOT EVEN", "BEACH BUM",
+        "NICE WAVE", "TU MEKE", "CHOICE", "MEAN", "SURF'S UP", "HANG LOOSE", "BIG AIR", "KEEN AS", "MAURI ORA",
+        "SWEEEET", "HARDOUT", "BOOM", "CHEHOOO", "RIP IT", "CUZZIE", "SUP", "HOWSIT?", "THE MOUNT"
+      ];
+
       resetBtn.addEventListener("click", () => {
-        input.value = "A";
+        input.value = randomTextOptions[Math.floor(Math.random() * randomTextOptions.length)];
         tileSize = 15;
         gapX = gapY = 0;
         tideSpeed = 0.5;
@@ -1016,12 +1022,6 @@
         updateFromControls();
         render(accumulatedTime);
       });
-
-      const randomTextOptions = [
-        "TAURANGA", "KA PAI", "KIA ORA", "CHUR", "SHAKA BRAH", "EASY", "TOGS", "NOT EVEN", "BEACH BUM",
-        "NICE WAVE", "TU MEKE", "CHOICE", "MEAN", "SURF'S UP", "HANG LOOSE", "BIG AIR", "KEEN AS", "MAURI ORA",
-        "SWEEEET", "HARDOUT", "BOOM", "CHEHOOO", "RIP IT", "CUZZIE", "SUP", "HOWSIT?", "THE MOUNT"
-      ];
 
       randomiseBtn.addEventListener("click", () => {
         const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
