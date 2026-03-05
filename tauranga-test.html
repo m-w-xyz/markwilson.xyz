@@ -640,20 +640,37 @@
             scale *= 0.3 + 0.7 * brightness;
             scale *= 1 + shimmerBoost;
 
-            const baseX = x + (cellWidth - tileSize) / 2;
-            const baseY = y + (cellHeight - tileSize) / 2;
-            const anchorX = baseX + tileSize / 2;
-            const anchorY = baseY + tileSize;
+            // Preserve the SVG's native aspect ratio so it never warps
+            let drawWidth = tileSize;
+            let drawHeight = tileSize;
+
+            if (shapeReady && shapeImg.naturalWidth && shapeImg.naturalHeight) {
+              const aspect = shapeImg.naturalWidth / shapeImg.naturalHeight;
+              if (aspect >= 1) {
+                // Wider than tall: width is the driver
+                drawWidth = tileSize;
+                drawHeight = tileSize / aspect;
+              } else {
+                // Taller than wide: height is the driver
+                drawHeight = tileSize;
+                drawWidth = tileSize * aspect;
+              }
+            }
+
+            const baseX = x + (cellWidth - drawWidth) / 2;
+            const baseY = y + (cellHeight - drawHeight) / 2;
+            const anchorX = baseX + drawWidth / 2;
+            const anchorY = baseY + drawHeight;
 
             ctx.save();
             ctx.translate(anchorX, anchorY);
             ctx.scale(scale, scale);
 
-            const localX = -tileSize / 2;
-            const localY = -tileSize;
+            const localX = -drawWidth / 2;
+            const localY = -drawHeight;
 
             if (shapeReady) {
-              ctx.drawImage(shapeImg, localX, localY, tileSize, tileSize);
+              ctx.drawImage(shapeImg, localX, localY, drawWidth, drawHeight);
             } else {
               drawFallbackShape(ctx, localX, localY, tileSize);
             }
