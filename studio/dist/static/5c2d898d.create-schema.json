@@ -1,0 +1,105 @@
+[
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "title",
+        "type": "string",
+        "title": "Project title"
+      },
+      {
+        "name": "studio",
+        "type": "string",
+        "title": "Studio name"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Motion",
+              "value": "motion"
+            },
+            {
+              "title": "3D",
+              "value": "3D"
+            },
+            {
+              "title": "Programming",
+              "value": "programming"
+            },
+            {
+              "title": "Design",
+              "value": "design"
+            },
+            {
+              "title": "web development",
+              "value": "web development"
+            },
+            {
+              "title": "Other things",
+              "value": "other things"
+            }
+          ]
+        },
+        "of": [
+          {
+            "type": "string"
+          }
+        ],
+        "name": "categories",
+        "type": "array"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Image",
+              "value": "image"
+            },
+            {
+              "title": "Video",
+              "value": "video"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "image",
+        "name": "mediaType",
+        "type": "string",
+        "title": "Media type"
+      },
+      {
+        "options": {
+          "hotspot": true
+        },
+        "description": "Optimized on the fly by Sanity (WebP/AVIF, resizing via URL params on your site).",
+        "hidden": "conditional",
+        "name": "mediaImage",
+        "type": "image",
+        "title": "Image"
+      },
+      {
+        "options": {
+          "accept": "video/*"
+        },
+        "description": "Direct upload. Stores the file on Sanity's CDN.",
+        "hidden": "conditional",
+        "name": "mediaVideo",
+        "type": "file",
+        "title": "Video"
+      }
+    ],
+    "name": "project",
+    "type": "document"
+  }
+]

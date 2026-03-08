@@ -1,0 +1,71 @@
+{
+  "description": "Schema for Sanity Portfolio project. Deploy with: Sanity MCP deploy_schema (resource: projectId + dataset). Categories: motion, 3D, programming, design, web development, other things.",
+  "types": [
+    {
+      "name": "portfolioProject",
+      "type": "document",
+      "title": "Portfolio Project",
+      "fields": [
+        {
+          "name": "title",
+          "type": "string",
+          "title": "Project title"
+        },
+        {
+          "name": "studio",
+          "type": "string",
+          "title": "Studio name"
+        },
+        {
+          "name": "link",
+          "type": "url",
+          "title": "Link",
+          "description": "Optional URL. Clicking the project image will open this link."
+        },
+        {
+          "name": "categories",
+          "type": "array",
+          "title": "Categories",
+          "of": [{ "type": "string" }],
+          "options": {
+            "list": [
+              { "title": "Motion", "value": "motion" },
+              { "title": "3D", "value": "3D" },
+              { "title": "Programming", "value": "programming" },
+              { "title": "Design", "value": "design" },
+              { "title": "web development", "value": "web development" },
+              { "title": "Other things", "value": "other things" }
+            ]
+          }
+        },
+        {
+          "name": "mediaType",
+          "type": "string",
+          "title": "Media type",
+          "options": {
+            "list": [
+              { "title": "Image", "value": "image" },
+              { "title": "Video", "value": "video" }
+            ],
+            "layout": "radio"
+          },
+          "initialValue": "image"
+        },
+        {
+          "name": "mediaImage",
+          "type": "image",
+          "title": "Image",
+          "hidden": "({ parent }) => parent?.mediaType !== 'image'",
+          "options": { "hotspot": true }
+        },
+        {
+          "name": "mediaVideo",
+          "type": "file",
+          "title": "Video",
+          "options": { "accept": "video/*" },
+          "hidden": "({ parent }) => parent?.mediaType !== 'video'"
+        }
+      ]
+    }
+  ]
+}

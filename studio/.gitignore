@@ -1,0 +1,3 @@
+# Local env with project ID (copy from .env.example)
+.env
+.env.local
