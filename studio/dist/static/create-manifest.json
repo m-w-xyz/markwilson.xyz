@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "createdAt": "2026-03-07T23:22:02.705Z",
+  "createdAt": "2026-03-09T01:17:36.270Z",
   "workspaces": [
     {
       "name": "portfolio-studio",
@@ -12,7 +12,7 @@
       "mediaLibrary": {
         "enabled": false
       },
-      "schema": "5c2d898d.create-schema.json",
+      "schema": "156dfc06.create-schema.json",
       "tools": "1041128a.create-tools.json"
     }
   ]

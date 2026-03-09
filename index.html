@@ -811,6 +811,7 @@
               const same = activeFilter === filter;
               activeFilter = same ? null : filter;
             }
+            shuffleArray(allProjects);
             document.querySelectorAll('.filter-link').forEach(function (x) {
               const xFilter = x.getAttribute('data-filter');
               x.classList.toggle('active', (xFilter === 'all' && activeFilter === null && hasUsedFilters) || (xFilter !== 'all' && xFilter === activeFilter));
