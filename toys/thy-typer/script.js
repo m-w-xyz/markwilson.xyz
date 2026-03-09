@@ -11,13 +11,28 @@ function resizeCanvas() {
     canvas.height = 1350;
 }
 
-// Load custom font
+// Load custom font and only show/init once ready (prevents flash of system font)
 const font = new FontFace('CourtRegular', 'url(../../assets/fonts/court-Regular.otf)');
-font.load().then(() => {
-    document.fonts.add(font);
-}).catch(err => {
-    console.error('Font loading failed:', err);
-});
+font.load()
+    .then(() => {
+        document.fonts.add(font);
+        return document.fonts.ready;
+    })
+    .then(() => {
+        document.body.classList.remove('fonts-loading');
+        initAndStart();
+    })
+    .catch(err => {
+        console.error('Font loading failed:', err);
+        document.body.classList.remove('fonts-loading');
+        initAndStart();
+    });
+
+function initAndStart() {
+    resizeCanvas();
+    updateTextPosition();
+    animate();
+}
 
 // Text particles
 class TextParticle {
@@ -439,14 +454,9 @@ function getRandomMedievalPhrase() {
     return medievalPhrases[Math.floor(Math.random() * medievalPhrases.length)];
 }
 
-// Initial setup
-resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-// Set default text with random medieval phrase (display on canvas, but keep input empty for placeholder)
-const defaultPhrase = getRandomMedievalPhrase();
+// Default text and animation are started in initAndStart() after font loads
+const defaultPhrase = 'Mauri ora!';
 currentText = defaultPhrase;
-textInput.value = ''; // Keep input empty so placeholder shows
-updateTextPosition();
-
-animate(); 
+textInput.value = ''; // Keep input empty so placeholder shows 

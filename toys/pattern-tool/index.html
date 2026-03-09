@@ -972,6 +972,25 @@
         render(accumulatedTime);
       });
 
+      // Cmd+A / Ctrl+A: select all in text input (for select-all-then-delete workflow)
+      // Capture phase + preventDefault so Cursor/VS Code Simple Browser doesn't intercept
+      document.addEventListener("keydown", (e) => {
+        const isSelectAll = (e.metaKey || e.ctrlKey) && (e.key === "a" || e.key === "A" || e.keyCode === 65);
+        if (isSelectAll && e.target === input) {
+          e.preventDefault();
+          e.stopPropagation();
+          input.select();
+        }
+      }, true);
+
+      // Triple-click: select all (works when Cmd+A is captured by host, e.g. Cursor browser)
+      input.addEventListener("click", (e) => {
+        if (e.detail === 3) {
+          e.preventDefault();
+          input.select();
+        }
+      });
+
       window.addEventListener("resize", () => {
         resizeCanvas();
         updateToggleButton();

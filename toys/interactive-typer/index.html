@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typer 01</title>
+    <!-- Mediapipe Hand Tracking -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <style>
+        @font-face {
+            font-family: 'Exposure';
+            src: url('205TF_Exposure_Trial/ExposureTrialVAR.ttf') format('truetype-variations');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 100vh;
+            background-color: #000;
+            font-family: 'Exposure', Arial, sans-serif;
+            color: #fff;
+            overflow: hidden;
+            position: relative;
+            transition: background-color 0.25s ease;
+        }
+        body.inverted {
+            background-color: #fff;
+        }
+        
+        .webcam-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.7;
+            object-fit: cover;
+            transform: scaleX(-1); /* Mirror the webcam */
+        }
+        
+        .content-wrapper {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 100%;
+            height: 100vh;
+            box-sizing: border-box;
+            background-color: rgba(0, 0, 0, 0.3);
+            transition: background-color 0.25s ease;
+        }
+        body.inverted .content-wrapper {
+            background-color: rgba(255, 255, 255, 0.95);
+        }
+        body.inverted .display-text,
+        body.inverted .letter {
+            color: #000;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .display-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .display-text {
+            font-size: clamp(3rem, 15vw, 20rem);
+            line-height: 1.1;
+            text-align: center;
+            max-width: 95%;
+            word-wrap: break-word;
+            font-weight: normal;
+            transition: font-size 0.3s ease;
+        }
+        
+        .letter {
+            display: inline-block;
+            font-variation-settings: 'EXPO' 0;
+            transition: font-variation-settings 0.2s ease;
+            position: relative;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            padding: 10px 20px;
+            box-sizing: border-box;
+            background-color: transparent;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 10px;
+        }
+        
+        .slider-label {
+            margin-right: 10px;
+            font-size: 14px;
+            min-width: 60px;
+        }
+        
+        .slider {
+            flex-grow: 1;
+            height: 5px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #333;
+            outline: none;
+            border-radius: 0;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 0;
+            background: #fff;
+            cursor: pointer;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 15px;
+            height: 15px;
+            border-radius: 0;
+            background: #fff;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .slider-value {
+            margin-left: 10px;
+            font-size: 14px;
+            min-width: 40px;
+            text-align: left;
+        }
+        
+        .toggle-button {
+            padding: 8px 16px;
+            background-color: #fff;
+            color: #000;
+            border: none;
+            border-radius: 0;
+            cursor: pointer;
+            font-family: 'Inter', Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .toggle-button:hover {
+            opacity: 0.8;
+        }
+        
+        .input-container {
+            width: 100%;
+            padding: 10px 20px 20px;
+            box-sizing: border-box;
+            background-color: transparent;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-family: 'Exposure', Arial, sans-serif;
+            box-sizing: border-box;
+        }
+        input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* UI Panel - Outer Stellar style */
+        #ui-panel {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: #000;
+            border: none;
+            border-radius: 0;
+            padding: 1px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            font-family: 'Inter', Arial, Helvetica, sans-serif;
+            min-width: 180px;
+            max-width: 90vw;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        #ui-panel-header {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin: 0;
+            padding: 1px;
+        }
+        #ui-panel-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        #ui-panel-close:hover {
+            opacity: 0.7;
+        }
+        #ui-panel-minimized {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            width: 30px;
+            height: 30px;
+            background: #000;
+            border: none;
+            border-radius: 0;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        #ui-panel-minimized:hover {
+            opacity: 0.7;
+        }
+        #ui-panel h2 {
+            margin: 0;
+            font-size: 11px;
+            font-weight: 600;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        #ui-panel label {
+            font-size: 10px;
+            font-weight: 400;
+            color: #fff;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 1px;
+            margin: 0;
+            padding: 1px;
+        }
+        #ui-panel label span {
+            min-width: 80px;
+            margin: 0;
+            padding: 0;
+        }
+        #ui-panel .toggle-button {
+            background: #fff;
+            color: #000;
+            border: none;
+            border-radius: 0;
+            padding: 1px;
+            margin: 1px;
+            font-size: 9px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: 'Inter', Arial, Helvetica, sans-serif;
+        }
+        #ui-panel .toggle-button:hover {
+            opacity: 0.8;
+        }
+        #ui-panel .panel-button-row {
+            display: flex;
+            flex-direction: row;
+            gap: 2px;
+            margin: 0;
+        }
+        #ui-panel .panel-button-row .toggle-button {
+            flex: 1;
+            min-width: 0;
+        }
+        #ui-panel .toggle-button.active {
+            background: #333;
+            color: #fff;
+        }
+        #ui-panel .slider-container {
+            position: relative;
+            flex: 1;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            max-width: none;
+            margin-bottom: 0;
+        }
+        #ui-panel .slider-track {
+            position: absolute;
+            width: 100%;
+            height: 16px;
+            background: #333;
+            border-radius: 0;
+            z-index: 1;
+        }
+        #ui-panel input[type=range] {
+            position: absolute;
+            width: 100%;
+            height: 16px;
+            margin: 0;
+            background: transparent;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+            z-index: 2;
+        }
+        #ui-panel input[type=range]::-webkit-slider-track {
+            height: 16px;
+            background: #333;
+            border-radius: 0;
+        }
+        #ui-panel input[type=range]::-moz-range-track {
+            height: 16px;
+            background: #333;
+            border-radius: 0;
+        }
+        #ui-panel input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 0;
+            height: 0;
+            background: transparent;
+        }
+        #ui-panel input[type=range]::-moz-range-thumb {
+            width: 0;
+            height: 0;
+            background: transparent;
+            border: none;
+        }
+        #ui-panel .slider-handle {
+            position: absolute;
+            width: 36px;
+            height: 18px;
+            background: #fff;
+            border: none;
+            border-radius: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            color: #000;
+            font-weight: 500;
+            pointer-events: none;
+            z-index: 3;
+            transform: translateX(-50%);
+        }
+        #ui-panel input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            font-size: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 0;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #ui-panel input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        #ui-panel .panel-instruction {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.4;
+            margin: 12px 0 0;
+            padding: 0;
+        }
+        
+        /* Thumb–index overlay: dots, line, value */
+        .hand-overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            display: none;
+        }
+        .hand-overlay.visible {
+            display: block;
+        }
+        .hand-overlay svg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        .hand-overlay .hand-line {
+            stroke: #FBC6EF;
+            fill: none;
+            stroke-width: 1;
+            vector-effect: non-scaling-stroke;
+        }
+        .hand-overlay .hand-dot {
+            fill: #FBC6EF;
+        }
+        .hand-value {
+            position: absolute;
+            font-size: 10px;
+            color: #FBC6EF;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            font-family: Arial, sans-serif;
+        }
+        
+        @media (max-width: 768px) {
+            .display-text {
+                font-size: clamp(2rem, 10vw, 15rem);
+            }
+            
+            .controls {
+                padding: 10px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <video id="webcam" class="webcam-background" playsinline></video>
+    
+    <div class="hand-overlay" id="handOverlay">
+        <svg id="handOverlaySvg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <line class="hand-line" id="handLine" x1="0" y1="0" x2="0" y2="0"/>
+            <circle class="hand-dot" id="handDotThumb" cx="0" cy="0" r="0.35"/>
+            <circle class="hand-dot" id="handDotIndex" cx="0" cy="0" r="0.35"/>
+        </svg>
+        <div class="hand-value" id="handValue"></div>
+    </div>
+    
+    <button id="ui-panel-minimized" aria-label="Show panel">☰</button>
+    <div id="ui-panel">
+        <div id="ui-panel-header">
+            <button id="ui-panel-close" aria-label="Close panel">−</button>
+        </div>
+        <input type="text" id="typeInput" placeholder="Type something here" autofocus>
+        <div class="panel-button-row">
+            <button type="button" id="invertBtn" class="toggle-button">Invert</button>
+            <button type="button" id="reverseBtn" class="toggle-button">Reverse</button>
+        </div>
+        <button id="toggleWebcam" class="toggle-button">Show Webcam</button>
+        <p class="panel-instruction">Wave your hand in front of the camera. Pinch to affect text width. Chur!</p>
+    </div>
+    
+    <div class="content-wrapper">
+        <div class="container">
+            <div class="display-container">
+                <div id="displayText" class="display-text"></div>
+            </div>
+        </div>
+        <div class="controls"></div>
+    </div>
+
+    <script>
+        const typeInput = document.getElementById('typeInput');
+        const displayText = document.getElementById('displayText');
+        const video = document.getElementById('webcam');
+        const uiPanel = document.getElementById('ui-panel');
+        const uiPanelMinimized = document.getElementById('ui-panel-minimized');
+        const handOverlay = document.getElementById('handOverlay');
+        const handLine = document.getElementById('handLine');
+        const handDotThumb = document.getElementById('handDotThumb');
+        const handDotIndex = document.getElementById('handDotIndex');
+        const handValueEl = document.getElementById('handValue');
+        const toggleWebcamBtn = document.getElementById('toggleWebcam');
+        
+        let handLandmarks = null;
+        let letterElements = [];
+        let defaultExpo = 0;
+        let targetExpoFromHand = 0;  // -100 to 100, from thumb–index distance
+        let webcamVisible = false;
+        let overlayWasVisible = false;
+        let inverted = false;
+        let reversed = false;
+        
+        // Smoothed overlay positions (for gentle dot/line movement)
+        let targetThumbX = 50, targetThumbY = 50, targetIndexX = 50, targetIndexY = 50;
+        let smoothedThumbX = 50, smoothedThumbY = 50, smoothedIndexX = 50, smoothedIndexY = 50;
+        const OVERLAY_SMOOTH = 0.18;
+        
+        // Thumb–index distance → value: closer = lower, further = higher
+        const THUMB_INDEX_MIN_DIST = 0.02;   // normalized, fingers pinched
+        const THUMB_INDEX_MAX_DIST = 0.14;   // normalized, fingers spread
+        
+        // UI panel close / minimize (Outer Stellar style)
+        document.getElementById('ui-panel-close').addEventListener('click', function() {
+            uiPanel.style.display = 'none';
+            uiPanelMinimized.style.display = 'flex';
+        });
+        uiPanelMinimized.addEventListener('click', function() {
+            uiPanel.style.display = 'flex';
+            uiPanelMinimized.style.display = 'none';
+        });
+        
+        /** Map thumb–index distance (normalized 0–1) to value -100..100 */
+        function thumbIndexDistanceToValue(distance) {
+            const t = (distance - THUMB_INDEX_MIN_DIST) / (THUMB_INDEX_MAX_DIST - THUMB_INDEX_MIN_DIST);
+            return Math.round(Math.max(-100, Math.min(100, -100 + t * 200)));
+        }
+        
+        // Start with webcam hidden
+        video.style.opacity = "0";
+        
+        // Toggle webcam visibility
+        toggleWebcamBtn.addEventListener('click', function() {
+            webcamVisible = !webcamVisible;
+            video.style.opacity = webcamVisible ? "0.7" : "0";
+            toggleWebcamBtn.textContent = webcamVisible ? "Hide Webcam" : "Show Webcam";
+        });
+        
+        // Invert: white background, black text (dots stay pink)
+        const invertBtn = document.getElementById('invertBtn');
+        invertBtn.addEventListener('click', function() {
+            inverted = !inverted;
+            document.body.classList.toggle('inverted', inverted);
+            invertBtn.classList.toggle('active', inverted);
+        });
+        
+        // Reverse: text affected where hand is NOT
+        const reverseBtn = document.getElementById('reverseBtn');
+        reverseBtn.addEventListener('click', function() {
+            reversed = !reversed;
+            reverseBtn.classList.toggle('active', reversed);
+        });
+        
+        // Initialize webcam and hand tracking
+        function initializeHandTracking() {
+            const hands = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+            
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            
+            hands.onResults(onHandResults);
+            
+            const camera = new Camera(video, {
+                onFrame: async () => {
+                    await hands.send({image: video});
+                },
+                width: 1280,
+                height: 720
+            });
+            
+            camera.start();
+        }
+        
+        // Handle hand tracking results
+        function onHandResults(results) {
+            handLandmarks = results.multiHandLandmarks && results.multiHandLandmarks.length > 0 
+                ? results.multiHandLandmarks[0] : null;
+            
+            if (handLandmarks) {
+                const indexTip = handLandmarks[8];  // Index finger tip
+                const thumbTip = handLandmarks[4];   // Thumb tip
+                const dx = indexTip.x - thumbTip.x;
+                const dy = indexTip.y - thumbTip.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                targetExpoFromHand = thumbIndexDistanceToValue(distance);
+                
+                // Mirror X to match video (targets; smoothing applied in animate)
+                targetThumbX = (1 - thumbTip.x) * 100;
+                targetThumbY = thumbTip.y * 100;
+                targetIndexX = (1 - indexTip.x) * 100;
+                targetIndexY = indexTip.y * 100;
+                if (!overlayWasVisible) {
+                    smoothedThumbX = targetThumbX;
+                    smoothedThumbY = targetThumbY;
+                    smoothedIndexX = targetIndexX;
+                    smoothedIndexY = targetIndexY;
+                }
+                overlayWasVisible = true;
+                handOverlay.classList.add('visible');
+            } else {
+                overlayWasVisible = false;
+                handOverlay.classList.remove('visible');
+            }
+            
+            updateLetterExposure();
+        }
+        
+        // Let space key type in input (don’t let parent capture it)
+        typeInput.addEventListener('keydown', function(e) {
+            e.stopPropagation();
+        });
+        
+        /** Build display and letter elements from a string (used for input and for default phrase) */
+        function setDisplayFromString(str) {
+            displayText.innerHTML = '';
+            letterElements = [];
+            
+            Array.from(str).forEach(char => {
+                const letterSpan = document.createElement('span');
+                letterSpan.className = 'letter';
+                letterSpan.textContent = char === ' ' ? '\u00A0' : char;
+                letterSpan.style.fontVariationSettings = `'EXPO' ${defaultExpo}`;
+                displayText.appendChild(letterSpan);
+                letterElements.push(letterSpan);
+            });
+            
+            const len = str.length;
+            if (len > 10) {
+                displayText.style.fontSize = 'clamp(2rem, 9vw, 12rem)';
+            } else if (len > 5) {
+                displayText.style.fontSize = 'clamp(2.5rem, 12vw, 15rem)';
+            } else {
+                displayText.style.fontSize = 'clamp(3rem, 15vw, 20rem)';
+            }
+            
+            updateLetterExposure();
+        }
+        
+        // Update display text when user types
+        typeInput.addEventListener('input', function() {
+            setDisplayFromString(this.value);
+        });
+        
+        // Calculate distance between hand and letter position
+        function calculateHandProximity(letterIndex) {
+            if (!handLandmarks) return 0;
+            
+            // Use index finger tip (landmark 8)
+            const indexFinger = handLandmarks[8];
+            
+            // Mirror the X coordinate to match the mirrored video
+            const mirroredX = 1 - indexFinger.x;
+            
+            // Calculate position in viewport coordinates
+            const handX = mirroredX * window.innerWidth;
+            const handY = indexFinger.y * window.innerHeight;
+            
+            // Get letter position
+            const letter = letterElements[letterIndex];
+            if (!letter) return 0;
+            
+            const letterRect = letter.getBoundingClientRect();
+            const letterX = letterRect.left + letterRect.width / 2;
+            const letterY = letterRect.top + letterRect.height / 2;
+            
+            // Calculate distance
+            const dx = handX - letterX;
+            const dy = handY - letterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Calculate distance as percentage of screen diagonal
+            const screenDiagonal = Math.sqrt(
+                window.innerWidth * window.innerWidth + 
+                window.innerHeight * window.innerHeight
+            );
+            
+            // Normalize and invert (closer = higher value)
+            // Reducing the divisor makes the effect more sensitive to distance
+            const normalizedDistance = 1 - Math.min(distance / (screenDiagonal * 0.2), 1);
+            
+            // Return scaled proximity value
+            return Math.floor(normalizedDistance * 200) - 100;
+        }
+        
+        // Update each letter's exposure (when reversed: base and proximity both reversed)
+        function updateLetterExposure() {
+            const baseExpo = reversed ? -defaultExpo : defaultExpo;
+            letterElements.forEach((letter, index) => {
+                let proximityValue = calculateHandProximity(index);
+                if (reversed) proximityValue = -proximityValue;
+                const exposureValue = Math.max(-100, Math.min(100, baseExpo + proximityValue));
+                letter.style.fontVariationSettings = `'EXPO' ${exposureValue}`;
+            });
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            // Recalculate letter exposure on resize
+            updateLetterExposure();
+        });
+        
+        // Initialize
+        initializeHandTracking();
+        
+        // Request camera permission
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            })
+            .catch(function(error) {
+                console.error("Camera error: ", error);
+                alert("Please allow camera access to enable hand tracking features");
+            });
+        } else {
+            alert("Your browser doesn't support webcam access");
+        }
+        
+        // Update letter exposure on animation frame; smooth defaultExpo and overlay positions
+        const SMOOTH = 0.12;
+        function animate() {
+            defaultExpo += (targetExpoFromHand - defaultExpo) * SMOOTH;
+            const effectiveExpo = reversed ? -defaultExpo : defaultExpo;
+            const displayVal = Math.round(effectiveExpo);
+            handValueEl.textContent = displayVal;
+            typeInput.style.fontVariationSettings = `'EXPO' ${effectiveExpo}`;
+            updateLetterExposure();
+            
+            // Smooth overlay dots and line toward targets
+            smoothedThumbX += (targetThumbX - smoothedThumbX) * OVERLAY_SMOOTH;
+            smoothedThumbY += (targetThumbY - smoothedThumbY) * OVERLAY_SMOOTH;
+            smoothedIndexX += (targetIndexX - smoothedIndexX) * OVERLAY_SMOOTH;
+            smoothedIndexY += (targetIndexY - smoothedIndexY) * OVERLAY_SMOOTH;
+            const midX = (smoothedThumbX + smoothedIndexX) / 2;
+            const midY = (smoothedThumbY + smoothedIndexY) / 2;
+            handLine.setAttribute('x1', smoothedThumbX);
+            handLine.setAttribute('y1', smoothedThumbY);
+            handLine.setAttribute('x2', smoothedIndexX);
+            handLine.setAttribute('y2', smoothedIndexY);
+            handDotThumb.setAttribute('cx', smoothedThumbX);
+            handDotThumb.setAttribute('cy', smoothedThumbY);
+            handDotIndex.setAttribute('cx', smoothedIndexX);
+            handDotIndex.setAttribute('cy', smoothedIndexY);
+            handValueEl.style.left = midX + '%';
+            handValueEl.style.top = midY + '%';
+            
+            requestAnimationFrame(animate);
+        }
+        
+        requestAnimationFrame(animate);
+        
+        // Default: show "Mauri ora!" on screen, keep input empty so placeholder shows
+        typeInput.value = '';
+        setDisplayFromString('Mauri ora!');
+    </script>
+</body>
+</html> 
