@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>toys</title>
+    <link rel="icon" type="gif" href="assets/img/favicon-1.gif">
+
+    <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-C437JD01VX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-C437JD01VX');
+</script>
+
+<style>
+body {
+    background-color: #000000;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Page transition: content slides up from bottom */
+main#page-main {
+    position: fixed;
+    inset: 0;
+    transform: translateY(100%);
+    transition: transform 500ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
+}
+main#page-main.page-entered {
+    transform: translateY(0);
+}
+
+.container {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    z-index: 100;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease-in-out;
+}
+
+.container.hidden {
+    transform: translateX(-100%);
+}
+
+.nav-close-button {
+    align-self: flex-end;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid #6a6a6a;
+    color: #dbdbdb;
+    padding: 8px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    border-radius: 0;
+    transition: all 0.2s ease;
+    margin-bottom: 8px;
+    min-height: 44px; /* Touch-friendly */
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.nav-close-button:hover {
+    color: #FBC6EF;
+    border-color: #FBC6EF;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+@media (min-width: 769px) {
+    .nav-close-button {
+        display: none; /* Hide on desktop */
+    }
+}
+
+.nav-toggle {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 101;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #6a6a6a;
+    color: #dbdbdb;
+    padding: 8px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    border-radius: 0;
+    transition: all 0.2s ease;
+    width: 40px;
+    height: 40px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.nav-toggle:hover {
+    color: #FBC6EF;
+    border-color: #FBC6EF;
+}
+
+.nav-toggle.visible {
+    display: flex;
+}
+
+/* Desktop: hide toggle button, nav always visible */
+@media (min-width: 769px) {
+    .nav-toggle {
+        display: none !important;
+    }
+    
+    .container {
+        transform: none !important; /* Always visible on desktop */
+    }
+    
+    .container.hidden {
+        transform: none !important; /* Override hidden state on desktop */
+    }
+}
+
+.type-face {
+    rotate: 1.8deg;
+}
+.pretty-fly {
+    rotate: -1.8deg;
+}
+.pattern-pattern {
+    rotate: 1.8deg;
+}
+.from-from {
+    rotate: 2.8deg;
+    margin-top: 5px;
+}
+.thy-typer {
+    rotate: -2deg;
+}
+.outer-stellar {
+    rotate: -2deg;
+}
+.move-ment {
+    rotate: -2deg;
+}
+.snow-globe {
+    rotate: 0deg;
+}
+.pattern-tool {
+    rotate: 1.8deg;
+}
+.back {
+    rotate: -2deg;
+}
+/* text styles */
+
+p,
+a {
+    text-align: left;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: #dbdbdb;
+    margin: 0;
+    letter-spacing: 0.0rem;
+    text-decoration: none;
+}
+a:hover {
+    color: #FBC6EF;
+}
+a.active {
+    color: #FBC6EF;
+}
+::selection {
+    color: #FBC6EF;
+}
+
+/* Project iframe container */
+.project-iframe-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    z-index: 1;
+    background-color: #000000;
+    transition: left 0.3s ease-in-out, width 0.3s ease-in-out;
+}
+
+.project-iframe-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+    .container {
+        z-index: 200;
+        width: 130px;
+        padding: 8px 6px;
+    }
+    
+    .nav-toggle {
+        display: flex;
+        border: none;
+    }
+    
+    .nav-close-button {
+        border: none;
+    }
+    
+    .project-iframe-container {
+        left: 0 !important;
+        width: 100% !important;
+    }
+    
+    .container.hidden ~ .project-iframe-container {
+        left: 0 !important;
+        width: 100% !important;
+    }
+    
+    /* Make nav links more touch-friendly on mobile */
+    .container a {
+        padding: 8px 0;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+    
+    /* Add extra spacing between nav items on mobile */
+    .container > div {
+        margin-bottom: 5px;
+    }
+}
+
+</style>
+
+</head>
+
+<body>
+    <main id="page-main">
+    <button class="nav-toggle" id="navToggle">☰</button>
+    <div class="container" id="navContainer">
+        <button class="nav-close-button" id="navCloseButton">✕</button>
+
+        <div class="type-face">
+            <a href="./toys/type-face/" data-project="type-face">type face</a>
+        </div>
+
+        <div class="pretty-fly">
+            <a href="./toys/pretty-fly/" data-project="pretty-fly">pretty fly</a>
+        </div>  
+
+        <div class="outer-stellar">
+            <a href="./toys/outer-stellar/" data-project="outer-stellar">outer stellar</a>
+        </div>
+
+        <div class="from-from">
+            <a href="./toys/from-from/" data-project="from-from"><span style="font-style: italic;">from</span> from</a>
+        </div>
+
+        <div class="pattern-pattern">
+            <a href="./toys/pattern pattern/" data-project="pattern-pattern">pattern pattern</a>
+        </div>
+
+        <div class="pattern-tool">
+            <a href="./toys/pattern-tool/" data-project="pattern-tool">pattern tool</a>
+        </div>
+
+        <div class="move-ment">
+            <a href="./toys/move-ment/" data-project="move-ment">move ment</a>
+        </div>
+
+        <div class="snow-globe">
+            <a href="./toys/snow-globe/" data-project="snow-globe">snow globe</a>
+        </div>
+
+        <div class="thy-typer">
+            <a href="./toys/thy-typer/" data-project="thy-typer">thy typer</a>
+        </div>
+
+        <div class="interactive-typer">
+            <a href="./toys/interactive-typer/" data-project="interactive-typer">Interactive Typer</a>
+        </div>
+
+        <div class="back">
+            <a href="https://markwilson.xyz"> 🡠 🡠 🡠 back</a>
+        </div>
+    </div>
+
+    <!-- Project iframe container -->
+    <div class="project-iframe-container">
+        <iframe id="project-iframe" src=""></iframe>
+    </div>
+
+    </main>
+
+    <script>
+        (function () {
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    document.getElementById('page-main').classList.add('page-entered');
+                });
+            });
+        })();
+    </script>
+    <script>
+        const projectIframe = document.getElementById('project-iframe');
+        const navContainer = document.querySelector('.container');
+        const iframeContainer = document.querySelector('.project-iframe-container');
+        const navToggle = document.getElementById('navToggle');
+        
+        // Toggle navigation visibility (mobile only)
+        let navVisible = window.innerWidth > 768; // Hidden on mobile by default
+        function toggleNav() {
+            // Only allow toggling on mobile
+            if (window.innerWidth <= 768) {
+                navVisible = !navVisible;
+                navContainer.classList.toggle('hidden', !navVisible);
+                updateIframePosition();
+            }
+        }
+        
+        // Set initial state
+        if (window.innerWidth <= 768) {
+            navContainer.classList.add('hidden');
+            navVisible = false;
+        } else {
+            navContainer.classList.remove('hidden');
+            navVisible = true;
+        }
+        
+        const navCloseButton = document.getElementById('navCloseButton');
+        
+        navToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleNav();
+        });
+        
+        navCloseButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleNav(); // Only works on mobile anyway
+        });
+        
+        // Close nav when clicking outside on mobile
+        if (window.innerWidth <= 768) {
+            document.addEventListener('click', (e) => {
+                if (navVisible && !navContainer.contains(e.target) && !navToggle.contains(e.target)) {
+                    toggleNav();
+                }
+            });
+        }
+        
+        // Close nav when a nav link is clicked on mobile
+        const navLinks = document.querySelectorAll('.container a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                if (window.innerWidth <= 768) {
+                    // Small delay to allow project to load, then close nav
+                    setTimeout(() => {
+                        if (navVisible) {
+                            toggleNav();
+                        }
+                    }, 100);
+                }
+            });
+        });
+
+        // Function to update iframe position based on nav width
+        function updateIframePosition() {
+            if (window.innerWidth <= 768) {
+                // Mobile: iframe is always full width, nav overlays
+                iframeContainer.style.left = '0';
+                iframeContainer.style.width = '100%';
+                navToggle.classList.add('visible');
+            } else {
+                // Desktop: nav always visible, iframe adjusts to nav width
+                const navWidth = navContainer.offsetWidth;
+                const iframeLeft = navWidth + 8; // 8px gap
+                iframeContainer.style.left = iframeLeft + 'px';
+                iframeContainer.style.width = `calc(100% - ${iframeLeft}px)`;
+            }
+        }
+
+        // Update on load and resize
+        updateIframePosition();
+        window.addEventListener('resize', () => {
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+                navToggle.classList.add('visible');
+                if (!navVisible) {
+                    navContainer.classList.add('hidden');
+                }
+            } else {
+                // Desktop: nav always visible, no toggle button
+                navToggle.classList.remove('visible');
+                navContainer.classList.remove('hidden');
+                navVisible = true;
+            }
+            updateIframePosition();
+        });
+        
+        // Also update after a short delay to ensure nav is fully rendered
+        setTimeout(updateIframePosition, 100);
+
+        // Map project names to their URLs
+        const projectMap = {
+            'type-face': './toys/type-face/',
+            'pretty-fly': './toys/pretty-fly/',
+            'outer-stellar': './toys/outer-stellar/',
+            'face-mask': './toys/face-mask/index.html',
+            'from-from': './toys/from-from/',
+            'pattern-pattern': './toys/pattern pattern/',
+            'pattern-tool': './toys/pattern-tool/',
+            'thy-typer': './toys/thy-typer/',
+            'interactive-typer': './toys/interactive-typer/',
+            'move-ment': './toys/move-ment/',
+            'snow-globe': './toys/snow-globe/'
+        };
+
+        // Projects that use camera
+        const cameraProjects = ['type-face', 'face-mask', 'from-from'];
+
+        let activeProject = null;
+        let cameraStream = null;
+        let cameraReady = false;
+
+        // Request camera stream once and keep it active
+        async function initializeCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                cameraReady = true;
+                console.log('Camera stream initialized and ready to share');
+            } catch (error) {
+                console.log('Camera initialization error:', error.message);
+                cameraReady = false;
+            }
+        }
+
+        // Initialize camera when page loads
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            initializeCamera();
+        }
+
+        // Listen for messages from iframes
+        window.addEventListener('message', (event) => {
+            // Verify origin for security
+            if (event.origin !== window.location.origin) return;
+            
+            if (event.data === 'requestCameraStream') {
+                // Iframe is requesting camera stream
+                if (cameraStream && cameraReady) {
+                    // Clone the stream tracks so iframe can use it
+                    const clonedTracks = cameraStream.getVideoTracks().map(track => {
+                        const settings = track.getSettings();
+                        return {
+                            id: track.id,
+                            label: track.label,
+                            kind: track.kind,
+                            enabled: track.enabled,
+                            muted: track.muted,
+                            readyState: track.readyState,
+                            settings: settings
+                        };
+                    });
+                    
+                    // Send stream info to iframe
+                    projectIframe.contentWindow.postMessage({
+                        type: 'cameraStreamReady',
+                        tracks: clonedTracks
+                    }, window.location.origin);
+                } else {
+                    // Camera not ready yet, wait and retry
+                    setTimeout(() => {
+                        if (cameraStream && cameraReady) {
+                            projectIframe.contentWindow.postMessage({
+                                type: 'cameraStreamReady'
+                            }, window.location.origin);
+                        } else {
+                            projectIframe.contentWindow.postMessage({
+                                type: 'cameraStreamError',
+                                message: 'Camera not available'
+                            }, window.location.origin);
+                        }
+                    }, 500);
+                }
+            }
+        });
+
+        // Function to load a project
+        function loadProject(projectName) {
+            if (!projectName || !projectMap[projectName]) {
+                console.error('Invalid project name:', projectName);
+                return;
+            }
+            
+            const link = document.querySelector(`a[data-project="${projectName}"]`);
+            if (!link) {
+                console.error('Link not found for project:', projectName);
+                return;
+            }
+            
+            // Remove active class from all links
+            document.querySelectorAll('a[data-project]').forEach(a => {
+                a.classList.remove('active');
+            });
+            
+            // Add active class to selected link
+            link.classList.add('active');
+            
+            // Load project in iframe
+            projectIframe.src = projectMap[projectName];
+            activeProject = projectName;
+            
+            // Update iframe position after loading
+            setTimeout(updateIframePosition, 50);
+            
+            // If it's a camera project, notify iframe when it loads
+            if (cameraProjects.includes(projectName)) {
+                projectIframe.addEventListener('load', () => {
+                    if (cameraStream && cameraReady) {
+                        projectIframe.contentWindow.postMessage({
+                            type: 'cameraStreamReady'
+                        }, window.location.origin);
+                    }
+                }, { once: true });
+            }
+        }
+
+        // Handle project link clicks
+        Object.keys(projectMap).forEach(projectName => {
+            const link = document.querySelector(`a[data-project="${projectName}"]`);
+            if (link) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Remove URL parameter when clicking on a project
+                    const url = new URL(window.location);
+                    url.searchParams.delete('project');
+                    window.history.replaceState({}, '', url.pathname);
+                    loadProject(projectName);
+                });
+            }
+        });
+
+        // Check for URL parameter to determine which project to load
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectParam = urlParams.get('project');
+        const projectToLoad = projectParam && projectMap[projectParam] ? projectParam : 'type-face';
+        
+        // Load the project (defaults to type-face if no parameter)
+        loadProject(projectToLoad);
+    </script>
+
+</body>
+
+</html>

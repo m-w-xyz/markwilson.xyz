@@ -1,12 +1,12 @@
 import { defineField, defineType } from 'sanity'
 
 const CATEGORIES = [
-  { title: 'Motion', value: 'motion' },
-  { title: '3D', value: '3D' },
+  { title: 'Brand Identity', value: 'brand identity' },
+  { title: 'Motion Design', value: 'motion design' },
+  { title: '3D Rendering', value: '3D rendering' },
   { title: 'Programming', value: 'programming' },
-  { title: 'Design', value: 'design' },
-  { title: 'web development', value: 'web development' },
-  { title: 'Other things', value: 'other things' },
+  { title: 'Type Design', value: 'type design' },
+  { title: 'Web Development', value: 'web development' },
 ] as const
 
 export const projectType = defineType({
@@ -66,6 +66,13 @@ export const projectType = defineType({
       type: 'file',
       description: "Direct upload. Stores the file on Sanity's CDN.",
       options: { accept: 'video/*' },
+      hidden: ({ parent }) => parent?.mediaType !== 'video',
+    }),
+    defineField({
+      name: 'vimeoVideo',
+      title: 'Vimeo video',
+      type: 'vimeo',
+      description: 'Paste a Vimeo video ID (e.g. from vimeo.com/123456789 → 123456789), then click Fetch. Alternative to uploading a video file above.',
       hidden: ({ parent }) => parent?.mediaType !== 'video',
     }),
   ],

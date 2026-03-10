@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Info — Mark Wilson</title>
+  <style>
+    /* Base */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #fff;
+      color: #000;
+      font: 18px Arial, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Fixed nav — always in place */
+    /* Fixed nav — match homepage */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: #fff;
+      padding: 10px 10px 10px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav .name {
+      font: 18px Arial, sans-serif;
+      color: #000;
+      text-decoration: none;
+    }
+    .nav .name:hover {
+      font-style: italic;
+    }
+    .nav-links {
+      display: flex;
+      flex: 0 0 50vw;
+      width: 50vw;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .nav-links a {
+      font: 18px Arial, sans-serif;
+      color: #000;
+      text-decoration: none;
+    }
+    .nav-links a:hover {
+      font-style: italic;
+    }
+
+    /* Page transition: content gently fades and slides, nav stays fixed */
+    main#page-main {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      padding-top: 20vh;
+      min-height: 100vh;
+      opacity: 0;
+      transform: translateY(24px);
+      transition:
+        transform 600ms cubic-bezier(0.74, 0.22, 0.31, 0.87),
+        opacity 600ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
+    }
+    main#page-main.page-entered {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    main#page-main.page-exiting {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    /* Fixed media panel — bottom-left of viewport, 5 columns wide (above main so it stays visible) */
+    .media-panel {
+      position: fixed;
+      left: 0;
+      bottom: 0;
+      width: calc(100vw * 5 / 12);
+      max-width: calc(100vw * 5 / 12);
+      /* Align top edge with main grid/text (20vh from top) */
+      height: calc(100vh - 20vh);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .media-panel .media-wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .media-panel img,
+    .media-panel video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .media-panel .media-item {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 600ms ease;
+    }
+    .media-panel .media-item.active {
+      opacity: 1;
+      z-index: 1;
+    }
+    .media-panel .media-item img,
+    .media-panel .media-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Content column — right side */
+    .info-content {
+      grid-column: 7 / -1;
+      position: relative;
+      z-index: 2;
+      padding-left: 0;
+      padding-right: 0;
+      padding-bottom: 0;
+      /* Match media-panel height so the column bounds line up */
+      height: calc(100vh - 20vh);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .info-content .about p {
+      margin: 0 0 1em;
+      line-height: 22px;
+      opacity: 0;
+      transform: translateY(12px);
+      animation: info-text-in 400ms cubic-bezier(0.74, 0.22, 0.31, 0.87) forwards;
+    }
+    .info-content .about p:nth-child(1) { animation-delay: 50ms; }
+    .info-content .about p:nth-child(2) { animation-delay: 120ms; }
+    .info-content .about p:nth-child(3) { animation-delay: 190ms; }
+    @keyframes info-text-in {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .info-content .about p:last-of-type {
+      margin-bottom: 1em;
+    }
+    .info-content .about a {
+      color: #000;
+      text-decoration: none;
+    }
+    .info-content .about a:hover {
+      font-style: italic;
+    }
+
+    .info-content .skills {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .info-content .skills li {
+      margin: 0;
+      padding: 0;
+      line-height: 14px;
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      transform: translateY(12px);
+      animation: info-text-in 400ms cubic-bezier(0.74, 0.22, 0.31, 0.87) forwards;
+    }
+    .info-content .skills li:nth-child(1) { animation-delay: 260ms; }
+    .info-content .skills li:nth-child(2) { animation-delay: 300ms; }
+    .info-content .skills li:nth-child(3) { animation-delay: 340ms; }
+    .info-content .skills li:nth-child(4) { animation-delay: 380ms; }
+    .info-content .skills li:nth-child(5) { animation-delay: 420ms; }
+    .info-content .skills li:nth-child(6) { animation-delay: 460ms; }
+    .info-content .skills li:nth-child(7) { animation-delay: 500ms; }
+    .info-content .skills li:nth-child(8) { animation-delay: 540ms; }
+    .info-content .skills li:nth-child(9) { animation-delay: 580ms; }
+    .info-content .skills li:nth-child(10) { animation-delay: 620ms; }
+    .info-content .skills li:nth-child(11) { animation-delay: 660ms; }
+    .info-content .skills li:nth-child(12) { animation-delay: 700ms; }
+
+    /* Bottom section: skills left, education+collab right (aligned to column 10) */
+    .info-bottom {
+      margin-top: auto;
+      padding-top: 10px;
+      padding-bottom: 10px;
+      border-top: 1px solid rgba(0, 0, 0, 0.4);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      align-items: stretch;
+      opacity: 0;
+      transform: translateY(12px);
+      animation: info-text-in 400ms cubic-bezier(0.74, 0.22, 0.31, 0.87) 740ms forwards;
+    }
+
+    .info-content .education {
+      margin-top: 0;
+      font-size: 12px;
+      line-height: 14px;
+      color: rgba(0, 0, 0, 0.4);
+    }
+
+    .info-content .meta-group {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 100%;
+    }
+
+    .info-content .collab-note {
+      margin-top: 0;
+      margin-bottom: 0;
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.4);
+      line-height: 16px;
+    }
+
+    /* Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 10px;
+      margin: 0 10px;
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <a href="/" class="name">Mark Wilson</a>
+    <nav class="nav-links">
+      <a href="projects.html">Projects</a>
+      <a href="info.html">Info</a>
+      <a href="tools.html">Tools</a>
+    </nav>
+  </header>
+
+  <!-- Fixed bottom-left: randomly cycling images and videos -->
+  <div class="media-panel" id="mediaPanel" aria-hidden="true">
+    <div class="media-wrap" id="mediaWrap"></div>
+  </div>
+
+  <main id="page-main">
+    <div class="grid">
+      <div class="info-content">
+        <section class="about">
+          <p>Kia ora! I'm a visual designer with a lots of relevant skillsets & interests. I have seven years' experience across brand, print, & digital.</p>
+          <p>I'm now a freelance motion designer, which I weave into my 3D rendering & programming projects. Always up for collabs & coffee, so let's chat!</p>
+          <p><a href="mailto:m@markwilson.xyz">Email</a>, <a href="https://www.instagram.com/resultsshouldvary/" target="_blank" rel="noopener">Instagram</a></p>
+        </section>
+
+        <div class="info-bottom">
+          <ul class="skills">
+            <li>Brand Identity</li>
+            <li>Motion Design</li>
+            <li>3D Rendering</li>
+            <li>Programming & Interactive</li>
+            <li>Web Design & Development</li>
+            <li>Type Design</li>
+            <li>Layout & Print</li>
+            <li>Photography & Retouching</li>
+            <li>Artworking</li>
+            <li>Video Editing</li>
+            <li>AI Imagery</li>
+            <li>Brand Strategy</li>
+          </ul>
+
+          <div class="meta-group">
+            <div class="education">
+              BDI, Industrial Design<br>
+              VUW & TU/e, NL.
+            </div>
+            <p class="collab-note">Most projects shown are a product of many talented creators who I've had the privilege to collaborate with, including Guardians, Previously Unavailable, Seachange, & Strategy</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="projects.embed.js"></script>
+  <script>
+    (function () {
+      var SANITY_PROJECT_ID = 'k9k1qhrl';
+
+      function sanityImageUrl(url, opts) {
+        if (!url || typeof url !== 'string') return url;
+        if (url.indexOf('cdn.sanity.io') === -1) return url;
+        var params = new URLSearchParams();
+        if (opts && opts.w) params.set('w', String(opts.w));
+        if (opts && opts.h) params.set('h', String(opts.h));
+        if (opts && opts.q) params.set('q', String(opts.q));
+        if (opts && opts.fit) params.set('fit', opts.fit);
+        params.set('auto', 'format');
+        return url + (url.indexOf('?') >= 0 ? '&' : '?') + params.toString();
+      }
+
+      function normalizeProject(doc) {
+        var img = doc.mediaImageUrl || null;
+        var vid = doc.mediaVideoUrl || null;
+        var isVideo = doc.mediaType === 'video' && vid;
+        return {
+          media: isVideo ? vid : (img || vid),
+          mediaType: isVideo ? 'video' : 'image'
+        };
+      }
+
+      // Get a single media item for "The Way Is Māori"
+      function getMediaItems(callback) {
+        var projects = window.__SANITY_PROJECTS || [];
+        if (projects.length > 0) {
+          var target = projects.find(function (p) {
+            return p && p.title === 'The Way Is Māori';
+          });
+          if (target && target.media) {
+            callback([{
+              media: target.media,
+              mediaType: target.mediaType || 'image'
+            }]);
+            return;
+          }
+        }
+
+        // Fallback: fetch just this project from Sanity
+        var query = '*[_type == "project" && title == "The Way Is Māori"]{ mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url }';
+        var path = '/v2024-01-01/data/query/production';
+        var params = '?query=' + encodeURIComponent(query) + '&perspective=published';
+        fetch('https://k9k1qhrl.apicdn.sanity.io' + path + params, { method: 'GET', mode: 'cors' })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
+          .then(function (body) {
+            var list = body.result || [];
+            var items = list
+              .filter(function (p) { return p.mediaImageUrl || p.mediaVideoUrl; })
+              .map(normalizeProject);
+            callback(items.length ? items.slice(0, 1) : []);
+          })
+          .catch(function () { callback([]); });
+      }
+
+      var mediaItems = [];
+
+      function buildMediaItems() {
+        var wrap = document.getElementById('mediaWrap');
+        wrap.innerHTML = '';
+        mediaItems.forEach(function (item) {
+          var div = document.createElement('div');
+          div.className = 'media-item active';
+          if (item.mediaType === 'video') {
+            var video = document.createElement('video');
+            video.src = item.media;
+            video.muted = true;
+            video.loop = true;
+            video.playsInline = true;
+            video.autoplay = true;
+            video.setAttribute('aria-hidden', 'true');
+            div.appendChild(video);
+          } else {
+            var img = document.createElement('img');
+            img.src = sanityImageUrl(item.media, { w: 1200, fit: 'max', q: 90 });
+            img.alt = 'The Way Is Māori';
+            img.setAttribute('aria-hidden', 'true');
+            div.appendChild(img);
+          }
+          wrap.appendChild(div);
+        });
+        document.getElementById('mediaPanel').setAttribute('aria-hidden', mediaItems.length ? 'false' : 'true');
+      }
+
+      function initMedia() {
+        getMediaItems(function (items) {
+          mediaItems = items;
+          buildMediaItems();
+        });
+      }
+
+      // Text animation + page entry take priority — run before any media loading
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          var main = document.getElementById('page-main');
+          if (main) {
+            main.classList.add('page-entered');
+          }
+          window.scrollTo(0, 0);
+          initMedia(); // Defer media init until after text has started animating
+        });
+      });
+
+      // Gentle fade/slide out on internal nav clicks
+      (function () {
+        var main = document.getElementById('page-main');
+        if (!main) return;
+
+        function handleNavClick(event) {
+          var link = event.currentTarget;
+          var href = link.getAttribute('href');
+          if (!href || href.indexOf('#') === 0 || link.target === '_blank') {
+            return;
+          }
+
+          event.preventDefault();
+          if (main.classList.contains('page-exiting')) return;
+
+          main.classList.remove('page-entered');
+          main.classList.add('page-exiting');
+
+          setTimeout(function () {
+            window.location.href = href;
+          }, 500);
+        }
+
+        var navLinks = document.querySelectorAll('.nav a');
+        navLinks.forEach(function (link) {
+          link.addEventListener('click', handleNavClick);
+        });
+      })();
+    })();
+  </script>
+</body>
+</html>

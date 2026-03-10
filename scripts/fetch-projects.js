@@ -11,8 +11,53 @@ const path = require('path');
 
 const PROJECT_ID = 'k9k1qhrl';
 const DATASET = 'production';
-const QUERY = '*[_type == "project"]{ title, studio, link, categories, mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url }';
+const QUERY = '*[_type == "project"]{ title, studio, link, categories, mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url, "vimeoId": vimeoVideo.vimeoData.id }';
 const API_PATH = '/v2024-01-01/data/query/' + DATASET + '?query=' + encodeURIComponent(QUERY) + '&perspective=published';
+
+const CATEGORY_MAP = {
+  // Motion
+  motion: 'motion design',
+  Motion: 'motion design',
+  'Motion Design': 'motion design',
+  'motion design': 'motion design',
+  // 3D
+  '3D': '3D rendering',
+  '3d': '3D rendering',
+  '3D Rendering': '3D rendering',
+  '3D rendering': '3D rendering',
+  // Programming
+  programming: 'programming',
+  Programming: 'programming',
+  'programming': 'programming',
+  // Brand identity / design
+  design: 'brand identity',
+  Design: 'brand identity',
+  'Brand Identity': 'brand identity',
+  'brand identity': 'brand identity',
+  // Type design
+  'type design': 'type design',
+  'Type Design': 'type design',
+  // Web dev
+  'web development': 'web development',
+  'Web Development': 'web development',
+};
+
+function normalizeCategories(raw) {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  const out = [];
+  raw.forEach((c) => {
+    if (!c) return;
+    const key = String(c);
+    const mapped = CATEGORY_MAP[key] || CATEGORY_MAP[key.toLowerCase()];
+    if (!mapped) return;
+    if (!seen.has(mapped)) {
+      seen.add(mapped);
+      out.push(mapped);
+    }
+  });
+  return out;
+}
 
 function fetch(url) {
   return new Promise((resolve, reject) => {
@@ -34,15 +79,18 @@ function fetch(url) {
 
 function normalize(doc) {
   const img = doc.mediaImageUrl || null;
-  const vid = doc.mediaVideoUrl || null;
+  const fileVid = doc.mediaVideoUrl || null;
+  const vimeoId = doc.vimeoId || null;
+  const vid = vimeoId ? ('https://player.vimeo.com/video/' + vimeoId) : fileVid;
   const isVideo = doc.mediaType === 'video' && vid;
   return {
     title: doc.title || '',
     studio: doc.studio || '',
     link: doc.link || '',
-    categories: Array.isArray(doc.categories) ? doc.categories : [],
+    categories: normalizeCategories(doc.categories),
     media: isVideo ? vid : (img || vid),
     mediaType: isVideo ? 'video' : 'image',
+    isVimeoEmbed: !!vimeoId,
   };
 }
 

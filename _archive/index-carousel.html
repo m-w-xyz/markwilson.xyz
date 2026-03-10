@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<!--
+  New homepage. To make this the live homepage:
+  1. Rename current index.html to e.g. index-old.html
+  2. Rename this file to index.html
+  Carousel: replace projects[] with Sanity fetch; schema in sanity-portfolio-schema.json
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="gif" href="assets/img/favicon-1.gif">
+  <title>Mark Wilson</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      width: 100%;
+      min-width: 100%;
+      height: 100%;
+      min-height: 100%;
+    }
+
+    html, body {
+      width: 100%;
+      min-width: 100%;
+      height: 100%;
+      min-height: 100%;
+      margin: 0;
+      overflow: hidden;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      display: none;
+    }
+
+    .intro {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      text-align: center;
+      line-height: 1.5;
+      max-width: min(640px, calc(100vw - 20px));
+      width: min(640px, calc(100vw - 20px));
+      flex-shrink: 0;
+      margin-bottom: 0;
+      transform: rotate(3.5deg);
+      padding: 50px 10px 50px;
+      box-sizing: border-box;
+    }
+
+    .intro .name {
+      display: block;
+      max-width: 100%;
+      width: 100%;
+      margin-bottom: 0;
+      line-height: 18px;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .intro p, .intro .line {
+      max-width: 100%;
+      width: 100%;
+      margin-bottom: 0;
+      line-height: 18px;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .intro p:last-child, .intro .line:last-of-type { margin-bottom: 0; }
+
+    .intro a {
+      color: #fff;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .intro .filter-link .category-count {
+      font-size: 12px;
+      line-height: 1;
+      margin-left: 2px;
+    }
+
+    .intro a:hover { color: #FBC6EF; }
+    .intro a.filter-link.active { color: #FBC6EF; }
+    ::selection { background: #FBC6EF; color: #000; }
+    .intro a[href^="mailto:"],
+    .intro a[href^="http"] { text-decoration: underline; }
+
+    .carousel-section {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .carousel-scale-wrap {
+      transform-origin: center center;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .carousel-viewport {
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .carousel-track {
+      position: relative;
+      width: 46vh;
+      height: 58vh; /* 46 * 5/4 default; JS overrides to match active media */
+      max-width: 72vw;
+      max-height: min(72vh, 100%); /* fit within viewport below intro */
+    }
+
+    @media (max-width: 768px) {
+      .carousel-track {
+        width: min(74vw, 74vh);
+        height: min(74vw, 74vh);
+        max-width: 74vw;
+        max-height: min(74vh, 100%);
+      }
+    }
+
+    /* Text cursors for left/right navigation and pause/play */
+    .carousel-section.cursor-prev {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Ctext x='24' y='15' text-anchor='middle' font-size='12' fill='%23fff' font-family='Arial,sans-serif'%3Eprev%3C/text%3E%3C/svg%3E") 24 10, auto;
+    }
+    .carousel-section.cursor-next {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Ctext x='24' y='15' text-anchor='middle' font-size='12' fill='%23fff' font-family='Arial,sans-serif'%3Enext%3C/text%3E%3C/svg%3E") 24 10, auto;
+    }
+    .carousel-section.cursor-pause {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='20' viewBox='0 0 56 20'%3E%3Ctext x='28' y='15' text-anchor='middle' font-size='12' fill='%23fff' font-family='Arial,sans-serif'%3Epause%3C/text%3E%3C/svg%3E") 28 10, auto;
+    }
+    .carousel-section.cursor-play {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Ctext x='24' y='15' text-anchor='middle' font-size='12' fill='%23fff' font-family='Arial,sans-serif'%3Eplay%3C/text%3E%3C/svg%3E") 24 10, auto;
+    }
+
+    .carousel-item {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: none;
+      pointer-events: none;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .carousel-item.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .carousel-item .media-wrap {
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+      background: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .carousel-item .media {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+    .carousel-item img.media {
+      pointer-events: none;
+      -webkit-user-drag: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .carousel-item video.media {
+      pointer-events: none;
+      transform: translateZ(0);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .carousel-item video.media::-webkit-media-controls,
+    .carousel-item video.media::-webkit-media-controls-panel,
+    .carousel-item video.media::-webkit-media-controls-play-button,
+    .carousel-item video.media::-webkit-media-controls-start-playback-button {
+      display: none !important;
+      opacity: 0;
+    }
+    .carousel-item iframe.media {
+      width: 100%;
+      height: 100%;
+      min-height: 200px;
+      border: 0;
+    }
+
+    .carousel-viewport {
+      opacity: 0;
+      transition: none;
+    }
+    .carousel-viewport.carousel-ready {
+      opacity: 1;
+    }
+
+    .carousel-item .media-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #555;
+      font-size: 12px;
+    }
+
+    .carousel-item-info {
+      flex-shrink: 0;
+      padding: 6px 0 0;
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+      line-height: 1.3;
+      opacity: 0;
+      transition: none;
+    }
+    .carousel-item.active .carousel-item-info {
+      opacity: 1;
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      pointer-events: auto;
+    }
+    .carousel-item-info a {
+      color: #888;
+      text-decoration: underline;
+    }
+    .carousel-item-info a:hover {
+      color: #FBC6EF;
+    }
+
+    .carousel-labels {
+      display: none;
+    }
+
+    .carousel-section ::selection {
+      background: transparent;
+      color: inherit;
+    }
+
+    /* Theme toggle — same style as project info */
+    .theme-toggle {
+      font-size: 12px;
+      line-height: 1.3;
+      color: #888;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-family: Arial, sans-serif;
+      text-decoration: underline;
+      user-select: none;
+      -webkit-user-select: none;
+      outline: none;
+    }
+    .theme-toggle:focus {
+      outline: none;
+    }
+    .theme-toggle:hover {
+      color: #FBC6EF;
+    }
+    body.light-mode .theme-toggle {
+      color: #666;
+    }
+    body.light-mode .theme-toggle:hover {
+      color: #c954a8;
+    }
+
+    /* Light mode */
+    body.light-mode {
+      height: 100%;
+      background: #fff;
+      color: #000;
+    }
+    body.light-mode .intro a {
+      color: #000;
+    }
+    body.light-mode .intro a:hover,
+    body.light-mode .intro a.filter-link.active {
+      color: #c954a8;
+    }
+    body.light-mode ::selection {
+      background: #FBC6EF;
+      color: #000;
+    }
+    body.light-mode .carousel-item-info {
+      color: #666;
+    }
+    body.light-mode .carousel-item-info a {
+      color: #666;
+    }
+    body.light-mode .carousel-item-info a:hover {
+      color: #c954a8;
+    }
+    body.light-mode #carouselStatus {
+      color: #666;
+    }
+    body.light-mode .carousel-section.cursor-prev {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Ctext x='24' y='15' text-anchor='middle' font-size='12' fill='%23000' font-family='Arial,sans-serif'%3Eprev%3C/text%3E%3C/svg%3E") 24 10, auto;
+    }
+    body.light-mode .carousel-section.cursor-next {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Ctext x='24' y='15' text-anchor='middle' font-size='12' fill='%23000' font-family='Arial,sans-serif'%3Enext%3C/text%3E%3C/svg%3E") 24 10, auto;
+    }
+    body.light-mode .carousel-section.cursor-pause {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='20' viewBox='0 0 56 20'%3E%3Ctext x='28' y='15' text-anchor='middle' font-size='12' fill='%23000' font-family='Arial,sans-serif'%3Epause%3C/text%3E%3C/svg%3E") 28 10, auto;
+    }
+    body.light-mode .carousel-section.cursor-play {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Ctext x='24' y='15' text-anchor='middle' font-size='12' fill='%23000' font-family='Arial,sans-serif'%3Eplay%3C/text%3E%3C/svg%3E") 24 10, auto;
+    }
+
+    /* Carousel text buttons — bottom right */
+    .carousel-controls {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 100;
+      display: flex;
+      flex-direction: row;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .carousel-controls button {
+      font-size: 12px;
+      line-height: 1.3;
+      color: #888;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-family: Arial, sans-serif;
+      text-decoration: underline;
+      user-select: none;
+      -webkit-user-select: none;
+      outline: none;
+    }
+    .carousel-controls button:focus {
+      outline: none;
+    }
+    .carousel-controls button:hover {
+      color: #FBC6EF;
+    }
+    body.light-mode .carousel-controls button {
+      color: #666;
+    }
+    body.light-mode .carousel-controls button:hover {
+      color: #c954a8;
+    }
+    .theme-toggle {
+      margin-left: 0.5rem;
+    }
+
+    /* Page transition: content slides up from bottom */
+    main#page-main {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      transform: translateY(100%);
+      transition: transform 500ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
+    }
+    main#page-main.page-entered {
+      transform: translateY(0);
+    }
+
+  </style>
+</head>
+<body>
+  <main id="page-main">
+  <div class="intro">
+    <span class="name">Mark Wilson</span>
+    <p class="line">does <a class="filter-link" data-filter="all" href="#">all sorts</a> from <a class="filter-link" data-filter="brand identity" href="#">Brand Identity</a>, <a class="filter-link" data-filter="motion design" href="#">Motion Design</a>, <a class="filter-link" data-filter="3D rendering" href="#">3D Rendering</a>, & <a class="filter-link" data-filter="programming" href="#">Programming</a>, including Type Design & Web Development,</p>
+    <p class="line">contactable at <a href="mailto:m@markwilson.xyz">m@markwilson.xyz</a>, social on <a href="https://www.instagram.com/resultsshouldvary/" target="_blank" rel="noopener">@resultsshouldvary</a>, & toying around <a href="https://markwilson.xyz/toys">here</a>.</p>
+  </div>
+
+  <div class="carousel-controls">
+    <button type="button" id="carouselBtnPlayPause" aria-label="Pause">Pause</button>
+    <button type="button" id="carouselBtnPrev" aria-label="Prev">Prev</button>
+    <button type="button" id="carouselBtnNext" aria-label="Next">Next</button>
+    <button type="button" id="carouselBtnShowAll" aria-label="Show all">Show all</button>
+    <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">Light</button>
+  </div>
+
+  <div class="carousel-section">
+    <p id="carouselStatus" style="position:absolute;left:0;right:0;top:0;color:#888;font-size:11px;padding:4px 0;display:none;"></p>
+    <div class="carousel-scale-wrap" id="carouselScaleWrap">
+      <div class="carousel-viewport" id="carouselViewport">
+        <div class="carousel-track" id="carouselTrack"></div>
+      </div>
+      <div class="carousel-labels" id="carouselLabels">
+        <span class="left" id="labelPrev"></span>
+        <span class="center" id="labelCenter"></span>
+        <span class="right" id="labelNext"></span>
+      </div>
+    </div>
+  </div>
+
+  </main>
+
+  <script>
+    (function () {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          document.getElementById('page-main').classList.add('page-entered');
+        });
+      });
+    })();
+  </script>
+  <script src="projects.embed.js"></script>
+  <script>
+    (function () {
+      let activeFilter = null;
+      let hasUsedFilters = false;
+      let filteredProjects = [];
+      let allProjects = [];
+
+      var SANITY_PROJECT_ID = 'k9k1qhrl';
+      var SANITY_DATASET = 'production';
+
+      function sanityImageUrl(url, opts) {
+        if (!url || typeof url !== 'string') return url;
+        if (url.indexOf('cdn.sanity.io') === -1) return url;
+        var params = new URLSearchParams();
+        if (opts && opts.w) params.set('w', String(opts.w));
+        if (opts && opts.h) params.set('h', String(opts.h));
+        if (opts && opts.q) params.set('q', String(opts.q));
+        if (opts && opts.fit) params.set('fit', opts.fit);
+        params.set('auto', 'format');
+        return url + (url.indexOf('?') >= 0 ? '&' : '?') + params.toString();
+      }
+
+      // Canonical category ids:
+      //   'brand identity', 'motion design', '3D rendering',
+      //   'programming', 'type design', 'web development'
+      const CATEGORY_MAP = {
+        // Motion
+        motion: 'motion design',
+        Motion: 'motion design',
+        'Motion Design': 'motion design',
+        'motion design': 'motion design',
+        // 3D
+        '3D': '3D rendering',
+        '3d': '3D rendering',
+        '3D Rendering': '3D rendering',
+        '3D rendering': '3D rendering',
+        // Programming
+        programming: 'programming',
+        Programming: 'programming',
+        'programming': 'programming',
+        // Brand identity / design
+        design: 'brand identity',
+        Design: 'brand identity',
+        'Brand Identity': 'brand identity',
+        'brand identity': 'brand identity',
+        // Type design
+        'type design': 'type design',
+        'Type Design': 'type design',
+        // Web dev
+        'web development': 'web development',
+        'Web Development': 'web development',
+      };
+
+      function normalizeCategories(raw) {
+        if (!Array.isArray(raw)) return [];
+        const seen = new Set();
+        const out = [];
+        raw.forEach(function (c) {
+          if (!c) return;
+          var key = String(c);
+          var mapped = CATEGORY_MAP[key] || CATEGORY_MAP[key.toLowerCase()];
+          if (!mapped) return;
+          if (!seen.has(mapped)) {
+            seen.add(mapped);
+            out.push(mapped);
+          }
+        });
+        return out;
+      }
+
+      function normalizeProject(doc) {
+        var img = doc.mediaImageUrl || null;
+        var fileVid = doc.mediaVideoUrl || null;
+        var vimeoId = doc.vimeoId || null;
+        var vid = vimeoId ? ('https://player.vimeo.com/video/' + vimeoId) : fileVid;
+        var isVideo = doc.mediaType === 'video' && vid;
+        return {
+          title: doc.title || '',
+          studio: doc.studio || '',
+          link: doc.link || '',
+          categories: normalizeCategories(doc.categories),
+          media: isVideo ? vid : (img || vid),
+          mediaType: isVideo ? 'video' : 'image',
+          isVimeoEmbed: !!vimeoId,
+        };
+      }
+
+      function loadProjects(callback) {
+        var statusEl = document.getElementById('carouselStatus');
+        function status(msg, visible) {
+          if (statusEl) {
+            statusEl.textContent = msg;
+            statusEl.style.display = visible !== false ? 'block' : 'none';
+          }
+        }
+        status('Loading projects…', true);
+
+        var query = '*[_type == "project"]{ title, studio, link, categories, mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url, "vimeoId": vimeoVideo.vimeoData.id }';
+        var apiHost = 'https://' + SANITY_PROJECT_ID + '.api.sanity.io';
+        var cdnHost = 'https://' + SANITY_PROJECT_ID + '.apicdn.sanity.io';
+        var path = '/v2024-01-01/data/query/' + SANITY_DATASET;
+        var params = '?query=' + encodeURIComponent(query) + '&perspective=published';
+
+        function tryFetch(baseUrl, onDone) {
+          fetch(baseUrl + path + params, { method: 'GET', mode: 'cors', credentials: 'omit' })
+            .then(function (r) {
+              if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+              return r.json();
+            })
+            .then(function (body) {
+              if (body.error) throw new Error(body.error.description || JSON.stringify(body.error));
+              var list = body.result;
+              if (!Array.isArray(list)) throw new Error('Invalid response');
+              onDone(null, list);
+            })
+            .catch(function (err) {
+              onDone(err, null);
+            });
+        }
+
+        tryFetch(cdnHost, function (err, list) {
+          if (err) {
+            tryFetch(apiHost, function (err2, list2) {
+              if (err2 || !list2 || list2.length === 0) {
+                status('Could not load projects. Open this page via http:// (e.g. npx serve) and check project k9k1qhrl. ' + (err2 ? err2.message : 'No documents returned.'), true);
+                callback([]);
+                return;
+              }
+              status('', false);
+              callback(list2.map(normalizeProject));
+            });
+            return;
+          }
+          if (!list || list.length === 0) {
+            status('No projects in Sanity yet. Add and publish projects in Studio (k9k1qhrl).', true);
+            callback([]);
+            return;
+          }
+          status('', false);
+          callback(list.map(normalizeProject));
+        });
+      }
+
+      const track = document.getElementById('carouselTrack');
+      const viewport = document.getElementById('carouselViewport');
+      const carouselSection = document.querySelector('.carousel-section');
+      const itemSizePx = () => {
+        var h = window.innerHeight;
+        var w = window.innerWidth;
+        if (w <= 768) return Math.min(w * 0.74, h * 0.74);
+        return Math.min(h * 0.46, w * 0.72);
+      };
+      const ROTATE_INTERVAL_MS = 4000;
+      const preloadRadius = 2;
+      const preloadedUrls = new Set();
+      let currentIndex = 0;
+      let rotateTimer = null;
+      let lastHoverZone = null;
+      let carouselPaused = false;
+
+      function shuffleArray(arr) {
+        for (var i = arr.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var t = arr[i];
+          arr[i] = arr[j];
+          arr[j] = t;
+        }
+        return arr;
+      }
+
+      function getVisibleProjects() {
+        return activeFilter
+          ? allProjects.filter(function (p) {
+              return (p.categories || []).indexOf(activeFilter) !== -1;
+            })
+          : allProjects;
+      }
+
+      function computeCategoryCounts() {
+        const counts = {
+          'brand identity': 0,
+          'motion design': 0,
+          '3D rendering': 0,
+          programming: 0,
+        };
+        allProjects.forEach(function (p) {
+          (p.categories || []).forEach(function (c) {
+            if (Object.prototype.hasOwnProperty.call(counts, c)) {
+              counts[c] += 1;
+            }
+          });
+        });
+        return counts;
+      }
+
+      function applyCategoryCounts() {
+        const counts = computeCategoryCounts();
+        [
+          'brand identity',
+          'motion design',
+          '3D rendering',
+          'programming',
+        ].forEach(function (value) {
+          var link = document.querySelector('.filter-link[data-filter="' + value + '"]');
+          if (!link) return;
+          var badge = link.querySelector('.category-count');
+          if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'category-count';
+            link.appendChild(badge);
+          }
+          badge.textContent = String(counts[value] || 0);
+        });
+      }
+
+      function buildCarouselItems(list) {
+        var maxSize = Math.min(Math.round(itemSizePx() * 2), 1200);
+        return list.map(function (p, i) {
+          var src = p.media;
+          if (p.mediaType === 'image' && src) {
+            src = sanityImageUrl(src, { w: maxSize, fit: 'max', q: 90 });
+          }
+          var mediaHtml;
+          if (!p.media) {
+            mediaHtml = '<div class="media-placeholder">—</div>';
+          } else if (p.mediaType === 'video' && p.isVimeoEmbed) {
+            mediaHtml = '<iframe class="media media-iframe" src="' + p.media.replace(/"/g, '&quot;') + '?title=0&byline=0&portrait=0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe>';
+          } else if (p.mediaType === 'video') {
+            mediaHtml = '<video class="media" data-src="' + p.media.replace(/"/g, '&quot;') + '" muted loop playsinline preload="none" disablePictureInPicture disableRemotePlayback></video>';
+          } else {
+            mediaHtml = '<img class="media" src="' + src + '" alt="" draggable="false">';
+          }
+          var title = (p.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          var studio = (p.studio || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          var cats = Array.isArray(p.categories) ? p.categories : [];
+          function toTitleCase(s) {
+            return (s || '').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+          }
+          var catLabels = cats.map(function (c) { return toTitleCase(c); });
+          var catText = catLabels.join(' • ');
+          var infoText = [title, studio, catText].filter(Boolean).join(', ');
+          var linkUrl = (p.link && p.link.trim()) ? p.link.trim().replace(/"/g, '&quot;') : '';
+          var infoInner = linkUrl
+            ? '<a href="' + linkUrl + '" target="_blank" rel="noopener noreferrer">' + infoText + '</a>'
+            : infoText;
+          const infoHtml = '<div class="carousel-item-info">' + infoInner + '</div>';
+          return '<div class="carousel-item" data-index="' + i + '" data-categories="' + (p.categories || []).join(',') + '"><div class="media-wrap">' + mediaHtml + '</div>' + infoHtml + '</div>';
+        }).join('');
+      }
+
+      function preloadVideoForIndex(idx) {
+        var items = track.querySelectorAll('.carousel-item');
+        var n = items.length;
+        if (n === 0) return;
+        var i = ((idx % n) + n) % n;
+        var el = items[i];
+        if (!el) return;
+        var video = el.querySelector('video.media');
+        if (!video) return;
+        var dataSrc = video.getAttribute('data-src');
+        if (!dataSrc) return;
+        if (!video.getAttribute('src')) {
+          video.setAttribute('src', dataSrc);
+          video.load();
+        }
+      }
+
+      function updateTrackSizeToActiveMedia() {
+        var items = track.querySelectorAll('.carousel-item');
+        var activeEl = items[currentIndex];
+        if (!activeEl) return;
+        var img = activeEl.querySelector('img.media');
+        var video = activeEl.querySelector('video.media');
+        var iframe = activeEl.querySelector('iframe.media');
+        var w = 0, h = 0;
+        if (img && img.complete && img.naturalWidth) {
+          w = img.naturalWidth;
+          h = img.naturalHeight;
+        } else if (video && video.videoWidth) {
+          w = video.videoWidth;
+          h = video.videoHeight;
+        } else if (iframe) {
+          w = 16;
+          h = 9;
+        }
+        var maxW = (window.innerWidth <= 768) ? window.innerWidth * 0.74 : window.innerWidth * 0.72;
+        var maxH = (window.innerWidth <= 768) ? window.innerHeight * 0.74 : window.innerHeight * 0.72;
+        if (w && h) {
+          var scale = Math.min(maxW / w, maxH / h, 1);
+          track.style.width = Math.round(w * scale) + 'px';
+          track.style.height = Math.round(h * scale) + 'px';
+        } else {
+          track.style.width = '';
+          track.style.height = '';
+        }
+      }
+
+      function setActiveSlide(index) {
+        var items = track.querySelectorAll('.carousel-item');
+        var n = items.length;
+        if (n === 0) return;
+        currentIndex = ((index % n) + n) % n;
+        items.forEach(function (el, i) {
+          el.classList.toggle('active', i === currentIndex);
+          var video = el.querySelector('video.media');
+          if (video) {
+            if (i === currentIndex) {
+              var dataSrc = video.getAttribute('data-src');
+              if (dataSrc && !video.getAttribute('src')) {
+                video.setAttribute('src', dataSrc);
+                video.load();
+              }
+              video.muted = true;
+              video.play().catch(function () {});
+            } else {
+              video.pause();
+            }
+          }
+        });
+        updateTrackSizeToActiveMedia();
+        var activeEl = items[currentIndex];
+        if (activeEl) {
+          var img = activeEl.querySelector('img.media');
+          var vid = activeEl.querySelector('video.media');
+          if (img && !img.complete) {
+            img.addEventListener('load', updateTrackSizeToActiveMedia, { once: true });
+          }
+          if (vid && !vid.videoWidth) {
+            vid.addEventListener('loadedmetadata', updateTrackSizeToActiveMedia, { once: true });
+          }
+        }
+        preloadAdjacentImages();
+        preloadVideoForIndex(currentIndex - 1);
+        preloadVideoForIndex(currentIndex + 1);
+      }
+
+      function startRotateTimer() {
+        if (carouselPaused || filteredProjects.length <= 1) return;
+        if (rotateTimer) clearInterval(rotateTimer);
+        rotateTimer = setInterval(advanceToNext, ROTATE_INTERVAL_MS);
+      }
+
+      function advanceToNext() {
+        var n = filteredProjects.length;
+        if (n <= 1) return;
+        setActiveSlide(currentIndex + 1);
+        startRotateTimer();
+      }
+
+      function advanceToPrev() {
+        var n = filteredProjects.length;
+        if (n <= 1) return;
+        setActiveSlide(currentIndex - 1);
+        startRotateTimer();
+      }
+
+      function getTrackZone(clientX, clientY) {
+        if (!track || !track.children.length) return null;
+        var r = track.getBoundingClientRect();
+        if (clientY < r.top || clientY > r.bottom) return null;
+        if (clientX < r.left) return 'left';
+        if (clientX > r.right) return 'right';
+        return 'image';
+      }
+
+      function togglePause() {
+        carouselPaused = !carouselPaused;
+        if (carouselPaused) {
+          if (rotateTimer) {
+            clearInterval(rotateTimer);
+            rotateTimer = null;
+          }
+        } else {
+          startRotateTimer();
+        }
+        updatePlayPauseLabel();
+      }
+
+      function updatePlayPauseLabel() {
+        var btn = document.getElementById('carouselBtnPlayPause');
+        if (!btn) return;
+        btn.textContent = carouselPaused ? 'Play' : 'Pause';
+        btn.setAttribute('aria-label', carouselPaused ? 'Play' : 'Pause');
+      }
+
+      function renderCarousel() {
+        filteredProjects = getVisibleProjects();
+        preloadedUrls.clear();
+        if (rotateTimer) {
+          clearInterval(rotateTimer);
+          rotateTimer = null;
+        }
+        viewport.classList.remove('carousel-ready');
+        if (filteredProjects.length === 0) {
+          track.innerHTML = '';
+          return;
+        }
+        track.innerHTML = buildCarouselItems(filteredProjects);
+        track.style.width = '';
+        track.style.height = '';
+        currentIndex = 0;
+        setActiveSlide(0);
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            viewport.classList.add('carousel-ready');
+            startRotateTimer();
+            updatePlayPauseLabel();
+            applyCategoryCounts();
+          });
+        });
+      }
+
+      function setupHoverNav() {
+        if (!carouselSection || filteredProjects.length <= 1) return;
+        carouselSection.addEventListener('mousemove', function (e) {
+          var zone = getTrackZone(e.clientX, e.clientY);
+          carouselSection.classList.remove('cursor-prev', 'cursor-next', 'cursor-pause', 'cursor-play');
+          if (zone === 'left') {
+            carouselSection.classList.add('cursor-prev');
+          } else if (zone === 'right') {
+            carouselSection.classList.add('cursor-next');
+          } else if (zone === 'image') {
+            carouselSection.classList.add(carouselPaused ? 'cursor-play' : 'cursor-pause');
+          }
+          lastHoverZone = zone;
+        });
+        carouselSection.addEventListener('mouseleave', function () {
+          carouselSection.classList.remove('cursor-prev', 'cursor-next', 'cursor-pause', 'cursor-play');
+          lastHoverZone = null;
+        });
+        document.addEventListener('click', function (e) {
+          if (e.target.closest('.intro')) return;
+          if (e.target.closest('.carousel-controls')) return;
+          if (filteredProjects.length <= 1) return;
+          var zone = getTrackZone(e.clientX, e.clientY);
+          if (zone === 'left') {
+            e.preventDefault();
+            e.stopPropagation();
+            advanceToPrev();
+          } else if (zone === 'right') {
+            e.preventDefault();
+            e.stopPropagation();
+            advanceToNext();
+          } else if (zone === 'image' && track.contains(e.target)) {
+            if (e.target.closest('a[href]')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            togglePause();
+          }
+        }, true);
+        document.addEventListener('keydown', function (e) {
+          var tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+          if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) return;
+          if (filteredProjects.length <= 1) return;
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            advanceToPrev();
+          } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            advanceToNext();
+          } else if (e.key === ' ') {
+            e.preventDefault();
+            togglePause();
+          }
+        });
+      }
+
+      function preloadAdjacentImages() {
+        if (filteredProjects.length === 0) return;
+        var maxSize = Math.min(Math.round(itemSizePx() * 2), 1200);
+        const n = filteredProjects.length;
+        for (let r = 1; r <= preloadRadius; r++) {
+          const prevIdx = (currentIndex - r + n) % n;
+          const nextIdx = (currentIndex + r) % n;
+          [prevIdx, nextIdx].forEach(function (i) {
+            const p = filteredProjects[i];
+            if (!p || !p.media || p.mediaType !== 'image') return;
+            const url = sanityImageUrl(p.media, { w: maxSize, fit: 'max', q: 90 });
+            if (preloadedUrls.has(url)) return;
+            preloadedUrls.add(url);
+            var img = new Image();
+            img.src = url;
+          });
+        }
+      }
+
+      document.querySelectorAll('.filter-link').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          if (this.getAttribute('href') === '#') {
+            e.preventDefault();
+            hasUsedFilters = true;
+            const filter = this.getAttribute('data-filter');
+            if (filter === 'all') {
+              activeFilter = null;
+            } else {
+              const same = activeFilter === filter;
+              activeFilter = same ? null : filter;
+            }
+            shuffleArray(allProjects);
+            document.querySelectorAll('.filter-link').forEach(function (x) {
+              const xFilter = x.getAttribute('data-filter');
+              x.classList.toggle('active', (xFilter === 'all' && activeFilter === null && hasUsedFilters) || (xFilter !== 'all' && xFilter === activeFilter));
+            });
+            renderCarousel();
+          }
+        });
+      });
+
+      if (window.__SANITY_PROJECTS && window.__SANITY_PROJECTS.length > 0) {
+        allProjects = shuffleArray(window.__SANITY_PROJECTS);
+        var statusEl = document.getElementById('carouselStatus');
+        if (statusEl) statusEl.style.display = 'none';
+        renderCarousel();
+      } else {
+        loadProjects(function (projects) {
+          allProjects = projects.length ? shuffleArray(projects) : [];
+          renderCarousel();
+        });
+      }
+      setupHoverNav();
+      window.addEventListener('resize', updateTrackSizeToActiveMedia);
+
+      (function setupCarouselButtons() {
+        var btnPrev = document.getElementById('carouselBtnPrev');
+        var btnNext = document.getElementById('carouselBtnNext');
+        var btnPlayPause = document.getElementById('carouselBtnPlayPause');
+        var btnShowAll = document.getElementById('carouselBtnShowAll');
+        if (btnPrev) btnPrev.addEventListener('click', function () { advanceToPrev(); });
+        if (btnNext) btnNext.addEventListener('click', function () { advanceToNext(); });
+        if (btnPlayPause) btnPlayPause.addEventListener('click', function () { togglePause(); });
+        if (btnShowAll) btnShowAll.addEventListener('click', function () {
+          hasUsedFilters = true;
+          activeFilter = null;
+          document.querySelectorAll('.filter-link').forEach(function (x) {
+            var xFilter = x.getAttribute('data-filter');
+            x.classList.toggle('active', (xFilter === 'all' && activeFilter === null && hasUsedFilters) || (xFilter !== 'all' && xFilter === activeFilter));
+          });
+          renderCarousel();
+        });
+      })();
+
+      // Theme toggle: text says mode we switch TO; persist in localStorage
+      (function () {
+        var STORAGE_KEY = 'markwilson-theme';
+        var toggleEl = document.getElementById('themeToggle');
+        function isLight() { return document.body.classList.contains('light-mode'); }
+        function applyTheme(light) {
+          document.body.classList.toggle('light-mode', light);
+          if (toggleEl) toggleEl.textContent = light ? 'Dark' : 'Light';
+          try { localStorage.setItem(STORAGE_KEY, light ? 'light' : 'dark'); } catch (e) {}
+        }
+        function initTheme() {
+          try {
+            var saved = localStorage.getItem(STORAGE_KEY);
+            if (saved === 'light') applyTheme(true);
+            else if (saved === 'dark') applyTheme(false);
+            else if (toggleEl) toggleEl.textContent = 'Light';
+          } catch (e) {
+            if (toggleEl) toggleEl.textContent = 'Light';
+          }
+        }
+        initTheme();
+        if (toggleEl) {
+          toggleEl.addEventListener('click', function () {
+            applyTheme(!isLight());
+          });
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>

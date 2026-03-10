@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projects — Mark Wilson</title>
+  <style>
+    /* Base */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #fff;
+      color: #000;
+      font: 18px Arial, sans-serif;
+      height: 100vh;
+      overflow: hidden; /* Page itself doesn't scroll; right column scrolls instead */
+    }
+
+    /* 12-column grid: 10px margins, 10px gutters */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 10px;
+      margin: 0 10px;
+      max-width: 100%;
+    }
+
+    /* Fixed nav — match homepage */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: #fff;
+      padding: 10px 10px 10px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav .name {
+      font: 18px Arial, sans-serif;
+      color: #000;
+      text-decoration: none;
+    }
+    .nav .name:hover {
+      font-style: italic;
+    }
+    .nav-links {
+      display: flex;
+      flex: 0 0 50vw;
+      width: 50vw;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .nav-links a {
+      font: 18px Arial, sans-serif;
+      color: #000;
+      text-decoration: none;
+    }
+    .nav-links a:hover {
+      font-style: italic;
+    }
+
+    /* Page transition: content gently fades and slides, nav stays fixed */
+    main {
+      padding-top: 20vh;
+      min-height: 100vh;
+      opacity: 0;
+      transform: translateY(24px);
+      transition:
+        transform 600ms cubic-bezier(0.74, 0.22, 0.31, 0.87),
+        opacity 600ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
+    }
+    main.page-entered {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    main.page-exiting {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    /* Fixed media panel — bottom-left of viewport, 5 columns wide, flush left (no grid margin) */
+    .media-panel {
+      position: fixed;
+      left: 0;
+      bottom: 0;
+      width: calc(100vw * 5 / 12);
+      max-width: calc(100vw * 5 / 12);
+      /* Align top edge with main grid/text (20vh from top) */
+      height: calc(100vh - 20vh);
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .media-panel .media-wrap {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .media-panel img,
+    .media-panel video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .media-panel .media-placeholder {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.3);
+    }
+
+    /* Projects index: 7th column, span half viewport (6 columns) */
+    .projects-index {
+      grid-column: 7 / -1;
+      position: relative;
+      z-index: 2;
+      padding-bottom: 2em;
+      /* Space so list starts below fixed filter (filter height ≈ 29px + 10vh) */
+      padding-top: calc(39px + 10vh);
+      /* Scrollbar lives inside this column instead of the page */
+      height: calc(100vh - 20vh); /* match media panel height */
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .projects-index::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Veil between nav and filter: list must not be visible in this band */
+    .filter-veil {
+      position: fixed;
+      top: 0;
+      left: calc(50vw + 5px);
+      right: 10px;
+      height: calc(20vh + 10px);
+      background: #fff;
+      z-index: 40;
+      pointer-events: none;
+    }
+
+    /* Filter bar — fixed, top-aligned with media panel; list scrolls under it */
+    .filter-bar {
+      position: fixed;
+      top: calc(20vh + 10px);
+      left: calc(50vw + 5px);
+      right: 10px;
+      z-index: 50;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      flex-wrap: nowrap;
+      gap: 10px;
+      margin-bottom: 0;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+      background: #fff;
+      transform: translateY(24px);
+      opacity: 0;
+      transition: transform 500ms cubic-bezier(0.74, 0.22, 0.31, 0.87),
+                  opacity 500ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
+    }
+    .filter-bar.filter-entered {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .filter-bar.filter-exiting {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    .filter-bar .filter-label {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.5);
+    }
+    .filter-bar .filter-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: baseline;
+    }
+    .filter-bar .filter-links a {
+      display: flex;
+      color: #000;
+      text-decoration: none;
+      font: 18px Arial, sans-serif;
+    }
+    .filter-bar .filter-links .category-count {
+      font-size: 12px;
+      line-height: 1;
+      color: rgba(0, 0, 0, 0.4);
+      font-style: normal;
+      margin-left: 2px;
+    }
+    .filter-bar .filter-links a:hover,
+    .filter-bar .filter-links a.active {
+      font-style: italic;
+    }
+    .filter-bar .filter-count {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.4);
+      margin-left: 0px;
+    }
+
+    /* Project list */
+    .project-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Each project entry: 10px spacing, divider with 10px above and below */
+    .project-entry {
+      display: flex;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+      text-align: left;
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(12px);
+      animation: project-entry-in 400ms cubic-bezier(0.74, 0.22, 0.31, 0.87) forwards;
+    }
+    .project-entry:nth-child(1) { animation-delay: 50ms; }
+    .project-entry:nth-child(2) { animation-delay: 90ms; }
+    .project-entry:nth-child(3) { animation-delay: 130ms; }
+    .project-entry:nth-child(4) { animation-delay: 170ms; }
+    .project-entry:nth-child(5) { animation-delay: 210ms; }
+    .project-entry:nth-child(6) { animation-delay: 250ms; }
+    .project-entry:nth-child(7) { animation-delay: 290ms; }
+    .project-entry:nth-child(8) { animation-delay: 330ms; }
+    .project-entry:nth-child(9) { animation-delay: 370ms; }
+    .project-entry:nth-child(10) { animation-delay: 410ms; }
+    .project-entry:nth-child(n+11) { animation-delay: 450ms; }
+    @keyframes project-entry-in {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .project-entry:last-child {
+      border-bottom: none;
+    }
+    .project-entry:hover {
+      background: rgba(0, 0, 0, 0.03);
+    }
+    .project-entry.locked {
+      background: rgba(0, 0, 0, 0.06);
+    }
+    .project-entry .project-title {
+      font: 18px Arial, sans-serif;
+      margin: 0;
+      font-weight: normal;
+    }
+    .project-entry .project-meta {
+      display: flex;
+      gap: 10px;
+      font-size: 12px;
+      opacity: 0.4;
+      margin: 0;
+      line-height: 1.4;
+      justify-content: flex-start;
+      align-items: flex-start;
+      height: fit-content;
+    }
+    .project-entry .project-meta .studio {
+      display: block;
+      margin-bottom: 0px;
+    }
+    .project-entry .project-meta .categories {
+      display: block;
+      height: fit-content;
+    }
+
+    .projects-status {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.6);
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <a href="/" class="name">Mark Wilson</a>
+    <nav class="nav-links">
+      <a href="projects.html">Projects</a>
+      <a href="info.html">Info</a>
+      <a href="tools.html">Tools</a>
+    </nav>
+  </header>
+
+  <!-- Fixed bottom-left: image or video for selected project -->
+  <div class="media-panel" id="mediaPanel" aria-hidden="true">
+    <div class="media-wrap">
+      <div class="media-placeholder" id="mediaPlaceholder">Select a project</div>
+    </div>
+  </div>
+
+  <!-- Filter bar: fixed to viewport, top-aligned with media panel (outside main so transform doesn’t affect it) -->
+  <div class="filter-veil" aria-hidden="true"></div>
+
+  <div class="filter-bar" id="filterBar">
+    <span class="filter-label">Filter</span>
+    <div class="filter-links" id="filterLinks"></div>
+  </div>
+
+  <main id="page-main">
+    <div class="grid">
+      <div class="projects-index">
+        <p class="projects-status" id="projectsStatus">Loading projects…</p>
+        <ul class="project-list" id="projectList"></ul>
+      </div>
+    </div>
+  </main>
+
+  <script src="projects.embed.js"></script>
+  <script>
+    (function () {
+      var SANITY_PROJECT_ID = 'k9k1qhrl';
+      var SANITY_DATASET = 'production';
+
+      function sanityImageUrl(url, opts) {
+        if (!url || typeof url !== 'string') return url;
+        if (url.indexOf('cdn.sanity.io') === -1) return url;
+        var params = new URLSearchParams();
+        if (opts && opts.w) params.set('w', String(opts.w));
+        if (opts && opts.h) params.set('h', String(opts.h));
+        if (opts && opts.q) params.set('q', String(opts.q));
+        if (opts && opts.fit) params.set('fit', opts.fit);
+        params.set('auto', 'format');
+        return url + (url.indexOf('?') >= 0 ? '&' : '?') + params.toString();
+      }
+
+      const CATEGORY_MAP = {
+        // Motion
+        motion: 'motion design',
+        Motion: 'motion design',
+        'Motion Design': 'motion design',
+        'motion design': 'motion design',
+        // 3D
+        '3D': '3D rendering',
+        '3d': '3D rendering',
+        '3D Rendering': '3D rendering',
+        '3D rendering': '3D rendering',
+        // Programming
+        programming: 'programming',
+        Programming: 'programming',
+        'programming': 'programming',
+        // Brand identity / design
+        design: 'brand identity',
+        Design: 'brand identity',
+        'Brand Identity': 'brand identity',
+        'brand identity': 'brand identity',
+        // Type design
+        'type design': 'type design',
+        'Type Design': 'type design',
+        // Web dev
+        'web development': 'web development',
+        'Web Development': 'web development',
+      };
+
+      function normalizeCategories(raw) {
+        if (!Array.isArray(raw)) return [];
+        const seen = new Set();
+        const out = [];
+        raw.forEach(function (c) {
+          if (!c) return;
+          var key = String(c);
+          var mapped = CATEGORY_MAP[key] || CATEGORY_MAP[key.toLowerCase()];
+          if (!mapped) return;
+          if (!seen.has(mapped)) {
+            seen.add(mapped);
+            out.push(mapped);
+          }
+        });
+        return out;
+      }
+
+      function normalizeProject(doc) {
+        // When using the prebuilt embed (`projects.embed.js`), documents are already
+        // normalized and expose `media` / `mediaType`. Detect that shape first so
+        // we don't accidentally strip media by re-normalizing from missing fields.
+        var hasEmbeddedMedia = ('media' in doc) || ('mediaType' in doc) || ('isVimeoEmbed' in doc);
+        var project;
+
+        if (hasEmbeddedMedia) {
+          project = {
+            title: doc.title || '',
+            studio: doc.studio || '',
+            link: doc.link || '',
+            categories: normalizeCategories(doc.categories),
+            media: doc.media || null,
+            mediaType: doc.mediaType || 'image',
+            isVimeoEmbed: !!doc.isVimeoEmbed,
+          };
+        } else {
+          var img = doc.mediaImageUrl || null;
+          var fileVid = doc.mediaVideoUrl || null;
+          var vimeoId = doc.vimeoId || null;
+          var vid = vimeoId ? ('https://player.vimeo.com/video/' + vimeoId) : fileVid;
+          var isVideo = doc.mediaType === 'video' && vid;
+          project = {
+            title: doc.title || '',
+            studio: doc.studio || '',
+            link: doc.link || '',
+            categories: normalizeCategories(doc.categories),
+            media: isVideo ? vid : (img || vid),
+            mediaType: isVideo ? 'video' : 'image',
+            isVimeoEmbed: !!vimeoId,
+          };
+        }
+
+        // Keep "The Way Is Māori" image exclusive to the Info page.
+        if (project.title === 'The Way Is Māori') {
+          project.media = null;
+        }
+
+        return project;
+      }
+
+      function loadProjects(callback) {
+        if (typeof window.__SANITY_PROJECTS === 'object' && window.__SANITY_PROJECTS && window.__SANITY_PROJECTS.length > 0) {
+          callback(window.__SANITY_PROJECTS.map(normalizeProject));
+          return;
+        }
+        var query = '*[_type == "project"]{ title, studio, link, categories, mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url, "vimeoId": vimeoVideo.vimeoData.id }';
+        var apiHost = 'https://' + SANITY_PROJECT_ID + '.api.sanity.io';
+        var cdnHost = 'https://' + SANITY_PROJECT_ID + '.apicdn.sanity.io';
+        var path = '/v2024-01-01/data/query/' + SANITY_DATASET;
+        var params = '?query=' + encodeURIComponent(query) + '&perspective=published';
+
+        function tryFetch(baseUrl, onDone) {
+          fetch(baseUrl + path + params, { method: 'GET', mode: 'cors', credentials: 'omit' })
+            .then(function (r) {
+              if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+              return r.json();
+            })
+            .then(function (body) {
+              if (body.error) throw new Error(body.error.description || JSON.stringify(body.error));
+              var list = body.result;
+              if (!Array.isArray(list)) throw new Error('Invalid response');
+              onDone(null, list);
+            })
+            .catch(function (err) {
+              onDone(err, null);
+            });
+        }
+
+        tryFetch(cdnHost, function (err, list) {
+          if (err) {
+            tryFetch(apiHost, function (err2, list2) {
+              if (err2 || !list2 || list2.length === 0) {
+                callback([]);
+                return;
+              }
+              callback(list2.map(normalizeProject));
+            });
+            return;
+          }
+          if (!list || list.length === 0) {
+            callback([]);
+            return;
+          }
+          callback(list.map(normalizeProject));
+        });
+      }
+
+      var FILTERS = [
+        { value: null, label: 'All' },
+        { value: 'brand identity', label: 'Brand Identity' },
+        { value: 'motion design', label: 'Motion Design' },
+        { value: '3D rendering', label: '3D Rendering' },
+        { value: 'programming', label: 'Programming' },
+      ];
+
+      var allProjects = [];
+      var activeFilter = null;
+      var lockedProject = null;
+
+      function getVisibleProjects() {
+        if (!activeFilter) return allProjects;
+        return allProjects.filter(function (p) {
+          return (p.categories || []).indexOf(activeFilter) !== -1;
+        });
+      }
+
+      function computeCategoryCounts() {
+        var counts = {};
+        allProjects.forEach(function (p) {
+          (p.categories || []).forEach(function (c) {
+            if (!counts[c]) counts[c] = 0;
+            counts[c] += 1;
+          });
+        });
+        return counts;
+      }
+
+      var placeholderEl = document.getElementById('mediaPlaceholder');
+      function setMedia(project) {
+        var wrap = document.querySelector('.media-panel .media-wrap');
+        while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+        if (!project || !project.media) {
+          placeholderEl.textContent = 'Select a project';
+          wrap.appendChild(placeholderEl);
+          document.getElementById('mediaPanel').setAttribute('aria-hidden', 'true');
+          return;
+        }
+        var isVideo = project.mediaType === 'video';
+        if (isVideo && project.isVimeoEmbed) {
+          var iframe = document.createElement('iframe');
+          iframe.src = project.media + '?title=0&byline=0&portrait=0';
+          iframe.allow = 'autoplay; fullscreen; picture-in-picture';
+          iframe.allowFullscreen = true;
+          iframe.setAttribute('aria-hidden', 'true');
+          iframe.style.border = '0';
+          wrap.appendChild(iframe);
+        } else if (isVideo) {
+          var video = document.createElement('video');
+          video.src = project.media;
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
+          video.autoplay = true;
+          video.setAttribute('aria-hidden', 'true');
+          wrap.appendChild(video);
+        } else {
+          var img = document.createElement('img');
+          img.src = sanityImageUrl(project.media, { w: 1200, fit: 'max', q: 90 });
+          img.alt = '';
+          img.setAttribute('aria-hidden', 'true');
+          wrap.appendChild(img);
+        }
+        document.getElementById('mediaPanel').setAttribute('aria-hidden', 'false');
+      }
+
+      function renderFilters() {
+        var linksEl = document.getElementById('filterLinks');
+        var visible = getVisibleProjects();
+        var counts = computeCategoryCounts();
+        var totalCount = allProjects.length;
+        var html = '';
+        FILTERS.forEach(function (f) {
+          var v = f.value === null ? '' : f.value;
+          var isActive = (activeFilter === null && f.value === null) || activeFilter === f.value;
+          var countHtml = '';
+          if (f.value === null) {
+            countHtml = '<span class="category-count">' + String(totalCount) + '</span>';
+          } else {
+            var n = counts[f.value] || 0;
+            countHtml = '<span class="category-count">' + String(n) + '</span>';
+          }
+          html += '<a href="#" class="filter-link' + (isActive ? ' active' : '') + '" data-filter="' + v.replace(/"/g, '&quot;') + '">' + f.label + countHtml + '</a>';
+        });
+        linksEl.innerHTML = html;
+        linksEl.querySelectorAll('.filter-link').forEach(function (a) {
+          a.addEventListener('click', function (e) {
+            e.preventDefault();
+            var v = a.getAttribute('data-filter') || '';
+            activeFilter = v === '' ? null : v;
+            lockedProject = null;
+            renderFilters();
+            renderList();
+            setMedia(getVisibleProjects()[0] || null);
+          });
+        });
+      }
+
+      function renderList() {
+        var listEl = document.getElementById('projectList');
+        var statusEl = document.getElementById('projectsStatus');
+        var visible = getVisibleProjects();
+        statusEl.style.display = visible.length ? 'none' : 'block';
+        if (visible.length === 0) {
+          statusEl.textContent = activeFilter ? 'No projects in this category.' : 'No projects in Sanity yet. Add and publish projects in Studio.';
+          listEl.innerHTML = '';
+          lockedProject = null;
+          setMedia(null);
+          return;
+        }
+        statusEl.textContent = '';
+        function toTitleCase(s) {
+          return (s || '').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+        }
+        listEl.innerHTML = visible.map(function (p, i) {
+          var title = (p.title || 'Untitled').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          var studio = (p.studio || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          var catLabels = (p.categories || []).map(toTitleCase);
+          var cats = catLabels.join(', ');
+          return (
+            '<li class="project-entry" data-index="' + i + '">' +
+              '<div class="project-title">' + title + '</div>' +
+              '<div class="project-meta">' +
+                (studio ? '<span class="studio">' + studio + '</span>' : '') +
+                (cats ? '<span class="categories">' + cats + '</span>' : '') +
+              '</div>' +
+            '</li>'
+          );
+        }).join('');
+        listEl.querySelectorAll('.project-entry').forEach(function (li, i) {
+          li.addEventListener('mouseenter', function () {
+            if (lockedProject) return;
+            setMedia(visible[i]);
+          });
+          li.addEventListener('mouseleave', function () {
+            if (lockedProject) return;
+            setMedia(getVisibleProjects()[0] || null);
+          });
+          li.addEventListener('click', function () {
+            var project = visible[i];
+            if (lockedProject === project) {
+              lockedProject = null;
+              listEl.querySelectorAll('.project-entry').forEach(function (el) {
+                el.classList.remove('locked');
+              });
+              setMedia(getVisibleProjects()[0] || null);
+            } else {
+              lockedProject = project;
+              listEl.querySelectorAll('.project-entry').forEach(function (el) {
+                el.classList.toggle('locked', el === li);
+              });
+              setMedia(project);
+            }
+          });
+        });
+      }
+
+      function initProjects() {
+        loadProjects(function (projects) {
+          allProjects = projects;
+          document.getElementById('projectsStatus').textContent = projects.length ? '' : 'No projects in Sanity yet. Add and publish projects in Studio.';
+          renderFilters();
+          renderList();
+          if (projects.length > 0) {
+            setMedia(getVisibleProjects()[0]);
+          }
+        });
+      }
+
+      // Entry + filter animation
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          var main = document.getElementById('page-main');
+          var filterBar = document.getElementById('filterBar');
+          if (main) {
+            main.classList.add('page-entered');
+          }
+          if (filterBar) {
+            filterBar.classList.add('filter-entered');
+          }
+          window.scrollTo(0, 0);
+        });
+      });
+
+      // Gentle fade/slide out on internal nav clicks
+      (function () {
+        var main = document.getElementById('page-main');
+        if (!main) return;
+
+        function handleNavClick(event) {
+          var filterBar = document.getElementById('filterBar');
+          var link = event.currentTarget;
+          var href = link.getAttribute('href');
+          if (!href || href.indexOf('#') === 0 || link.target === '_blank') {
+            return;
+          }
+
+          event.preventDefault();
+          if (main.classList.contains('page-exiting')) return;
+
+          main.classList.remove('page-entered');
+          main.classList.add('page-exiting');
+          if (filterBar) {
+            filterBar.classList.remove('filter-entered');
+            filterBar.classList.add('filter-exiting');
+          }
+
+          setTimeout(function () {
+            window.location.href = href;
+          }, 500);
+        }
+
+        var navLinks = document.querySelectorAll('.nav a');
+        navLinks.forEach(function (link) {
+          link.addEventListener('click', handleNavClick);
+        });
+      })();
+
+      initProjects();
+      window.scrollTo(0, 0);
+    })();
+  </script>
+</body>
+</html>
