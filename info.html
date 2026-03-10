@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Info — Mark Wilson</title>
   <style>
+    :root {
+      /* Fallback: approximate midpoint-based alignment */
+      --content-left: calc(50vw + 5px);
+    }
     /* Base */
     * {
       box-sizing: border-box;
@@ -111,7 +115,7 @@
       position: absolute;
       inset: 0;
       opacity: 0;
-      transition: opacity 600ms ease;
+      transition: opacity 800ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
     }
     .media-panel .media-item.active {
       opacity: 1;
@@ -126,10 +130,11 @@
 
     /* Content column — right side */
     .info-content {
-      grid-column: 7 / -1;
+      grid-column: 1 / -1;
       position: relative;
       z-index: 2;
-      padding-left: 0;
+      /* Align content with the "Projects" nav label */
+      padding-left: calc(var(--content-left) - 10px);
       padding-right: 0;
       padding-bottom: 0;
       /* Match media-panel height so the column bounds line up */
@@ -354,9 +359,14 @@
       function buildMediaItems() {
         var wrap = document.getElementById('mediaWrap');
         wrap.innerHTML = '';
+        var fromProjectsIsMaori = false;
+        try {
+          fromProjectsIsMaori = sessionStorage.getItem('projectsCurrentProjectTitle') === 'The Way Is Māori';
+        } catch (e) {}
+
         mediaItems.forEach(function (item) {
           var div = document.createElement('div');
-          div.className = 'media-item active';
+          div.className = 'media-item';
           if (item.mediaType === 'video') {
             var video = document.createElement('video');
             video.src = item.media;
@@ -366,12 +376,37 @@
             video.autoplay = true;
             video.setAttribute('aria-hidden', 'true');
             div.appendChild(video);
+            video.addEventListener('canplay', function revealVideo() {
+              video.removeEventListener('canplay', revealVideo);
+              div.classList.add('active');
+            });
           } else {
             var img = document.createElement('img');
-            img.src = sanityImageUrl(item.media, { w: 1200, fit: 'max', q: 90 });
             img.alt = 'The Way Is Māori';
             img.setAttribute('aria-hidden', 'true');
             div.appendChild(img);
+            img.src = sanityImageUrl(item.media, { w: 1200, fit: 'max', q: 90 });
+
+            function whenReady(cb) {
+              if (typeof img.decode === 'function') {
+                img.decode().then(cb).catch(cb);
+              } else if (img.complete && img.naturalWidth) {
+                cb();
+              } else {
+                img.onload = function () { cb(); };
+              }
+            }
+            function show() {
+              if (fromProjectsIsMaori) {
+                div.style.transition = 'none';
+              }
+              div.classList.add('active');
+            }
+            whenReady(function () {
+              requestAnimationFrame(function () {
+                requestAnimationFrame(show);
+              });
+            });
           }
           wrap.appendChild(div);
         });
@@ -389,12 +424,24 @@
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
           var main = document.getElementById('page-main');
+          var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
           if (main) {
             main.classList.add('page-entered');
+          }
+          if (projectsNavLink) {
+            var rect = projectsNavLink.getBoundingClientRect();
+            document.documentElement.style.setProperty('--content-left', rect.left + 'px');
           }
           window.scrollTo(0, 0);
           initMedia(); // Defer media init until after text has started animating
         });
+      });
+
+      window.addEventListener('resize', function () {
+        var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
+        if (!projectsNavLink) return;
+        var rect = projectsNavLink.getBoundingClientRect();
+        document.documentElement.style.setProperty('--content-left', rect.left + 'px');
       });
 
       // Gentle fade/slide out on internal nav clicks

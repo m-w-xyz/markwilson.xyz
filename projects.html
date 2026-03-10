@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Projects — Mark Wilson</title>
   <style>
+    :root {
+      /* Fallback: approximate midpoint-based alignment */
+      --content-left: calc(50vw + 5px);
+    }
+
     /* Base */
     * {
       box-sizing: border-box;
@@ -118,12 +123,14 @@
 
     /* Projects index: 7th column, span half viewport (6 columns) */
     .projects-index {
-      grid-column: 7 / -1;
+      grid-column: 1 / -1;
       position: relative;
       z-index: 2;
       padding-bottom: 2em;
       /* Space so list starts below fixed filter (filter height ≈ 29px + 10vh) */
       padding-top: calc(39px + 10vh);
+      /* Align content with the "Projects" nav label */
+      padding-left: calc(var(--content-left) - 10px);
       /* Scrollbar lives inside this column instead of the page */
       height: calc(100vh - 20vh); /* match media panel height */
       overflow-y: auto;
@@ -138,7 +145,7 @@
     .filter-veil {
       position: fixed;
       top: 0;
-      left: calc(50vw + 5px);
+      left: var(--content-left);
       right: 10px;
       height: calc(20vh + 10px);
       background: #fff;
@@ -150,7 +157,7 @@
     .filter-bar {
       position: fixed;
       top: calc(20vh + 10px);
-      left: calc(50vw + 5px);
+      left: var(--content-left);
       right: 10px;
       z-index: 50;
       display: flex;
@@ -415,11 +422,6 @@
           };
         }
 
-        // Keep "The Way Is Māori" image exclusive to the Info page.
-        if (project.title === 'The Way Is Māori') {
-          project.media = null;
-        }
-
         return project;
       }
 
@@ -478,15 +480,34 @@
         { value: 'programming', label: 'Programming' },
       ];
 
+      // First project to show for each applied filter (by exact title match)
+      var FIRST_PROJECT_BY_FILTER = {
+        'all': 'The Way Is Māori',
+        'brand identity': 'Simfuni',
+        'motion design': 'Village Green',
+        '3D rendering': 'Toki',
+        'programming': 'Outer Stellar',
+      };
+
       var allProjects = [];
       var activeFilter = null;
       var lockedProject = null;
 
       function getVisibleProjects() {
-        if (!activeFilter) return allProjects;
-        return allProjects.filter(function (p) {
-          return (p.categories || []).indexOf(activeFilter) !== -1;
-        });
+        var list = !activeFilter
+          ? allProjects.slice()
+          : allProjects.filter(function (p) {
+              return (p.categories || []).indexOf(activeFilter) !== -1;
+            });
+        var filterKey = activeFilter === null ? 'all' : activeFilter;
+        var firstTitle = FIRST_PROJECT_BY_FILTER[filterKey];
+        if (!firstTitle || list.length === 0) return list;
+        var idx = list.findIndex(function (p) { return (p.title || '') === firstTitle; });
+        if (idx <= 0) return list;
+        var first = list[idx];
+        list.splice(idx, 1);
+        list.unshift(first);
+        return list;
       }
 
       function computeCategoryCounts() {
@@ -502,6 +523,9 @@
 
       var placeholderEl = document.getElementById('mediaPlaceholder');
       function setMedia(project) {
+        try {
+          sessionStorage.setItem('projectsCurrentProjectTitle', project && project.title ? project.title : '');
+        } catch (e) {}
         var wrap = document.querySelector('.media-panel .media-wrap');
         while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
         if (!project || !project.media) {
@@ -646,14 +670,26 @@
         requestAnimationFrame(function () {
           var main = document.getElementById('page-main');
           var filterBar = document.getElementById('filterBar');
+          var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
           if (main) {
             main.classList.add('page-entered');
           }
           if (filterBar) {
             filterBar.classList.add('filter-entered');
           }
+          if (projectsNavLink) {
+            var rect = projectsNavLink.getBoundingClientRect();
+            document.documentElement.style.setProperty('--content-left', rect.left + 'px');
+          }
           window.scrollTo(0, 0);
         });
+      });
+
+      window.addEventListener('resize', function () {
+        var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
+        if (!projectsNavLink) return;
+        var rect = projectsNavLink.getBoundingClientRect();
+        document.documentElement.style.setProperty('--content-left', rect.left + 'px');
       });
 
       // Gentle fade/slide out on internal nav clicks

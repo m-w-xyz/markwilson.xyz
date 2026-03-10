@@ -152,12 +152,32 @@
       var canvas = document.getElementById('cursor-trail');
       var ctx = canvas.getContext('2d');
       var trail = [];
-      var maxTrail = 800;
+      var maxTrail = 4000;
       var lastX = -1, lastY = -1;
       var minDist = 2;
-      var shrinking = false;
-      var shrinkStartTime = 0;
-      var shrinkDuration = 500;
+
+      // Shrink / inertia state
+      var isMouseDown = false;
+      var shrinkOffset = 0;        // how many points from the start are "eaten"
+      var shrinkVelocity = 0;      // points per second
+      var SHRINK_ACCEL = 260;      // acceleration while mouse is held (very responsive)
+      var SHRINK_FRICTION = 85;    // gentler deceleration when released (more inertia)
+      var MAX_SHRINK_VELOCITY = 520;
+      var wasMouseDown = false;    // track mouse state across frames
+      var lastTime = null;
+      var navShrinkActive = false;
+      var navShrinkStart = 0;
+      var NAV_SHRINK_DURATION = 600; // ms
+
+      // 3D rotation & zoom
+      var angleX = 0;
+      var angleY = 0;
+      var BASE_SPEED_X = 0.08;   // rad/s slow drift (calmer)
+      var BASE_SPEED_Y = 0.05;
+      var FOCAL = 1200;          // base perspective focal length (px)
+
+      // Zoom (now fixed; scroll does nothing)
+      var zoom = 0;
 
       function resize() {
         var dpr = window.devicePixelRatio || 1;
@@ -172,6 +192,55 @@
       var cssW = function () { return window.innerWidth; };
       var cssH = function () { return window.innerHeight; };
 
+      // Project trail points into 3D: the line actually extends into depth.
+      // Oldest points are farthest in Z, newest point is at Z=0.
+      // Rotation is around the viewport center so motion is completely independent of cursor position.
+      function projectTrail3D(points) {
+        if (points.length < 2) return points;
+        var cursorPt = points[points.length - 1];
+        var cx = cssW() / 2;
+        var cy = cssH() / 2;
+        var cosX = Math.cos(angleX);
+        var sinX = Math.sin(angleX);
+        var cosY = Math.cos(angleY);
+        var sinY = Math.sin(angleY);
+        var depthRange = 800; // how deep the line goes into the screen
+        var baseFocal = FOCAL * (1 + zoom);
+        var focal = FOCAL;
+        var out = [];
+        var n = points.length;
+        for (var i = 0; i < n; i++) {
+          var dx = points[i].x - cx;
+          var dy = points[i].y - cy;
+          // Give the line real depth: oldest point has largest |z|
+          var t = n <= 1 ? 0 : (i - (n - 1)) / (n - 1); // 0 at cursor, -1 at oldest
+          var z0 = t * depthRange;
+
+          // 3D: (dx, dy, z0). Apply R_x then R_y.
+          var x1 = dx;
+          var y1 = dy * cosX - z0 * sinX;
+          var z1 = dy * sinX + z0 * cosX;
+          var x2 = x1 * cosY + z1 * sinY;
+          var y2 = y1;
+          var z2 = -x1 * sinY + z1 * cosY;
+          var scale = focal / (focal + z2);
+          out.push({
+            x: cx + x2 * scale,
+            y: cy + y2 * scale
+          });
+        }
+        // Translate so the last projected point sits exactly at the actual cursor position.
+        // This ensures the line visually emanates from the cursor while rotation is still around the viewport center.
+        var lastProj = out[out.length - 1];
+        var dxAlign = cursorPt.x - lastProj.x;
+        var dyAlign = cursorPt.y - lastProj.y;
+        for (var j = 0; j < out.length; j++) {
+          out[j].x += dxAlign;
+          out[j].y += dyAlign;
+        }
+        return out;
+      }
+
       function drawPath(points) {
         if (points.length < 2) return;
         ctx.clearRect(0, 0, cssW(), cssH());
@@ -180,43 +249,68 @@
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.beginPath();
+
+        // Smooth the path with quadratic curves to reduce visible corners
         ctx.moveTo(points[0].x, points[0].y);
-        for (var i = 1; i < points.length; i++) {
-          ctx.lineTo(points[i].x, points[i].y);
+        for (var i = 1; i < points.length - 1; i++) {
+          var cx = points[i].x;
+          var cy = points[i].y;
+          var mx = (points[i].x + points[i + 1].x) / 2;
+          var my = (points[i].y + points[i + 1].y) / 2;
+          ctx.quadraticCurveTo(cx, cy, mx, my);
         }
+        // Ensure the path reaches the final point
+        ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
         ctx.stroke();
       }
 
-      function tick() {
-        if (!shrinking) return;
-        var elapsed = Date.now() - shrinkStartTime;
-        var progress = Math.min(elapsed / shrinkDuration, 1);
-        var total = trail.length;
-        var visibleCount = Math.max(0, Math.ceil((1 - progress) * total));
-        ctx.clearRect(0, 0, cssW(), cssH());
-        if (visibleCount >= 2) {
-          drawPath(trail.slice(0, visibleCount));
-        }
-        if (progress >= 1) {
-          trail.length = 0;
-          shrinking = false;
-          return;
-        }
-        requestAnimationFrame(tick);
-      }
+      function animationLoop(timestamp) {
+        if (lastTime == null) lastTime = timestamp;
+        var dt = (timestamp - lastTime) / 1000; // seconds
+        lastTime = timestamp;
 
-      function startShrink() {
-        if (trail.length < 2 || shrinking) return;
-        shrinking = true;
-        shrinkStartTime = Date.now();
-        requestAnimationFrame(tick);
+        if (navShrinkActive && trail.length > 1) {
+          // Shrink current visible line over 600ms from the far (non-cursor) end
+          var progress = (timestamp - navShrinkStart) / NAV_SHRINK_DURATION;
+          if (progress >= 1) {
+            navShrinkActive = false;
+            trail.length = 0;
+            shrinkOffset = 0;
+            ctx.clearRect(0, 0, cssW(), cssH());
+          } else {
+            var visibleCount = Math.max(0, Math.ceil((1 - progress) * trail.length));
+            if (visibleCount >= 2) {
+              var start = Math.max(0, trail.length - visibleCount);
+              drawPath(projectTrail3D(trail.slice(start)));
+            } else {
+              ctx.clearRect(0, 0, cssW(), cssH());
+            }
+          }
+          } else {
+            // 3D rotation: base slow drift only
+            angleX += BASE_SPEED_X * dt;
+            angleY += BASE_SPEED_Y * dt;
+
+            // Click-and-hold shrink is disabled: we no longer modify shrinkOffset
+            // or shrinkVelocity based on mouse state here. The only shrinking that
+            // remains is the timed nav-click shrink handled in the branch above.
+
+            // Always render the full current trail (no progressive head-eating)
+            if (trail.length < 2) {
+              ctx.clearRect(0, 0, cssW(), cssH());
+            } else {
+              drawPath(projectTrail3D(trail));
+            }
+          }
+
+        wasMouseDown = isMouseDown;
+        requestAnimationFrame(animationLoop);
       }
 
       window.addEventListener('resize', resize);
       resize();
 
       document.addEventListener('mousemove', function (e) {
-        if (shrinking) return;
         var x = e.clientX, y = e.clientY;
         var dist = lastX < 0 ? minDist + 1 : Math.hypot(x - lastX, y - lastY);
         if (dist >= minDist) {
@@ -224,17 +318,45 @@
           if (trail.length > maxTrail) trail.shift();
           lastX = x;
           lastY = y;
-          drawPath(trail);
         }
       });
 
-      document.addEventListener('click', function () {
-        startShrink();
+      document.addEventListener('mousedown', function (e) {
+        if (e.button === 0) {
+          lastX = -1;
+          isMouseDown = true;
+        }
       });
 
-      document.addEventListener('mousedown', function (e) {
-        if (e.button === 0) lastX = -1;
+      document.addEventListener('mouseup', function (e) {
+        if (e.button === 0) {
+          isMouseDown = false;
+        }
       });
+
+      // Scroll intentionally does nothing for the trail now
+      document.addEventListener('wheel', function () {
+        // no-op
+      }, { passive: true });
+
+      // Shrink visible line on nav click over 600ms (keep current visible segment, don't show full trail)
+      var navLinksForTrail = document.querySelectorAll('.nav a');
+      navLinksForTrail.forEach(function (link) {
+        link.addEventListener('click', function () {
+          var startIdx = Math.floor(shrinkOffset);
+          if (startIdx < 0) startIdx = 0;
+          var visible = trail.slice(startIdx);
+          if (visible.length > 1) {
+            trail = visible;
+            shrinkOffset = 0;
+            shrinkVelocity = 0;
+            navShrinkActive = true;
+            navShrinkStart = performance.now();
+          }
+        });
+      });
+
+      requestAnimationFrame(animationLoop);
     })();
   </script>
 </body>
