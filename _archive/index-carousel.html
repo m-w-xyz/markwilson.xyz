@@ -560,7 +560,7 @@
         }
         status('Loading projects…', true);
 
-        var query = '*[_type == "project"]{ title, studio, link, categories, mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url, "vimeoId": coalesce(vimeoVideo.id, vimeoVideo.vimeoData.id) }';
+        var query = '*[_type == "project"]{ title, studio, link, categories, mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url, "vimeoId": vimeoVideo.vimeoData.id }';
         var apiHost = 'https://' + SANITY_PROJECT_ID + '.api.sanity.io';
         var cdnHost = 'https://' + SANITY_PROJECT_ID + '.apicdn.sanity.io';
         var path = '/v2024-01-01/data/query/' + SANITY_DATASET;
@@ -689,8 +689,7 @@
           if (!p.media) {
             mediaHtml = '<div class="media-placeholder">—</div>';
           } else if (p.mediaType === 'video' && p.isVimeoEmbed) {
-            var vimeoSep = (p.media && p.media.indexOf('?') >= 0) ? '&' : '?';
-            mediaHtml = '<iframe class="media media-iframe" src="' + p.media.replace(/"/g, '&quot;') + vimeoSep + 'controls=0&background=1&title=0&byline=0&portrait=0&badge=0&vimeo_logo=0&autoplay=1&loop=1&muted=1" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe>';
+            mediaHtml = '<iframe class="media media-iframe" src="' + p.media.replace(/"/g, '&quot;') + '?title=0&byline=0&portrait=0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe>';
           } else if (p.mediaType === 'video') {
             mediaHtml = '<video class="media" data-src="' + p.media.replace(/"/g, '&quot;') + '" muted loop playsinline preload="none" disablePictureInPicture disableRemotePlayback></video>';
           } else {

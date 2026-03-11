@@ -11,7 +11,7 @@ const path = require('path');
 
 const PROJECT_ID = 'k9k1qhrl';
 const DATASET = 'production';
-const QUERY = '*[_type == "project"]{ title, studio, link, categories, mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url, "vimeoId": coalesce(vimeoVideo.id, vimeoVideo.vimeoData.id) }';
+const QUERY = '*[_type == "project"]{ title, studio, link, categories, mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url, "vimeoId": vimeoVideo.vimeoData.id }';
 const API_PATH = '/v2024-01-01/data/query/' + DATASET + '?query=' + encodeURIComponent(QUERY) + '&perspective=published';
 
 const CATEGORY_MAP = {
