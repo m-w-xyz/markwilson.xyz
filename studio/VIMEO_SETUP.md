@@ -68,7 +68,7 @@ The stored value is an object under `vimeoVideo` (and its nested `vimeoData`). F
     mediaType,
     "mediaImageUrl": mediaImage.asset->url,
     "mediaVideoUrl": mediaVideo.asset->url,
-    "vimeoId": vimeoVideo.vimeoData.id
+    "vimeoId": coalesce(vimeoVideo.id, vimeoVideo.vimeoData.id)
   }
   ```
 
@@ -89,4 +89,4 @@ The stored value is an object under `vimeoVideo` (and its nested `vimeoData`). F
 - [ ] `studio/.env` contains `SANITY_STUDIO_VIMEO_ACCESS_TOKEN=...`
 - [ ] Studio restarted (`npm run dev`)
 - [ ] In a Project document: Media type = Video → Vimeo video → paste ID → Fetch
-- [ ] Frontend query includes `vimeoVideo.vimeoData.id` and uses it for the embed URL when present
+- [ ] Frontend query includes `coalesce(vimeoVideo.id, vimeoVideo.vimeoData.id)` and uses it for the embed URL when present

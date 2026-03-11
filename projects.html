@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Projects — Mark Wilson</title>
+  <link rel="icon" type="image/gif" href="assets/img/favicon-1.gif">
+  <title>Mark Wilson</title>
   <style>
     :root {
       /* Fallback: approximate midpoint-based alignment */
@@ -19,8 +20,8 @@
       background: #fff;
       color: #000;
       font: 18px Arial, sans-serif;
-      height: 100vh;
-      overflow: hidden; /* Page itself doesn't scroll; right column scrolls instead */
+      min-height: 100vh;
+      overflow-y: auto;
     }
 
     /* 12-column grid: 10px margins, 10px gutters */
@@ -50,9 +51,6 @@
       color: #000;
       text-decoration: none;
     }
-    .nav .name:hover {
-      font-style: italic;
-    }
     .nav-links {
       display: flex;
       flex: 0 0 50vw;
@@ -65,13 +63,14 @@
       color: #000;
       text-decoration: none;
     }
-    .nav-links a:hover {
-      font-style: italic;
+    @media (hover: hover) {
+      .nav .name:hover,
+      .nav-links a:hover { font-style: italic; }
     }
 
     /* Page transition: content gently fades and slides, nav stays fixed */
     main {
-      padding-top: 20vh;
+      padding-top: 3em;
       min-height: 100vh;
       opacity: 0;
       transform: translateY(24px);
@@ -88,76 +87,79 @@
       transform: translateY(-8px);
     }
 
-    /* Fixed media panel — bottom-left of viewport, 5 columns wide, flush left (no grid margin) */
-    .media-panel {
-      position: fixed;
-      left: 0;
-      bottom: 0;
-      width: calc(100vw * 5 / 12);
-      max-width: calc(100vw * 5 / 12);
-      /* Align top edge with main grid/text (20vh from top) */
-      height: calc(100vh - 20vh);
-      z-index: 1;
+    /* Carousel: centered media in viewport; scroll snaps so next slides up from below (bump) */
+    html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+    .carousel-track {
+      display: block;
+      grid-column: 1 / -1;
+      width: 100%;
+    }
+    .carousel-slide {
+      width: 100%;
+      min-height: 100vh;
+      height: 100vh;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .carousel-slide .media-wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
     }
-    .media-panel .media-wrap {
+    .carousel-slide .media-wrap > img,
+    .carousel-slide .media-wrap > video {
+      position: absolute;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      object-position: center;
+      display: block;
+    }
+    .carousel-slide .media-wrap > iframe {
+      position: absolute;
       width: 100%;
       height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .media-panel img,
-    .media-panel video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .media-panel .media-placeholder {
-      font-size: 14px;
-      color: rgba(0, 0, 0, 0.3);
+      border: 0;
+      transform-origin: center center;
     }
 
-    /* Projects index: 7th column, span half viewport (6 columns) */
+    /* Projects index: list below carousel */
     .projects-index {
       grid-column: 1 / -1;
       position: relative;
       z-index: 2;
-      padding-bottom: 2em;
-      /* Space so list starts below fixed filter (filter height ≈ 29px + 10vh) */
-      padding-top: calc(39px + 10vh);
-      /* Align content with the "Projects" nav label */
+      padding: 2em 10px;
       padding-left: calc(var(--content-left) - 10px);
-      /* Scrollbar lives inside this column instead of the page */
-      height: calc(100vh - 20vh); /* match media panel height */
-      overflow-y: auto;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-    }
-    .projects-index::-webkit-scrollbar {
-      display: none;
+      max-width: 100%;
+      scroll-snap-align: none;
     }
 
-    /* Veil between nav and filter: list must not be visible in this band */
+    /* Filter bar — fixed below nav */
     .filter-veil {
       position: fixed;
       top: 0;
-      left: var(--content-left);
-      right: 10px;
-      height: calc(20vh + 10px);
+      left: 0;
+      right: 0;
+      height: 3em;
       background: #fff;
       z-index: 40;
       pointer-events: none;
     }
-
-    /* Filter bar — fixed, top-aligned with media panel; list scrolls under it */
     .filter-bar {
       position: fixed;
-      top: calc(20vh + 10px);
-      left: var(--content-left);
+      top: 3em;
+      left: 10px;
       right: 10px;
       z-index: 50;
       display: flex;
@@ -205,9 +207,11 @@
       font-style: normal;
       margin-left: 2px;
     }
-    .filter-bar .filter-links a:hover,
     .filter-bar .filter-links a.active {
       font-style: italic;
+    }
+    @media (hover: hover) {
+      .filter-bar .filter-links a:hover { font-style: italic; }
     }
     .filter-bar .filter-count {
       font-size: 12px;
@@ -225,6 +229,7 @@
     /* Each project entry: 10px spacing, divider with 10px above and below */
     .project-entry {
       display: flex;
+      align-items: flex-start;
       gap: 10px;
       padding: 10px 0;
       border-bottom: 1px solid rgba(0, 0, 0, 0.15);
@@ -254,9 +259,6 @@
     .project-entry:last-child {
       border-bottom: none;
     }
-    .project-entry:hover {
-      background: rgba(0, 0, 0, 0.03);
-    }
     .project-entry.locked {
       background: rgba(0, 0, 0, 0.06);
     }
@@ -284,10 +286,62 @@
       display: block;
       height: fit-content;
     }
+    .project-entry .project-view-link {
+      margin-left: auto;
+      flex-shrink: 0;
+      opacity: 1;
+    }
 
     .projects-status {
       font-size: 14px;
       color: rgba(0, 0, 0, 0.6);
+    }
+
+    /* Mobile: stack media on top, full-width filter and list; tap = select (no hover preview) */
+    @media (max-width: 768px) {
+      body { overflow: auto; height: auto; min-height: 100vh; }
+      .nav { padding: 10px; }
+      .nav-links {
+        flex: 0 0 auto;
+        width: auto;
+        gap: 1em;
+      }
+      .nav-links a { font-size: 16px; }
+      main#page-main {
+        position: relative;
+        padding-top: 2.5em;
+        min-height: auto;
+      }
+      .carousel-slide {
+        min-height: 100vh;
+        height: 100vh;
+      }
+      .filter-veil {
+        position: relative;
+        left: 0;
+        right: 0;
+        height: 0;
+        display: none;
+      }
+      .filter-bar {
+        position: relative;
+        left: 0;
+        right: 0;
+        margin: 0 10px;
+        padding-top: 10px;
+      }
+      .projects-index {
+        position: relative;
+        height: auto;
+        max-height: none;
+        overflow: visible;
+        padding-top: 10px;
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+      .project-entry {
+        cursor: default;
+      }
     }
   </style>
 </head>
@@ -301,13 +355,6 @@
     </nav>
   </header>
 
-  <!-- Fixed bottom-left: image or video for selected project -->
-  <div class="media-panel" id="mediaPanel" aria-hidden="true">
-    <div class="media-wrap">
-      <div class="media-placeholder" id="mediaPlaceholder">Select a project</div>
-    </div>
-  </div>
-
   <!-- Filter bar: fixed to viewport, top-aligned with media panel (outside main so transform doesn’t affect it) -->
   <div class="filter-veil" aria-hidden="true"></div>
 
@@ -318,6 +365,7 @@
 
   <main id="page-main">
     <div class="grid">
+      <div class="carousel-track" id="carouselTrack" aria-label="Project media"></div>
       <div class="projects-index">
         <p class="projects-status" id="projectsStatus">Loading projects…</p>
         <ul class="project-list" id="projectList"></ul>
@@ -370,6 +418,17 @@
         'web development': 'web development',
         'Web Development': 'web development',
       };
+
+      function shuffleArray(arr) {
+        var copy = arr.slice();
+        for (var i = copy.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var t = copy[i];
+          copy[i] = copy[j];
+          copy[j] = t;
+        }
+        return copy;
+      }
 
       function normalizeCategories(raw) {
         if (!Array.isArray(raw)) return [];
@@ -426,11 +485,19 @@
       }
 
       function loadProjects(callback) {
+        function deliver(list) {
+          var normalized = list.map(normalizeProject);
+          var shuffled = shuffleArray(normalized);
+          callback(shuffled);
+          fetchVimeoDimensionsForProjects(shuffled, function () {
+            if (typeof updateAllVimeoScales === 'function') updateAllVimeoScales();
+          });
+        }
         if (typeof window.__SANITY_PROJECTS === 'object' && window.__SANITY_PROJECTS && window.__SANITY_PROJECTS.length > 0) {
-          callback(window.__SANITY_PROJECTS.map(normalizeProject));
+          deliver(window.__SANITY_PROJECTS);
           return;
         }
-        var query = '*[_type == "project"]{ title, studio, link, categories, mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url, "vimeoId": vimeoVideo.vimeoData.id }';
+        var query = '*[_type == "project"]{ title, studio, link, categories, mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url, "vimeoId": coalesce(vimeoVideo.id, vimeoVideo.vimeoData.id) }';
         var apiHost = 'https://' + SANITY_PROJECT_ID + '.api.sanity.io';
         var cdnHost = 'https://' + SANITY_PROJECT_ID + '.apicdn.sanity.io';
         var path = '/v2024-01-01/data/query/' + SANITY_DATASET;
@@ -460,7 +527,7 @@
                 callback([]);
                 return;
               }
-              callback(list2.map(normalizeProject));
+              deliver(list2);
             });
             return;
           }
@@ -468,7 +535,7 @@
             callback([]);
             return;
           }
-          callback(list.map(normalizeProject));
+          deliver(list);
         });
       }
 
@@ -486,7 +553,7 @@
         'brand identity': 'Simfuni',
         'motion design': 'Village Green',
         '3D rendering': 'Toki',
-        'programming': 'Outer Stellar',
+        'programming': 'Track Face',
       };
 
       var allProjects = [];
@@ -521,45 +588,161 @@
         return counts;
       }
 
-      var placeholderEl = document.getElementById('mediaPlaceholder');
-      function setMedia(project) {
-        try {
-          sessionStorage.setItem('projectsCurrentProjectTitle', project && project.title ? project.title : '');
-        } catch (e) {}
-        var wrap = document.querySelector('.media-panel .media-wrap');
-        while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
-        if (!project || !project.media) {
-          placeholderEl.textContent = 'Select a project';
-          wrap.appendChild(placeholderEl);
-          document.getElementById('mediaPanel').setAttribute('aria-hidden', 'true');
+      // Always hide all Vimeo UI: no overlay, controls, badge, or logo.
+      // controls=0 = chromeless; background=1 = full hide (paid). Append with & if URL already has ? (e.g. unlisted h=).
+      var VIMEO_EMBED_PARAMS = 'controls=0&background=1&title=0&byline=0&portrait=0&badge=0&vimeo_logo=0&autoplay=1&loop=1&muted=1';
+      function vimeoEmbedUrl(baseUrl) {
+        var sep = (baseUrl && baseUrl.indexOf('?') >= 0) ? '&' : '?';
+        return baseUrl + sep + VIMEO_EMBED_PARAMS;
+      }
+
+      function vimeoIdFromUrl(url) {
+        if (!url || typeof url !== 'string') return null;
+        var m = url.match(/vimeo\.com\/video\/(\d+)/) || url.match(/vimeo\.com\/(\d+)/);
+        return m ? m[1] : null;
+      }
+
+      var vimeoDimensionsCache = {};
+      function getVimeoDimensions(vimeoId, callback) {
+        if (!vimeoId) { callback(16, 9); return; }
+        if (vimeoDimensionsCache[vimeoId]) {
+          var d = vimeoDimensionsCache[vimeoId];
+          callback(d.width, d.height);
           return;
         }
-        var isVideo = project.mediaType === 'video';
-        if (isVideo && project.isVimeoEmbed) {
-          var iframe = document.createElement('iframe');
-          iframe.src = project.media + '?title=0&byline=0&portrait=0';
-          iframe.allow = 'autoplay; fullscreen; picture-in-picture';
-          iframe.allowFullscreen = true;
-          iframe.setAttribute('aria-hidden', 'true');
-          iframe.style.border = '0';
-          wrap.appendChild(iframe);
-        } else if (isVideo) {
-          var video = document.createElement('video');
-          video.src = project.media;
-          video.muted = true;
-          video.loop = true;
-          video.playsInline = true;
-          video.autoplay = true;
-          video.setAttribute('aria-hidden', 'true');
-          wrap.appendChild(video);
-        } else {
-          var img = document.createElement('img');
-          img.src = sanityImageUrl(project.media, { w: 1200, fit: 'max', q: 90 });
-          img.alt = '';
-          img.setAttribute('aria-hidden', 'true');
-          wrap.appendChild(img);
+        var url = 'https://vimeo.com/api/oembed.json?url=https://vimeo.com/' + encodeURIComponent(vimeoId);
+        fetch(url, { method: 'GET', mode: 'cors' })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(r.status)); })
+          .then(function (data) {
+            var w = (data && data.width) ? Number(data.width) : 16;
+            var h = (data && data.height) ? Number(data.height) : 9;
+            if (!w || !h) { w = 16; h = 9; }
+            vimeoDimensionsCache[vimeoId] = { width: w, height: h };
+            callback(w, h);
+          })
+          .catch(function () {
+            callback(16, 9);
+          });
+      }
+
+      function coverScale(containerW, containerH, videoW, videoH) {
+        if (!containerW || !containerH || !videoW || !videoH) return 1;
+        var scaleByHeight = (containerH * videoW) / (containerW * videoH);
+        var scaleByWidth = (containerW * videoH) / (containerH * videoW);
+        return Math.max(scaleByHeight, scaleByWidth);
+      }
+
+      function applyVimeoCover(iframe, wrap) {
+        if (!iframe || !wrap) return;
+        var cw = wrap.offsetWidth;
+        var ch = wrap.offsetHeight;
+        if (!cw || !ch) return;
+        var mediaUrl = iframe.getAttribute('data-media-url');
+        var project = allProjects.filter(function (p) { return p && p.media === mediaUrl; })[0];
+        var vw = 16;
+        var vh = 9;
+        if (project && project.mediaWidth && project.mediaHeight) {
+          vw = project.mediaWidth;
+          vh = project.mediaHeight;
+        } else if (mediaUrl) {
+          var id = vimeoIdFromUrl(mediaUrl);
+          var cached = vimeoDimensionsCache[id];
+          if (cached) {
+            vw = cached.width;
+            vh = cached.height;
+          }
         }
-        document.getElementById('mediaPanel').setAttribute('aria-hidden', 'false');
+        var s = coverScale(cw, ch, vw, vh);
+        if (project && (project.title || '').trim() === 'Interactive Typer') {
+          s *= 1.02;
+        }
+        iframe.style.transform = 'scale(' + s + ')';
+      }
+
+      function updateAllVimeoScales() {
+        document.querySelectorAll('.carousel-slide').forEach(function (slide) {
+          var wrap = slide.querySelector('.media-wrap');
+          var iframe = slide.querySelector('iframe');
+          if (iframe && wrap) applyVimeoCover(iframe, wrap);
+        });
+      }
+
+      function fetchVimeoDimensionsForProjects(projects, callback) {
+        var idsToFetch = {};
+        projects.forEach(function (p) {
+          if (!p || !p.isVimeoEmbed || !p.media) return;
+          var id = vimeoIdFromUrl(p.media);
+          if (id) idsToFetch[id] = true;
+        });
+        var ids = Object.keys(idsToFetch);
+        if (ids.length === 0) {
+          callback(projects);
+          return;
+        }
+        var pending = ids.length;
+        ids.forEach(function (id) {
+          getVimeoDimensions(id, function (w, h) {
+            projects.forEach(function (p) {
+              if (p && p.isVimeoEmbed && p.media && vimeoIdFromUrl(p.media) === id) {
+                p.mediaWidth = w;
+                p.mediaHeight = h;
+              }
+            });
+            pending--;
+            if (pending === 0) callback(projects);
+          });
+        });
+      }
+
+      var carouselTrackEl = document.getElementById('carouselTrack');
+      var carouselSlides = [];
+
+      function buildCarousel() {
+        if (!carouselTrackEl) return;
+        carouselTrackEl.innerHTML = '';
+        carouselSlides = [];
+        var visible = getVisibleProjects();
+        visible.forEach(function (p) {
+          if (!p.media) return;
+          var slide = document.createElement('div');
+          slide.className = 'carousel-slide';
+          var wrap = document.createElement('div');
+          wrap.className = 'media-wrap';
+          var isVideo = p.mediaType === 'video';
+          if (isVideo && p.isVimeoEmbed) {
+            var iframe = document.createElement('iframe');
+            iframe.src = vimeoEmbedUrl(p.media);
+            iframe.setAttribute('data-media-url', p.media);
+            iframe.allow = 'autoplay; fullscreen; picture-in-picture';
+            iframe.allowFullscreen = true;
+            iframe.setAttribute('aria-hidden', 'true');
+            wrap.appendChild(iframe);
+          } else if (isVideo) {
+            var video = document.createElement('video');
+            video.src = p.media;
+            video.muted = true;
+            video.loop = true;
+            video.playsInline = true;
+            video.autoplay = true;
+            video.setAttribute('aria-hidden', 'true');
+            wrap.appendChild(video);
+          } else {
+            var img = document.createElement('img');
+            img.src = sanityImageUrl(p.media, { w: 1200, fit: 'max', q: 90 });
+            img.alt = p.title || '';
+            img.setAttribute('aria-hidden', 'true');
+            wrap.appendChild(img);
+          }
+          slide.appendChild(wrap);
+          carouselTrackEl.appendChild(slide);
+          carouselSlides.push(slide);
+        });
+        requestAnimationFrame(function () { updateAllVimeoScales(); });
+      }
+
+      if (carouselTrackEl && typeof ResizeObserver !== 'undefined') {
+        var ro = new ResizeObserver(function () { updateAllVimeoScales(); });
+        ro.observe(carouselTrackEl);
       }
 
       function renderFilters() {
@@ -588,8 +771,8 @@
             activeFilter = v === '' ? null : v;
             lockedProject = null;
             renderFilters();
+            buildCarousel();
             renderList();
-            setMedia(getVisibleProjects()[0] || null);
           });
         });
       }
@@ -603,9 +786,10 @@
           statusEl.textContent = activeFilter ? 'No projects in this category.' : 'No projects in Sanity yet. Add and publish projects in Studio.';
           listEl.innerHTML = '';
           lockedProject = null;
-          setMedia(null);
+          buildCarousel();
           return;
         }
+        buildCarousel();
         statusEl.textContent = '';
         function toTitleCase(s) {
           return (s || '').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
@@ -615,39 +799,41 @@
           var studio = (p.studio || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           var catLabels = (p.categories || []).map(toTitleCase);
           var cats = catLabels.join(', ');
+          var hasLink = p.link && (p.link + '').trim() !== '';
+          var viewLinkHtml = hasLink ? '<span class="project-view-link">View →</span>' : '';
           return (
             '<li class="project-entry" data-index="' + i + '">' +
               '<div class="project-title">' + title + '</div>' +
               '<div class="project-meta">' +
                 (studio ? '<span class="studio">' + studio + '</span>' : '') +
                 (cats ? '<span class="categories">' + cats + '</span>' : '') +
+                viewLinkHtml +
               '</div>' +
             '</li>'
           );
         }).join('');
         listEl.querySelectorAll('.project-entry').forEach(function (li, i) {
-          li.addEventListener('mouseenter', function () {
-            if (lockedProject) return;
-            setMedia(visible[i]);
-          });
-          li.addEventListener('mouseleave', function () {
-            if (lockedProject) return;
-            setMedia(getVisibleProjects()[0] || null);
-          });
           li.addEventListener('click', function () {
             var project = visible[i];
+            var link = project.link && (project.link + '').trim();
+            if (link) {
+              window.open(link, '_blank', 'noopener,noreferrer');
+              return;
+            }
             if (lockedProject === project) {
               lockedProject = null;
               listEl.querySelectorAll('.project-entry').forEach(function (el) {
                 el.classList.remove('locked');
               });
-              setMedia(getVisibleProjects()[0] || null);
             } else {
               lockedProject = project;
               listEl.querySelectorAll('.project-entry').forEach(function (el) {
                 el.classList.toggle('locked', el === li);
               });
-              setMedia(project);
+              var slideIndex = visible.slice(0, i + 1).filter(function (p) { return p.media; }).length - 1;
+              if (slideIndex >= 0 && carouselSlides[slideIndex]) {
+                carouselSlides[slideIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
             }
           });
         });
@@ -658,25 +844,18 @@
           allProjects = projects;
           document.getElementById('projectsStatus').textContent = projects.length ? '' : 'No projects in Sanity yet. Add and publish projects in Studio.';
           renderFilters();
+          if (projects.length > 0) buildCarousel();
           renderList();
-          if (projects.length > 0) {
-            setMedia(getVisibleProjects()[0]);
-          }
         });
       }
 
-      // Entry + filter animation
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
           var main = document.getElementById('page-main');
           var filterBar = document.getElementById('filterBar');
           var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
-          if (main) {
-            main.classList.add('page-entered');
-          }
-          if (filterBar) {
-            filterBar.classList.add('filter-entered');
-          }
+          if (main) main.classList.add('page-entered');
+          if (filterBar) filterBar.classList.add('filter-entered');
           if (projectsNavLink) {
             var rect = projectsNavLink.getBoundingClientRect();
             document.documentElement.style.setProperty('--content-left', rect.left + 'px');
@@ -701,23 +880,16 @@
           var filterBar = document.getElementById('filterBar');
           var link = event.currentTarget;
           var href = link.getAttribute('href');
-          if (!href || href.indexOf('#') === 0 || link.target === '_blank') {
-            return;
-          }
-
+          if (!href || href.indexOf('#') === 0 || link.target === '_blank') return;
           event.preventDefault();
           if (main.classList.contains('page-exiting')) return;
-
           main.classList.remove('page-entered');
           main.classList.add('page-exiting');
           if (filterBar) {
             filterBar.classList.remove('filter-entered');
             filterBar.classList.add('filter-exiting');
           }
-
-          setTimeout(function () {
-            window.location.href = href;
-          }, 500);
+          setTimeout(function () { window.location.href = href; }, 500);
         }
 
         var navLinks = document.querySelectorAll('.nav a');

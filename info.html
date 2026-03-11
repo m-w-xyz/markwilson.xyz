@@ -3,12 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Info — Mark Wilson</title>
+  <link rel="icon" type="image/gif" href="assets/img/favicon-1.gif">
+  <title>Mark Wilson</title>
   <style>
-    :root {
-      /* Fallback: approximate midpoint-based alignment */
-      --content-left: calc(50vw + 5px);
-    }
     /* Base */
     * {
       box-sizing: border-box;
@@ -41,9 +38,6 @@
       color: #000;
       text-decoration: none;
     }
-    .nav .name:hover {
-      font-style: italic;
-    }
     .nav-links {
       display: flex;
       flex: 0 0 50vw;
@@ -56,8 +50,9 @@
       color: #000;
       text-decoration: none;
     }
-    .nav-links a:hover {
-      font-style: italic;
+    @media (hover: hover) {
+      .nav .name:hover,
+      .nav-links a:hover { font-style: italic; }
     }
 
     /* Page transition: content gently fades and slides, nav stays fixed */
@@ -65,7 +60,7 @@
       position: fixed;
       inset: 0;
       z-index: 2;
-      padding-top: 20vh;
+      padding-top: 3em;
       min-height: 100vh;
       opacity: 0;
       transform: translateY(24px);
@@ -82,63 +77,15 @@
       transform: translateY(-8px);
     }
 
-    /* Fixed media panel — bottom-left of viewport, 5 columns wide (above main so it stays visible) */
-    .media-panel {
-      position: fixed;
-      left: 0;
-      bottom: 0;
-      width: calc(100vw * 5 / 12);
-      max-width: calc(100vw * 5 / 12);
-      /* Align top edge with main grid/text (20vh from top) */
-      height: calc(100vh - 20vh);
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-    .media-panel .media-wrap {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .media-panel img,
-    .media-panel video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .media-panel .media-item {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      transition: opacity 800ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
-    }
-    .media-panel .media-item.active {
-      opacity: 1;
-      z-index: 1;
-    }
-    .media-panel .media-item img,
-    .media-panel .media-item video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    /* Content column — right side */
+    /* Content — full width below nav */
     .info-content {
       grid-column: 1 / -1;
       position: relative;
       z-index: 2;
-      /* Align content with the "Projects" nav label */
-      padding-left: calc(var(--content-left) - 10px);
-      padding-right: 0;
-      padding-bottom: 0;
-      /* Match media-panel height so the column bounds line up */
-      height: calc(100vh - 20vh);
+      padding: 0 10px 2em;
+      max-width: 52em;
+      margin: 0 auto;
+      height: calc(100vh - 3em);
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -164,8 +111,8 @@
       color: #000;
       text-decoration: none;
     }
-    .info-content .about a:hover {
-      font-style: italic;
+    @media (hover: hover) {
+      .info-content .about a:hover { font-style: italic; }
     }
 
     .info-content .skills {
@@ -230,7 +177,7 @@
       margin-bottom: 0;
       font-size: 12px;
       color: rgba(0, 0, 0, 0.4);
-      line-height: 16px;
+      line-height: 14px;
     }
 
     /* Grid */
@@ -240,6 +187,35 @@
       gap: 10px;
       margin: 0 10px;
       max-width: 100%;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      body {
+        height: auto;
+        overflow: auto;
+      }
+      .nav { padding: 10px; }
+      .nav-links {
+        flex: 0 0 auto;
+        width: auto;
+        gap: 1em;
+      }
+      .nav-links a { font-size: 16px; }
+      main#page-main {
+        position: relative;
+        padding-top: 2.5em;
+        min-height: auto;
+      }
+      .info-content {
+        padding-left: 10px;
+        padding-right: 10px;
+        height: auto;
+        min-height: auto;
+      }
+      .info-bottom {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -252,11 +228,6 @@
       <a href="tools.html">Tools</a>
     </nav>
   </header>
-
-  <!-- Fixed bottom-left: randomly cycling images and videos -->
-  <div class="media-panel" id="mediaPanel" aria-hidden="true">
-    <div class="media-wrap" id="mediaWrap"></div>
-  </div>
 
   <main id="page-main">
     <div class="grid">
@@ -295,183 +266,31 @@
     </div>
   </main>
 
-  <script src="projects.embed.js"></script>
   <script>
     (function () {
-      var SANITY_PROJECT_ID = 'k9k1qhrl';
+      var main = document.getElementById('page-main');
+      if (!main) return;
 
-      function sanityImageUrl(url, opts) {
-        if (!url || typeof url !== 'string') return url;
-        if (url.indexOf('cdn.sanity.io') === -1) return url;
-        var params = new URLSearchParams();
-        if (opts && opts.w) params.set('w', String(opts.w));
-        if (opts && opts.h) params.set('h', String(opts.h));
-        if (opts && opts.q) params.set('q', String(opts.q));
-        if (opts && opts.fit) params.set('fit', opts.fit);
-        params.set('auto', 'format');
-        return url + (url.indexOf('?') >= 0 ? '&' : '?') + params.toString();
-      }
-
-      function normalizeProject(doc) {
-        var img = doc.mediaImageUrl || null;
-        var vid = doc.mediaVideoUrl || null;
-        var isVideo = doc.mediaType === 'video' && vid;
-        return {
-          media: isVideo ? vid : (img || vid),
-          mediaType: isVideo ? 'video' : 'image'
-        };
-      }
-
-      // Get a single media item for "The Way Is Māori"
-      function getMediaItems(callback) {
-        var projects = window.__SANITY_PROJECTS || [];
-        if (projects.length > 0) {
-          var target = projects.find(function (p) {
-            return p && p.title === 'The Way Is Māori';
-          });
-          if (target && target.media) {
-            callback([{
-              media: target.media,
-              mediaType: target.mediaType || 'image'
-            }]);
-            return;
-          }
-        }
-
-        // Fallback: fetch just this project from Sanity
-        var query = '*[_type == "project" && title == "The Way Is Māori"]{ mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url }';
-        var path = '/v2024-01-01/data/query/production';
-        var params = '?query=' + encodeURIComponent(query) + '&perspective=published';
-        fetch('https://k9k1qhrl.apicdn.sanity.io' + path + params, { method: 'GET', mode: 'cors' })
-          .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
-          .then(function (body) {
-            var list = body.result || [];
-            var items = list
-              .filter(function (p) { return p.mediaImageUrl || p.mediaVideoUrl; })
-              .map(normalizeProject);
-            callback(items.length ? items.slice(0, 1) : []);
-          })
-          .catch(function () { callback([]); });
-      }
-
-      var mediaItems = [];
-
-      function buildMediaItems() {
-        var wrap = document.getElementById('mediaWrap');
-        wrap.innerHTML = '';
-        var fromProjectsIsMaori = false;
-        try {
-          fromProjectsIsMaori = sessionStorage.getItem('projectsCurrentProjectTitle') === 'The Way Is Māori';
-        } catch (e) {}
-
-        mediaItems.forEach(function (item) {
-          var div = document.createElement('div');
-          div.className = 'media-item';
-          if (item.mediaType === 'video') {
-            var video = document.createElement('video');
-            video.src = item.media;
-            video.muted = true;
-            video.loop = true;
-            video.playsInline = true;
-            video.autoplay = true;
-            video.setAttribute('aria-hidden', 'true');
-            div.appendChild(video);
-            video.addEventListener('canplay', function revealVideo() {
-              video.removeEventListener('canplay', revealVideo);
-              div.classList.add('active');
-            });
-          } else {
-            var img = document.createElement('img');
-            img.alt = 'The Way Is Māori';
-            img.setAttribute('aria-hidden', 'true');
-            div.appendChild(img);
-            img.src = sanityImageUrl(item.media, { w: 1200, fit: 'max', q: 90 });
-
-            function whenReady(cb) {
-              if (typeof img.decode === 'function') {
-                img.decode().then(cb).catch(cb);
-              } else if (img.complete && img.naturalWidth) {
-                cb();
-              } else {
-                img.onload = function () { cb(); };
-              }
-            }
-            function show() {
-              if (fromProjectsIsMaori) {
-                div.style.transition = 'none';
-              }
-              div.classList.add('active');
-            }
-            whenReady(function () {
-              requestAnimationFrame(function () {
-                requestAnimationFrame(show);
-              });
-            });
-          }
-          wrap.appendChild(div);
-        });
-        document.getElementById('mediaPanel').setAttribute('aria-hidden', mediaItems.length ? 'false' : 'true');
-      }
-
-      function initMedia() {
-        getMediaItems(function (items) {
-          mediaItems = items;
-          buildMediaItems();
-        });
-      }
-
-      // Text animation + page entry take priority — run before any media loading
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
-          var main = document.getElementById('page-main');
-          var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
-          if (main) {
-            main.classList.add('page-entered');
-          }
-          if (projectsNavLink) {
-            var rect = projectsNavLink.getBoundingClientRect();
-            document.documentElement.style.setProperty('--content-left', rect.left + 'px');
-          }
+          main.classList.add('page-entered');
           window.scrollTo(0, 0);
-          initMedia(); // Defer media init until after text has started animating
         });
       });
 
-      window.addEventListener('resize', function () {
-        var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
-        if (!projectsNavLink) return;
-        var rect = projectsNavLink.getBoundingClientRect();
-        document.documentElement.style.setProperty('--content-left', rect.left + 'px');
+      function handleNavClick(event) {
+        var link = event.currentTarget;
+        var href = link.getAttribute('href');
+        if (!href || href.indexOf('#') === 0 || link.target === '_blank') return;
+        event.preventDefault();
+        if (main.classList.contains('page-exiting')) return;
+        main.classList.remove('page-entered');
+        main.classList.add('page-exiting');
+        setTimeout(function () { window.location.href = href; }, 500);
+      }
+      document.querySelectorAll('.nav a').forEach(function (link) {
+        link.addEventListener('click', handleNavClick);
       });
-
-      // Gentle fade/slide out on internal nav clicks
-      (function () {
-        var main = document.getElementById('page-main');
-        if (!main) return;
-
-        function handleNavClick(event) {
-          var link = event.currentTarget;
-          var href = link.getAttribute('href');
-          if (!href || href.indexOf('#') === 0 || link.target === '_blank') {
-            return;
-          }
-
-          event.preventDefault();
-          if (main.classList.contains('page-exiting')) return;
-
-          main.classList.remove('page-entered');
-          main.classList.add('page-exiting');
-
-          setTimeout(function () {
-            window.location.href = href;
-          }, 500);
-        }
-
-        var navLinks = document.querySelectorAll('.nav a');
-        navLinks.forEach(function (link) {
-          link.addEventListener('click', handleNavClick);
-        });
-      })();
     })();
   </script>
 </body>
