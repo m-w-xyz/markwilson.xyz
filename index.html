@@ -617,10 +617,7 @@
         var sep = (baseUrl && baseUrl.indexOf('?') >= 0) ? '&' : '?';
         return baseUrl + sep + VIMEO_EMBED_PARAMS;
       }
-      var script = document.createElement('script');
-      script.src = 'projects.embed.js';
-      script.async = true;
-      script.onload = function () {
+      function startPreload() {
         var projects = window.__SANITY_PROJECTS;
         if (!Array.isArray(projects)) return;
         var container = document.createElement('div');
@@ -632,11 +629,22 @@
             var iframe = document.createElement('iframe');
             iframe.src = vimeoEmbedUrl(p.media);
             iframe.setAttribute('tabindex', '-1');
+            iframe.setAttribute('aria-hidden', 'true');
+            iframe.allow = 'autoplay; fullscreen; picture-in-picture';
+            iframe.loading = 'eager';
             container.appendChild(iframe);
           }
         });
-      };
-      document.head.appendChild(script);
+      }
+      if (window.__SANITY_PROJECTS) {
+        startPreload();
+      } else {
+        var script = document.createElement('script');
+        script.src = 'projects.embed.js';
+        script.async = true;
+        script.onload = startPreload;
+        document.head.appendChild(script);
+      }
     })();
   </script>
 </body>

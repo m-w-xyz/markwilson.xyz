@@ -555,6 +555,43 @@ a.active {
 
     </main>
 
+    <script src="projects.embed.js"></script>
+    <script>
+        // Preload Vimeo embeds in the background so Projects videos are ready even when landing on Tools first
+        (function () {
+            var VIMEO_EMBED_PARAMS = 'autoplay=1&loop=1&muted=1&autopause=0&background=1&title=0&byline=0&portrait=0&api=1';
+            function vimeoEmbedUrl(baseUrl) {
+                var sep = (baseUrl && baseUrl.indexOf('?') >= 0) ? '&' : '?';
+                return baseUrl + sep + VIMEO_EMBED_PARAMS;
+            }
+            function startPreload() {
+                var projects = window.__SANITY_PROJECTS;
+                if (!Array.isArray(projects)) return;
+                var container = document.createElement('div');
+                container.setAttribute('aria-hidden', 'true');
+                container.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none;';
+                document.body.appendChild(container);
+                projects.forEach(function (p) {
+                    if (p.isVimeoEmbed && p.media) {
+                        var iframe = document.createElement('iframe');
+                        iframe.src = vimeoEmbedUrl(p.media);
+                        iframe.setAttribute('tabindex', '-1');
+                        iframe.setAttribute('aria-hidden', 'true');
+                        iframe.allow = 'autoplay; fullscreen; picture-in-picture';
+                        iframe.loading = 'eager';
+                        container.appendChild(iframe);
+                    }
+                });
+            }
+            if (window.__SANITY_PROJECTS) {
+                startPreload();
+            } else {
+                // If the embed script hasn't executed yet for some reason, wait a tick
+                window.addEventListener('load', startPreload);
+            }
+        })();
+    </script>
+
     <script>
         (function () {
             var main = document.getElementById('page-main');
