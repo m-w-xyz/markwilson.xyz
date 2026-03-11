@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tools</title>
-    <link rel="icon" type="gif" href="assets/img/favicon-1.gif">
+    <title>Mark Wilson</title>
+    <link rel="icon" type="image/gif" href="assets/img/favicon-1.gif">
 
     <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-C437JD01VX"></script>
@@ -43,8 +43,9 @@ body {
     color: #fff;
     text-decoration: none;
 }
-.nav .name:hover {
-    font-style: italic;
+@media (hover: hover) {
+    .nav .name:hover { font-style: italic; }
+    .nav-links a:hover { font-style: italic; }
 }
 .nav-links {
     display: flex;
@@ -57,9 +58,6 @@ body {
     font: 18px Arial, sans-serif;
     color: #fff;
     text-decoration: none;
-}
-.nav-links a:hover {
-    font-style: italic;
 }
 
 /* Page transition: content gently fades and slides */
@@ -121,10 +119,20 @@ main#page-main.page-exiting {
     line-height: 1;
 }
 
-.nav-close-button:hover {
-    color: #ffffff;
-    border-color: #ffffff;
-    background: rgba(255, 255, 255, 0.15);
+@media (hover: hover) {
+    .nav-close-button:hover {
+        color: #ffffff;
+        border-color: #ffffff;
+        background: rgba(255, 255, 255, 0.15);
+    }
+    .nav-toggle:hover {
+        color: #ffffff;
+        border-color: #ffffff;
+    }
+    .container a:hover {
+        font-style: italic;
+        color: #dbdbdb;
+    }
 }
 
 @media (min-width: 769px) {
@@ -153,11 +161,6 @@ main#page-main.page-exiting {
     align-items: center;
     justify-content: center;
     line-height: 1;
-}
-
-.nav-toggle:hover {
-    color: #ffffff;
-    border-color: #ffffff;
 }
 
 .nav-toggle.visible {
@@ -215,10 +218,6 @@ main#page-main.page-exiting {
     letter-spacing: 0.0rem;
     text-decoration: none;
 }
-.container a:hover {
-    font-style: italic;
-    color: #dbdbdb;
-}
 .container a.active {
     font-style: italic;
     color: #dbdbdb;
@@ -234,8 +233,8 @@ a {
     letter-spacing: 0.0rem;
     text-decoration: none;
 }
-a:hover {
-    color: #dbdbdb;
+@media (hover: hover) {
+    a:hover { color: #dbdbdb; }
 }
 a.active {
     color: #dbdbdb;
@@ -264,6 +263,18 @@ a.active {
 
 /* Mobile styles */
 @media (max-width: 768px) {
+    .nav { padding: 12px 10px; }
+    .nav-links {
+        flex: 0 0 auto;
+        width: auto;
+        gap: 20px;
+    }
+    .nav .name,
+    .nav-links a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
     .container {
         z-index: 200;
         width: 130px;
@@ -405,6 +416,9 @@ a.active {
                 main.classList.add('page-exiting');
 
                 setTimeout(function () {
+                    if (href && href.indexOf('info') !== -1) {
+                        try { sessionStorage.setItem('infoFrom', 'tools'); } catch (e) {}
+                    }
                     window.location.href = href;
                 }, 500);
             }

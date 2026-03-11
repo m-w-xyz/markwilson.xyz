@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/gif" href="assets/img/favicon-1.gif">
   <title>Mark Wilson</title>
   <style>
     /* Base */
@@ -43,8 +44,9 @@
       color: #000;
       text-decoration: none;
     }
-    .nav .name:hover {
-      font-style: italic;
+    @media (hover: hover) {
+      .nav .name:hover { font-style: italic; }
+      .nav-links a:hover { font-style: italic; }
     }
     .nav-links {
       display: flex;
@@ -57,9 +59,6 @@
       font: 18px Arial, sans-serif;
       color: #000;
       text-decoration: none;
-    }
-    .nav-links a:hover {
-      font-style: italic;
     }
 
     /* Page transition: content gently fades and slides, nav stays fixed */
@@ -89,6 +88,23 @@
       height: 100%;
       z-index: 50;
       pointer-events: none;
+    }
+
+    /* Mobile: no hover, touch-friendly nav, single-column */
+    @media (max-width: 768px) {
+      .nav { padding: 12px 10px; }
+      .nav-links {
+        flex: 0 0 auto;
+        width: auto;
+        gap: 20px;
+      }
+      .nav .name,
+      .nav-links a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+      }
+      .grid { margin: 0 10px; }
     }
   </style>
 </head>
@@ -137,6 +153,9 @@
         main.classList.add('page-exiting');
 
         setTimeout(function () {
+          if (href && href.indexOf('info') !== -1) {
+            try { sessionStorage.setItem('infoFrom', 'home'); } catch (e) {}
+          }
           window.location.href = href;
         }, 500);
       }
@@ -150,6 +169,9 @@
   <script>
     (function () {
       var canvas = document.getElementById('cursor-trail');
+      if (!canvas) return;
+      var isTouchOnly = typeof window !== 'undefined' && 'ontouchstart' in window && !window.matchMedia('(hover: hover)').matches;
+      if (isTouchOnly) return;
       var ctx = canvas.getContext('2d');
       var trail = [];
       var maxTrail = 4000;
@@ -229,8 +251,7 @@
             y: cy + y2 * scale
           });
         }
-        // Translate so the last projected point sits exactly at the actual cursor position.
-        // This ensures the line visually emanates from the cursor while rotation is still around the viewport center.
+        // Translate so the tip of the line (last point) sits exactly at the cursor.
         var lastProj = out[out.length - 1];
         var dxAlign = cursorPt.x - lastProj.x;
         var dyAlign = cursorPt.y - lastProj.y;
@@ -357,6 +378,36 @@
       });
 
       requestAnimationFrame(animationLoop);
+    })();
+  </script>
+  <script>
+    // Preload projects data and start loading Vimeo videos so they are ready when user visits Projects
+    (function () {
+      var VIMEO_EMBED_PARAMS = 'controls=0&background=1&title=0&byline=0&portrait=0&badge=0&vimeo_logo=0&autoplay=1&loop=1&muted=1';
+      function vimeoEmbedUrl(baseUrl) {
+        var sep = (baseUrl && baseUrl.indexOf('?') >= 0) ? '&' : '?';
+        return baseUrl + sep + VIMEO_EMBED_PARAMS;
+      }
+      var script = document.createElement('script');
+      script.src = 'projects.embed.js';
+      script.async = true;
+      script.onload = function () {
+        var projects = window.__SANITY_PROJECTS;
+        if (!Array.isArray(projects)) return;
+        var container = document.createElement('div');
+        container.setAttribute('aria-hidden', 'true');
+        container.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none;';
+        document.body.appendChild(container);
+        projects.forEach(function (p) {
+          if (p.isVimeoEmbed && p.media) {
+            var iframe = document.createElement('iframe');
+            iframe.src = vimeoEmbedUrl(p.media);
+            iframe.setAttribute('tabindex', '-1');
+            container.appendChild(iframe);
+          }
+        });
+      };
+      document.head.appendChild(script);
     })();
   </script>
 </body>

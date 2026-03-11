@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Projects — Mark Wilson</title>
+  <link rel="icon" type="image/gif" href="assets/img/favicon-1.gif">
+  <title>Mark Wilson</title>
   <style>
     :root {
       /* Fallback: approximate midpoint-based alignment */
@@ -50,8 +51,9 @@
       color: #000;
       text-decoration: none;
     }
-    .nav .name:hover {
-      font-style: italic;
+    @media (hover: hover) {
+      .nav .name:hover { font-style: italic; }
+      .nav-links a:hover { font-style: italic; }
     }
     .nav-links {
       display: flex;
@@ -64,9 +66,6 @@
       font: 18px Arial, sans-serif;
       color: #000;
       text-decoration: none;
-    }
-    .nav-links a:hover {
-      font-style: italic;
     }
 
     /* Page transition: content gently fades and slides, nav stays fixed */
@@ -95,30 +94,97 @@
       bottom: 0;
       width: calc(100vw * 5 / 12);
       max-width: calc(100vw * 5 / 12);
-      /* Align top edge with main grid/text (20vh from top) */
       height: calc(100vh - 20vh);
       z-index: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       overflow: hidden;
     }
     .media-panel .media-wrap {
+      position: relative;
       width: 100%;
       height: 100%;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: opacity 400ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
     }
-    .media-panel img,
-    .media-panel video {
+    .media-panel.media-panel--exiting .media-wrap {
+      opacity: 0;
+    }
+    .media-panel.media-panel--fade-in .media-wrap {
+      opacity: 0;
+    }
+    .media-panel.media-panel--entered .media-wrap {
+      opacity: 1;
+    }
+    .media-panel .media-wrap > img,
+    .media-panel .media-wrap > video {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
+      min-width: 100%;
+      min-height: 100%;
       object-fit: cover;
+      object-position: center;
+      display: block;
+    }
+    .media-panel .media-wrap > iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      min-width: 100%;
+      min-height: 100%;
+      border: 0;
+      transform-origin: center center;
     }
     .media-panel .media-placeholder {
       font-size: 14px;
       color: rgba(0, 0, 0, 0.3);
+    }
+    .media-panel .media-stack {
+      position: absolute;
+      inset: 0;
+      display: none;
+    }
+    .media-panel .media-stack.media-stack--visible {
+      display: block;
+    }
+    .media-panel .media-item {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .media-panel .media-item.media-item--active {
+      opacity: 1;
+      z-index: 1;
+      pointer-events: auto;
+    }
+    .media-panel .media-item > img,
+    .media-panel .media-item > video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      min-width: 100%;
+      min-height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+    }
+    .media-panel .media-item > iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      min-width: 100%;
+      min-height: 100%;
+      border: 0;
+      transform-origin: center center;
+      /* scale() set via JS per video from its dimensions for object-fit:cover behaviour */
     }
 
     /* Projects index: 7th column, span half viewport (6 columns) */
@@ -205,9 +271,11 @@
       font-style: normal;
       margin-left: 2px;
     }
-    .filter-bar .filter-links a:hover,
     .filter-bar .filter-links a.active {
       font-style: italic;
+    }
+    @media (hover: hover) {
+      .filter-bar .filter-links a:hover { font-style: italic; }
     }
     .filter-bar .filter-count {
       font-size: 12px;
@@ -225,6 +293,7 @@
     /* Each project entry: 10px spacing, divider with 10px above and below */
     .project-entry {
       display: flex;
+      align-items: flex-start;
       gap: 10px;
       padding: 10px 0;
       border-bottom: 1px solid rgba(0, 0, 0, 0.15);
@@ -254,8 +323,13 @@
     .project-entry:last-child {
       border-bottom: none;
     }
-    .project-entry:hover {
-      background: rgba(0, 0, 0, 0.03);
+    @media (hover: hover) {
+      .project-entry:hover {
+        background: rgba(0, 0, 0, 0.03);
+      }
+      .project-entry:hover .project-view-link {
+        opacity: 1;
+      }
     }
     .project-entry.locked {
       background: rgba(0, 0, 0, 0.06);
@@ -284,10 +358,67 @@
       display: block;
       height: fit-content;
     }
+    .project-entry .project-view-link {
+      margin-left: auto;
+      flex-shrink: 0;
+      pointer-events: none;
+      opacity: 0;
+    }
 
     .projects-status {
       font-size: 14px;
       color: rgba(0, 0, 0, 0.6);
+    }
+
+    /* Mobile: single column, full-width media/list, touch-friendly, no hover-only UI */
+    @media (max-width: 768px) {
+      body { overflow: auto; height: auto; min-height: 100vh; }
+      .nav { padding: 12px 10px; }
+      .nav-links {
+        flex: 0 0 auto;
+        width: auto;
+        gap: 20px;
+      }
+      .nav .name,
+      .nav-links a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+      }
+      main { padding-top: 16px; min-height: auto; }
+      :root { --content-left: 10px; }
+      .media-panel {
+        position: relative;
+        width: 100%;
+        max-width: 100%;
+        height: 50vh;
+        min-height: 200px;
+      }
+      .filter-veil { display: none; }
+      .filter-bar {
+        position: relative;
+        top: auto;
+        left: 10px;
+        right: 10px;
+        margin: 0 10px 10px;
+      }
+      .projects-index {
+        position: relative;
+        padding-top: 0;
+        padding-left: 10px;
+        padding-right: 10px;
+        padding-bottom: 2em;
+        height: auto;
+        overflow-y: visible;
+      }
+      .project-entry {
+        min-height: 44px;
+        align-items: center;
+      }
+      .project-entry .project-view-link {
+        opacity: 1;
+        pointer-events: auto;
+      }
     }
   </style>
 </head>
@@ -302,9 +433,9 @@
   </header>
 
   <!-- Fixed bottom-left: image or video for selected project -->
-  <div class="media-panel" id="mediaPanel" aria-hidden="true">
+  <div class="media-panel media-panel--fade-in" id="mediaPanel" aria-hidden="true">
     <div class="media-wrap">
-      <div class="media-placeholder" id="mediaPlaceholder">Select a project</div>
+      <div class="media-placeholder" id="mediaPlaceholder"></div>
     </div>
   </div>
 
@@ -371,6 +502,17 @@
         'Web Development': 'web development',
       };
 
+      function shuffleArray(arr) {
+        var copy = arr.slice();
+        for (var i = copy.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var t = copy[i];
+          copy[i] = copy[j];
+          copy[j] = t;
+        }
+        return copy;
+      }
+
       function normalizeCategories(raw) {
         if (!Array.isArray(raw)) return [];
         const seen = new Set();
@@ -426,11 +568,19 @@
       }
 
       function loadProjects(callback) {
+        function deliver(list) {
+          var normalized = list.map(normalizeProject);
+          var shuffled = shuffleArray(normalized);
+          callback(shuffled);
+          fetchVimeoDimensionsForProjects(shuffled, function () {
+            if (typeof updateActiveVimeoScale === 'function') updateActiveVimeoScale();
+          });
+        }
         if (typeof window.__SANITY_PROJECTS === 'object' && window.__SANITY_PROJECTS && window.__SANITY_PROJECTS.length > 0) {
-          callback(window.__SANITY_PROJECTS.map(normalizeProject));
+          deliver(window.__SANITY_PROJECTS);
           return;
         }
-        var query = '*[_type == "project"]{ title, studio, link, categories, mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url, "vimeoId": vimeoVideo.vimeoData.id }';
+        var query = '*[_type == "project"]{ title, studio, link, categories, mediaType, "mediaImageUrl": mediaImage.asset->url, "mediaVideoUrl": mediaVideo.asset->url, "vimeoId": coalesce(vimeoVideo.id, vimeoVideo.vimeoData.id) }';
         var apiHost = 'https://' + SANITY_PROJECT_ID + '.api.sanity.io';
         var cdnHost = 'https://' + SANITY_PROJECT_ID + '.apicdn.sanity.io';
         var path = '/v2024-01-01/data/query/' + SANITY_DATASET;
@@ -460,7 +610,7 @@
                 callback([]);
                 return;
               }
-              callback(list2.map(normalizeProject));
+              deliver(list2);
             });
             return;
           }
@@ -468,7 +618,7 @@
             callback([]);
             return;
           }
-          callback(list.map(normalizeProject));
+          deliver(list);
         });
       }
 
@@ -486,7 +636,7 @@
         'brand identity': 'Simfuni',
         'motion design': 'Village Green',
         '3D rendering': 'Toki',
-        'programming': 'Outer Stellar',
+        'programming': 'Track Face',
       };
 
       var allProjects = [];
@@ -521,45 +671,191 @@
         return counts;
       }
 
+      // Always hide all Vimeo UI: no overlay, controls, badge, or logo.
+      // controls=0 = chromeless; background=1 = full hide (paid). Append with & if URL already has ? (e.g. unlisted h=).
+      var VIMEO_EMBED_PARAMS = 'controls=0&background=1&title=0&byline=0&portrait=0&badge=0&vimeo_logo=0&autoplay=1&loop=1&muted=1';
+      function vimeoEmbedUrl(baseUrl) {
+        var sep = (baseUrl && baseUrl.indexOf('?') >= 0) ? '&' : '?';
+        return baseUrl + sep + VIMEO_EMBED_PARAMS;
+      }
+
+      function vimeoIdFromUrl(url) {
+        if (!url || typeof url !== 'string') return null;
+        var m = url.match(/vimeo\.com\/video\/(\d+)/) || url.match(/vimeo\.com\/(\d+)/);
+        return m ? m[1] : null;
+      }
+
+      var vimeoDimensionsCache = {};
+      function getVimeoDimensions(vimeoId, callback) {
+        if (!vimeoId) { callback(16, 9); return; }
+        if (vimeoDimensionsCache[vimeoId]) {
+          var d = vimeoDimensionsCache[vimeoId];
+          callback(d.width, d.height);
+          return;
+        }
+        var url = 'https://vimeo.com/api/oembed.json?url=https://vimeo.com/' + encodeURIComponent(vimeoId);
+        fetch(url, { method: 'GET', mode: 'cors' })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(r.status)); })
+          .then(function (data) {
+            var w = (data && data.width) ? Number(data.width) : 16;
+            var h = (data && data.height) ? Number(data.height) : 9;
+            if (!w || !h) { w = 16; h = 9; }
+            vimeoDimensionsCache[vimeoId] = { width: w, height: h };
+            callback(w, h);
+          })
+          .catch(function () {
+            callback(16, 9);
+          });
+      }
+
+      function coverScale(containerW, containerH, videoW, videoH) {
+        if (!containerW || !containerH || !videoW || !videoH) return 1;
+        var scaleByHeight = (containerH * videoW) / (containerW * videoH);
+        var scaleByWidth = (containerW * videoH) / (containerH * videoW);
+        return Math.max(scaleByHeight, scaleByWidth);
+      }
+
+      function applyVimeoCover(iframe, wrap) {
+        if (!iframe || !wrap) return;
+        var cw = wrap.offsetWidth;
+        var ch = wrap.offsetHeight;
+        if (!cw || !ch) return;
+        var mediaUrl = iframe.getAttribute('data-media-url');
+        var project = allProjects.filter(function (p) { return p && p.media === mediaUrl; })[0];
+        var vw = 16;
+        var vh = 9;
+        if (project && project.mediaWidth && project.mediaHeight) {
+          vw = project.mediaWidth;
+          vh = project.mediaHeight;
+        } else if (mediaUrl) {
+          var id = vimeoIdFromUrl(mediaUrl);
+          var cached = vimeoDimensionsCache[id];
+          if (cached) {
+            vw = cached.width;
+            vh = cached.height;
+          }
+        }
+        var s = coverScale(cw, ch, vw, vh);
+        if (project && (project.title || '').trim() === 'Interactive Typer') {
+          s *= 1.02;
+        }
+        iframe.style.transform = 'scale(' + s + ')';
+      }
+
+      function updateActiveVimeoScale() {
+        var wrap = document.querySelector('.media-panel .media-wrap');
+        var active = wrap && wrap.querySelector('.media-item.media-item--active');
+        var iframe = active && active.querySelector('iframe');
+        if (iframe && wrap) applyVimeoCover(iframe, wrap);
+      }
+
+      function fetchVimeoDimensionsForProjects(projects, callback) {
+        var idsToFetch = {};
+        projects.forEach(function (p) {
+          if (!p || !p.isVimeoEmbed || !p.media) return;
+          var id = vimeoIdFromUrl(p.media);
+          if (id) idsToFetch[id] = true;
+        });
+        var ids = Object.keys(idsToFetch);
+        if (ids.length === 0) {
+          callback(projects);
+          return;
+        }
+        var pending = ids.length;
+        ids.forEach(function (id) {
+          getVimeoDimensions(id, function (w, h) {
+            projects.forEach(function (p) {
+              if (p && p.isVimeoEmbed && p.media && vimeoIdFromUrl(p.media) === id) {
+                p.mediaWidth = w;
+                p.mediaHeight = h;
+              }
+            });
+            pending--;
+            if (pending === 0) callback(projects);
+          });
+        });
+      }
+
       var placeholderEl = document.getElementById('mediaPlaceholder');
+      var mediaStackEl = null;
+      var mediaItemByUrl = {};
+
+      function buildMediaStack() {
+        var wrap = document.querySelector('.media-panel .media-wrap');
+        if (!wrap) return;
+        mediaStackEl = document.createElement('div');
+        mediaStackEl.className = 'media-stack';
+        allProjects.forEach(function (p) {
+          if (!p.media) return;
+          var item = document.createElement('div');
+          item.className = 'media-item';
+          var isVideo = p.mediaType === 'video';
+          if (isVideo && p.isVimeoEmbed) {
+            var iframe = document.createElement('iframe');
+            iframe.src = vimeoEmbedUrl(p.media);
+            iframe.setAttribute('data-media-url', p.media);
+            iframe.allow = 'autoplay; fullscreen; picture-in-picture';
+            iframe.allowFullscreen = true;
+            iframe.setAttribute('aria-hidden', 'true');
+            item.appendChild(iframe);
+          } else if (isVideo) {
+            var video = document.createElement('video');
+            video.src = p.media;
+            video.muted = true;
+            video.loop = true;
+            video.playsInline = true;
+            video.autoplay = true;
+            video.setAttribute('aria-hidden', 'true');
+            item.appendChild(video);
+          } else {
+            var img = document.createElement('img');
+            img.src = sanityImageUrl(p.media, { w: 1200, fit: 'max', q: 90 });
+            img.alt = '';
+            img.setAttribute('aria-hidden', 'true');
+            item.appendChild(img);
+          }
+          mediaItemByUrl[p.media] = item;
+          mediaStackEl.appendChild(item);
+        });
+        wrap.appendChild(mediaStackEl);
+      }
+
       function setMedia(project) {
         try {
           sessionStorage.setItem('projectsCurrentProjectTitle', project && project.title ? project.title : '');
         } catch (e) {}
-        var wrap = document.querySelector('.media-panel .media-wrap');
-        while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+        if (!mediaStackEl) {
+          if (!project || !project.media) {
+            placeholderEl.textContent = '';
+            placeholderEl.style.display = 'block';
+            document.getElementById('mediaPanel').setAttribute('aria-hidden', 'true');
+          } else {
+            placeholderEl.style.display = 'none';
+            document.getElementById('mediaPanel').setAttribute('aria-hidden', 'false');
+          }
+          return;
+        }
         if (!project || !project.media) {
-          placeholderEl.textContent = 'Select a project';
-          wrap.appendChild(placeholderEl);
+          placeholderEl.textContent = '';
+          placeholderEl.style.display = 'block';
+          mediaStackEl.classList.remove('media-stack--visible');
+          mediaStackEl.querySelectorAll('.media-item--active').forEach(function (el) { el.classList.remove('media-item--active'); });
           document.getElementById('mediaPanel').setAttribute('aria-hidden', 'true');
           return;
         }
-        var isVideo = project.mediaType === 'video';
-        if (isVideo && project.isVimeoEmbed) {
-          var iframe = document.createElement('iframe');
-          iframe.src = project.media + '?title=0&byline=0&portrait=0';
-          iframe.allow = 'autoplay; fullscreen; picture-in-picture';
-          iframe.allowFullscreen = true;
-          iframe.setAttribute('aria-hidden', 'true');
-          iframe.style.border = '0';
-          wrap.appendChild(iframe);
-        } else if (isVideo) {
-          var video = document.createElement('video');
-          video.src = project.media;
-          video.muted = true;
-          video.loop = true;
-          video.playsInline = true;
-          video.autoplay = true;
-          video.setAttribute('aria-hidden', 'true');
-          wrap.appendChild(video);
-        } else {
-          var img = document.createElement('img');
-          img.src = sanityImageUrl(project.media, { w: 1200, fit: 'max', q: 90 });
-          img.alt = '';
-          img.setAttribute('aria-hidden', 'true');
-          wrap.appendChild(img);
-        }
+        placeholderEl.style.display = 'none';
+        mediaStackEl.classList.add('media-stack--visible');
+        mediaStackEl.querySelectorAll('.media-item--active').forEach(function (el) { el.classList.remove('media-item--active'); });
+        var item = mediaItemByUrl[project.media];
+        if (item) item.classList.add('media-item--active');
         document.getElementById('mediaPanel').setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(function () { updateActiveVimeoScale(); });
+      }
+
+      var mediaWrapEl = document.querySelector('.media-panel .media-wrap');
+      if (mediaWrapEl && typeof ResizeObserver !== 'undefined') {
+        var ro = new ResizeObserver(function () { updateActiveVimeoScale(); });
+        ro.observe(mediaWrapEl);
       }
 
       function renderFilters() {
@@ -615,12 +911,15 @@
           var studio = (p.studio || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           var catLabels = (p.categories || []).map(toTitleCase);
           var cats = catLabels.join(', ');
+          var hasLink = p.link && (p.link + '').trim() !== '';
+          var viewLinkHtml = hasLink ? '<span class="project-view-link">View →</span>' : '';
           return (
             '<li class="project-entry" data-index="' + i + '">' +
               '<div class="project-title">' + title + '</div>' +
               '<div class="project-meta">' +
                 (studio ? '<span class="studio">' + studio + '</span>' : '') +
                 (cats ? '<span class="categories">' + cats + '</span>' : '') +
+                viewLinkHtml +
               '</div>' +
             '</li>'
           );
@@ -636,6 +935,11 @@
           });
           li.addEventListener('click', function () {
             var project = visible[i];
+            var link = project.link && (project.link + '').trim();
+            if (link) {
+              window.open(link, '_blank', 'noopener,noreferrer');
+              return;
+            }
             if (lockedProject === project) {
               lockedProject = null;
               listEl.querySelectorAll('.project-entry').forEach(function (el) {
@@ -660,12 +964,25 @@
           renderFilters();
           renderList();
           if (projects.length > 0) {
-            setMedia(getVisibleProjects()[0]);
+            buildMediaStack();
+            setMedia(getVisibleProjects()[0] || null);
           }
         });
       }
 
-      // Entry + filter animation
+      // Entry + filter animation — media panel starts with --fade-in (opacity 0) in HTML
+      var mediaPanel = document.getElementById('mediaPanel');
+      var fromInfo = false;
+      try {
+        fromInfo = !!sessionStorage.getItem('projectsFromInfo');
+        if (fromInfo) sessionStorage.removeItem('projectsFromInfo');
+      } catch (e) {}
+
+      if (mediaPanel && fromInfo) {
+        mediaPanel.classList.remove('media-panel--fade-in');
+        mediaPanel.classList.add('media-panel--entered');
+      }
+
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
           var main = document.getElementById('page-main');
@@ -680,6 +997,10 @@
           if (projectsNavLink) {
             var rect = projectsNavLink.getBoundingClientRect();
             document.documentElement.style.setProperty('--content-left', rect.left + 'px');
+          }
+          if (mediaPanel && !fromInfo) {
+            mediaPanel.classList.add('media-panel--entered');
+            mediaPanel.classList.remove('media-panel--fade-in');
           }
           window.scrollTo(0, 0);
         });
@@ -699,6 +1020,7 @@
 
         function handleNavClick(event) {
           var filterBar = document.getElementById('filterBar');
+          var mediaPanel = document.getElementById('mediaPanel');
           var link = event.currentTarget;
           var href = link.getAttribute('href');
           if (!href || href.indexOf('#') === 0 || link.target === '_blank') {
@@ -708,6 +1030,19 @@
           event.preventDefault();
           if (main.classList.contains('page-exiting')) return;
 
+          // Fade out the media panel when going to Home or Tools, or when going to Info without "The Way Is Māori" selected
+          var dest = (href || '').replace(/^\//, '').split('?')[0].replace(/\/$/, '') || 'index.html';
+          var isHome = dest === '' || dest === 'index.html';
+          var isTools = dest === 'tools.html' || dest === 'tools';
+          var isInfo = dest === 'info.html';
+          var currentTitle = (sessionStorage.getItem('projectsCurrentProjectTitle') || '').trim();
+          var normalized = currentTitle.toLowerCase().replace(/\u0101/g, 'a').replace(/\u012B/g, 'i');
+          var isWayIsMaori = (normalized === 'the way is maori');
+          var shouldFadeOut = isHome || isTools || (isInfo && !isWayIsMaori);
+          if (mediaPanel && shouldFadeOut) {
+            mediaPanel.classList.add('media-panel--exiting');
+          }
+
           main.classList.remove('page-entered');
           main.classList.add('page-exiting');
           if (filterBar) {
@@ -716,6 +1051,9 @@
           }
 
           setTimeout(function () {
+            if (isInfo) {
+              try { sessionStorage.setItem('infoFrom', 'projects'); } catch (e) {}
+            }
             window.location.href = href;
           }, 500);
         }
