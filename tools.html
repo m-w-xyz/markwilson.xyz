@@ -48,7 +48,7 @@ body {
     .nav-links a:hover { font-style: italic; }
 }
 .nav-links {
-    display: flex;
+    display: none;
     flex: 0 0 50vw;
     width: 50vw;
     justify-content: space-between;
@@ -58,6 +58,85 @@ body {
     font: 18px Arial, sans-serif;
     color: #fff;
     text-decoration: none;
+}
+@media (min-width: 769px) {
+    .nav-links { display: flex; }
+    .mobile-menu-toggle { display: none !important; }
+}
+
+/* Mobile site nav menu toggle (hamburger) */
+.mobile-menu-toggle {
+    position: relative;
+    width: 32px;
+    height: 24px;
+    margin-left: 10px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.mobile-menu-toggle-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #fff;
+    border-radius: 999px;
+    transition:
+        transform 200ms cubic-bezier(0.74, 0.22, 0.31, 0.87),
+        opacity 200ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
+}
+.mobile-menu-toggle-line:first-child {
+    top: 7px;
+}
+.mobile-menu-toggle-line:last-child {
+    bottom: 7px;
+}
+.mobile-menu-toggle.is-open .mobile-menu-toggle-line:first-child {
+    transform: translateY(5px) rotate(45deg);
+}
+.mobile-menu-toggle.is-open .mobile-menu-toggle-line:last-child {
+    transform: translateY(-5px) rotate(-45deg);
+}
+
+/* Mobile site nav overlay – tools version (reversed colours) */
+.mobile-menu {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    transform: translateY(100%);
+    transition: transform 260ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
+    z-index: 90; /* beneath fixed nav so name + toggle stay visible */
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    pointer-events: none;
+}
+.mobile-menu.is-open {
+    transform: translateY(0);
+    pointer-events: auto;
+}
+.mobile-menu-nav {
+    margin: 0 0 20px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.mobile-menu-nav a {
+    font: 48px Arial, sans-serif;
+    text-decoration: none;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 16px;
+}
+@media (hover: hover) {
+    .mobile-menu-nav a:hover {
+        font-style: italic;
+    }
 }
 
 /* Page transition: content gently fades and slides */
@@ -143,24 +222,41 @@ main#page-main.page-exiting {
 
 .nav-toggle {
     position: fixed;
-    top: 58px; /* Below home nav */
-    left: 8px;
+    top: 73px; /* 15px below original position */
     z-index: 101;
-    background: rgba(0, 0, 0, 0.8);
-    border: 2px solid #6a6a6a;
-    color: #dbdbdb;
-    padding: 8px;
+    background: transparent;
+    border: none;
+    padding: 0;
     cursor: pointer;
-    font-family: Arial, sans-serif;
-    font-size: 18px;
-    border-radius: 0;
-    transition: all 0.2s ease;
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 24px;
     display: none;
     align-items: center;
     justify-content: center;
-    line-height: 1;
+    -webkit-tap-highlight-color: transparent;
+}
+.nav-toggle-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #dbdbdb;
+    border-radius: 999px;
+    transition:
+        transform 200ms cubic-bezier(0.74, 0.22, 0.31, 0.87),
+        opacity 200ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
+}
+.nav-toggle-line:first-child {
+    top: 7px;
+}
+.nav-toggle-line:last-child {
+    bottom: 7px;
+}
+.nav-toggle.is-open .nav-toggle-line:first-child {
+    transform: translateY(5px) rotate(45deg);
+}
+.nav-toggle.is-open .nav-toggle-line:last-child {
+    transform: translateY(-5px) rotate(-45deg);
 }
 
 .nav-toggle.visible {
@@ -264,13 +360,7 @@ a.active {
 /* Mobile styles */
 @media (max-width: 768px) {
     .nav { padding: 12px 10px; }
-    .nav-links {
-        flex: 0 0 auto;
-        width: auto;
-        gap: 20px;
-    }
-    .nav .name,
-    .nav-links a {
+    .nav .name {
         min-height: 44px;
         display: inline-flex;
         align-items: center;
@@ -285,12 +375,12 @@ a.active {
     
     .nav-toggle {
         display: flex;
-        border: none;
-        top: 58px;
+        left: 10px; /* left edge of viewport */
     }
     
     .nav-close-button {
         border: none;
+        display: none; /* use animated toggle instead on mobile */
     }
     
     .project-iframe-container {
@@ -318,6 +408,61 @@ a.active {
         padding-top: 5px;
         padding-bottom: 5px;
     }
+    .mobile-menu-arriving .container > div {
+        animation-play-state: paused;
+    }
+    .mobile-nav-leaving main#page-main,
+    .mobile-nav-leaving .container,
+    .mobile-nav-leaving .nav-toggle,
+    .mobile-nav-leaving .project-iframe-container,
+    .mobile-nav-leaving .tools-notice { visibility: hidden; }
+}
+
+/* Tools page notice */
+.tools-notice {
+    position: fixed;
+    top: 68px; /* just below nav / Tools link */
+    left: 16px;
+    z-index: 210;
+    max-width: 360px;
+    background-color: #222222;
+    color: #ffffff;
+    padding: 16px 20px 16px 16px;
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    line-height: 1.4;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 250ms ease, transform 250ms ease;
+}
+
+.tools-notice button.tools-notice-close {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+}
+
+@media (max-width: 768px) {
+    .tools-notice {
+        left: 16px;
+        right: 16px;
+        top: 74px; /* below mobile nav */
+        max-width: none;
+    }
+}
+
+.tools-notice.is-closing {
+    opacity: 0;
+    transform: translateY(4px);
+    pointer-events: none;
 }
 
 </style>
@@ -326,16 +471,38 @@ a.active {
 
 <body>
     <header class="nav">
-        <a href="/" class="name">Mark Wilson</a>
+        <a href="/index.html" class="name">Mark Wilson</a>
         <nav class="nav-links">
-            <a href="projects.html">Projects</a>
-            <a href="info.html">Info</a>
-            <a href="tools.html">Tools</a>
+            <a href="/projects.html">Projects</a>
+            <a href="/info.html">Info</a>
+            <a href="/tools.html">Tools</a>
         </nav>
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
+            <span class="mobile-menu-toggle-line"></span>
+            <span class="mobile-menu-toggle-line"></span>
+        </button>
     </header>
 
+    <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+        <nav class="mobile-menu-nav">
+            <a href="/projects.html">Projects</a>
+            <a href="/info.html">Info</a>
+            <a href="/tools.html">Tools</a>
+        </nav>
+    </div>
+
     <main id="page-main">
-    <button class="nav-toggle" id="navToggle">☰</button>
+    <div class="tools-notice" id="toolsNotice">
+        <button class="tools-notice-close" id="toolsNoticeClose" aria-label="Close notice">✕</button>
+        <p>
+            Welcome! These are some programs I've built. Many of them use your webcam to affect the visuals.
+            Allow webcam access to have a play! Mark.
+        </p>
+    </div>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle tools menu">
+        <span class="nav-toggle-line"></span>
+        <span class="nav-toggle-line"></span>
+    </button>
     <div class="container" id="navContainer">
         <button class="nav-close-button" id="navCloseButton">✕</button>
 
@@ -393,13 +560,29 @@ a.active {
             var main = document.getElementById('page-main');
             if (!main) return;
 
-            // Entry animation
-            requestAnimationFrame(function () {
+            var fromMobileMenu = false;
+            try {
+                fromMobileMenu = !!sessionStorage.getItem('mobileMenuNav');
+                sessionStorage.removeItem('mobileMenuNav');
+            } catch (e) {}
+            var isMobileEntry = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+            var entryDelay = (fromMobileMenu && isMobileEntry) ? 300 : 0;
+
+            if (entryDelay > 0) {
+                document.documentElement.classList.add('mobile-menu-arriving');
+            }
+
+            setTimeout(function () {
+                if (entryDelay > 0) {
+                    document.documentElement.classList.remove('mobile-menu-arriving');
+                }
                 requestAnimationFrame(function () {
-                    main.classList.add('page-entered');
-                    window.scrollTo(0, 0);
+                    requestAnimationFrame(function () {
+                        main.classList.add('page-entered');
+                        window.scrollTo(0, 0);
+                    });
                 });
-            });
+            }, entryDelay);
 
             // Gentle fade/slide out on internal nav clicks
             function handleNavClick(event) {
@@ -430,6 +613,56 @@ a.active {
         })();
     </script>
     <script>
+        // Mobile site nav toggle for Tools (reversed colours)
+        (function () {
+            var toggle = document.getElementById('mobileMenuToggle');
+            var menu = document.getElementById('mobileMenu');
+            if (!toggle || !menu) return;
+
+            function isMobile() {
+                return window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+            }
+
+            function closeMenu() {
+                toggle.classList.remove('is-open');
+                menu.classList.remove('is-open');
+                toggle.setAttribute('aria-expanded', 'false');
+                menu.setAttribute('aria-hidden', 'true');
+            }
+
+            toggle.addEventListener('click', function (event) {
+                if (!isMobile()) return;
+                event.preventDefault();
+                var willOpen = !toggle.classList.contains('is-open');
+                toggle.classList.toggle('is-open', willOpen);
+                menu.classList.toggle('is-open', willOpen);
+                toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+                menu.setAttribute('aria-hidden', willOpen ? 'false' : 'true');
+            });
+
+            menu.addEventListener('click', function (event) {
+                var target = event.target;
+                if (target && target.tagName === 'A') {
+                    var href = target.getAttribute('href');
+                    if (!href) return;
+                    event.preventDefault();
+                    document.documentElement.classList.add('mobile-nav-leaving');
+                    closeMenu();
+                    try { sessionStorage.setItem('mobileMenuNav', '1'); } catch (e) {}
+                    setTimeout(function () {
+                        window.location.href = href;
+                    }, 220);
+                }
+            });
+
+            window.addEventListener('resize', function () {
+                if (!isMobile()) {
+                    closeMenu();
+                }
+            });
+        })();
+    </script>
+    <script>
         const projectIframe = document.getElementById('project-iframe');
         const navContainer = document.querySelector('.container');
         const iframeContainer = document.querySelector('.project-iframe-container');
@@ -442,6 +675,7 @@ a.active {
             if (window.innerWidth <= 768) {
                 navVisible = !navVisible;
                 navContainer.classList.toggle('hidden', !navVisible);
+                navToggle.classList.toggle('is-open', navVisible);
                 updateIframePosition();
             }
         }
@@ -454,6 +688,7 @@ a.active {
             navContainer.classList.remove('hidden');
             navVisible = true;
         }
+        navToggle.classList.toggle('is-open', navVisible);
         
         const navCloseButton = document.getElementById('navCloseButton');
         
@@ -527,6 +762,7 @@ a.active {
                 navContainer.classList.remove('hidden');
                 navVisible = true;
             }
+            navToggle.classList.toggle('is-open', navVisible);
             updateIframePosition();
         });
         
@@ -684,6 +920,20 @@ a.active {
         
         // Load the project (defaults to type-face if no parameter)
         loadProject(projectToLoad);
+    </script>
+    <script>
+        (function () {
+            var notice = document.getElementById('toolsNotice');
+            var closeButton = document.getElementById('toolsNoticeClose');
+            if (!notice || !closeButton) return;
+
+            closeButton.addEventListener('click', function () {
+                notice.classList.add('is-closing');
+                setTimeout(function () {
+                    notice.style.display = 'none';
+                }, 260);
+            });
+        })();
     </script>
 
 </body>

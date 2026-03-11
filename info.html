@@ -47,7 +47,7 @@
       .nav-links a:hover { font-style: italic; }
     }
     .nav-links {
-      display: flex;
+      display: none;
       flex: 0 0 50vw;
       width: 50vw;
       justify-content: space-between;
@@ -58,6 +58,85 @@
       color: #000;
       text-decoration: none;
     }
+    @media (min-width: 769px) {
+      .nav-links { display: flex; }
+      .mobile-menu-toggle { display: none !important; }
+    }
+
+    /* Mobile menu toggle (hamburger) */
+    .mobile-menu-toggle {
+      position: relative;
+      width: 32px;
+      height: 24px;
+      margin-left: 10px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mobile-menu-toggle-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #000;
+      border-radius: 999px;
+      transition:
+        transform 200ms cubic-bezier(0.74, 0.22, 0.31, 0.87),
+        opacity 200ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
+    }
+    .mobile-menu-toggle-line:first-child {
+      top: 7px;
+    }
+    .mobile-menu-toggle-line:last-child {
+      bottom: 7px;
+    }
+    .mobile-menu-toggle.is-open .mobile-menu-toggle-line:first-child {
+      transform: translateY(5px) rotate(45deg);
+    }
+    .mobile-menu-toggle.is-open .mobile-menu-toggle-line:last-child {
+      transform: translateY(-5px) rotate(-45deg);
+    }
+
+    /* Mobile menu panel */
+    .mobile-menu {
+      position: fixed;
+      inset: 0;
+      background: #fff;
+      transform: translateY(100%);
+      transition: transform 260ms cubic-bezier(0.74, 0.22, 0.31, 0.87);
+      z-index: 90;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      pointer-events: none;
+    }
+    .mobile-menu.is-open {
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .mobile-menu-nav {
+      margin: 0 0 20px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .mobile-menu-nav a {
+      font: 48px Arial, sans-serif;
+      text-decoration: none;
+      color: #000;
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+    @media (hover: hover) {
+      .mobile-menu-nav a:hover {
+        font-style: italic;
+      }
+    }
 
     /* Page transition: content gently fades and slides, nav stays fixed */
     main#page-main {
@@ -65,6 +144,7 @@
       inset: 0;
       z-index: 2;
       padding-top: 20vh;
+      padding-bottom: 160px;
       min-height: 100vh;
       opacity: 0;
       transform: translateY(24px);
@@ -160,8 +240,25 @@
     .info-content .about p:nth-child(1) { animation-delay: 50ms; }
     .info-content .about p:nth-child(2) { animation-delay: 120ms; }
     .info-content .about p:nth-child(3) { animation-delay: 190ms; }
+    .info-content .about p:nth-child(4) { animation-delay: 260ms; }
+    .info-content .about p:nth-child(5) { animation-delay: 330ms; }
+    .info-content .about p:nth-child(6) { animation-delay: 400ms; }
     @keyframes info-text-in {
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    .info-content .about p.available {
+      padding-left: 20px;
+      text-indent: -20px;
+    }
+    .avail-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #FBC6EF;
+      margin-right: 10px;
+      vertical-align: 1px;
     }
     .info-content .about p:last-of-type {
       margin-bottom: 1em;
@@ -189,18 +286,18 @@
       transform: translateY(12px);
       animation: info-text-in 400ms cubic-bezier(0.74, 0.22, 0.31, 0.87) forwards;
     }
-    .info-content .skills li:nth-child(1) { animation-delay: 260ms; }
-    .info-content .skills li:nth-child(2) { animation-delay: 300ms; }
-    .info-content .skills li:nth-child(3) { animation-delay: 340ms; }
-    .info-content .skills li:nth-child(4) { animation-delay: 380ms; }
-    .info-content .skills li:nth-child(5) { animation-delay: 420ms; }
-    .info-content .skills li:nth-child(6) { animation-delay: 460ms; }
-    .info-content .skills li:nth-child(7) { animation-delay: 500ms; }
-    .info-content .skills li:nth-child(8) { animation-delay: 540ms; }
-    .info-content .skills li:nth-child(9) { animation-delay: 580ms; }
-    .info-content .skills li:nth-child(10) { animation-delay: 620ms; }
-    .info-content .skills li:nth-child(11) { animation-delay: 660ms; }
-    .info-content .skills li:nth-child(12) { animation-delay: 700ms; }
+    .info-content .skills li:nth-child(1) { animation-delay: 470ms; }
+    .info-content .skills li:nth-child(2) { animation-delay: 510ms; }
+    .info-content .skills li:nth-child(3) { animation-delay: 550ms; }
+    .info-content .skills li:nth-child(4) { animation-delay: 590ms; }
+    .info-content .skills li:nth-child(5) { animation-delay: 630ms; }
+    .info-content .skills li:nth-child(6) { animation-delay: 670ms; }
+    .info-content .skills li:nth-child(7) { animation-delay: 710ms; }
+    .info-content .skills li:nth-child(8) { animation-delay: 750ms; }
+    .info-content .skills li:nth-child(9) { animation-delay: 790ms; }
+    .info-content .skills li:nth-child(10) { animation-delay: 830ms; }
+    .info-content .skills li:nth-child(11) { animation-delay: 870ms; }
+    .info-content .skills li:nth-child(12) { animation-delay: 910ms; }
 
     /* Bottom section: skills left, education+collab right (aligned to column 10) */
     .info-bottom {
@@ -214,7 +311,7 @@
       align-items: stretch;
       opacity: 0;
       transform: translateY(12px);
-      animation: info-text-in 400ms cubic-bezier(0.74, 0.22, 0.31, 0.87) 740ms forwards;
+      animation: info-text-in 400ms cubic-bezier(0.74, 0.22, 0.31, 0.87) 950ms forwards;
     }
 
     .info-content .education {
@@ -253,13 +350,7 @@
       body { overflow: auto; height: auto; min-height: 100vh; }
       .media-panel { display: none; }
       .nav { padding: 12px 10px; }
-      .nav-links {
-        flex: 0 0 auto;
-        width: auto;
-        gap: 20px;
-      }
-      .nav .name,
-      .nav-links a {
+      .nav .name {
         min-height: 44px;
         display: inline-flex;
         align-items: center;
@@ -290,18 +381,37 @@
         padding-top: 1.5rem;
       }
       .info-content .meta-group { gap: 1rem; }
+      .mobile-menu-arriving .info-content .about p,
+      .mobile-menu-arriving .info-content .skills li,
+      .mobile-menu-arriving .info-content .info-bottom {
+        animation-play-state: paused;
+      }
+      .mobile-nav-leaving main#page-main,
+      .mobile-nav-leaving .media-panel { visibility: hidden; }
     }
   </style>
 </head>
 <body>
   <header class="nav">
-    <a href="/" class="name">Mark Wilson</a>
+    <a href="/index.html" class="name">Mark Wilson</a>
     <nav class="nav-links">
-      <a href="projects.html">Projects</a>
-      <a href="info.html">Info</a>
-      <a href="tools.html">Tools</a>
+      <a href="/projects.html">Projects</a>
+      <a href="/info.html">Info</a>
+      <a href="/tools.html">Tools</a>
     </nav>
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
+      <span class="mobile-menu-toggle-line"></span>
+      <span class="mobile-menu-toggle-line"></span>
+    </button>
   </header>
+
+  <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+    <nav class="mobile-menu-nav">
+      <a href="/projects.html">Projects</a>
+      <a href="/info.html">Info</a>
+      <a href="/tools.html">Tools</a>
+    </nav>
+  </div>
 
   <!-- Fixed bottom-left: randomly cycling images and videos -->
   <div class="media-panel" id="mediaPanel" aria-hidden="true">
@@ -312,8 +422,11 @@
     <div class="grid">
       <div class="info-content">
         <section class="about">
-          <p>Kia ora! I'm a visual designer with a lots of relevant skillsets & interests. I have seven years' experience across brand, print, & digital.</p>
-          <p>I'm now a freelance motion designer, which I weave into my 3D rendering & programming projects. Always up for collabs & coffee, so let's chat!</p>
+          <p>I'm a designer with a functional head and a creative heart. I'm excited by creative technologies and their role in contemporary design, particularly with motion systems and how they can breathe life into modern identities.</p>
+          <p>I'm currently seeking good people to connect and collaborate with, who want to do good and meaningful work, and who want to push the envelope of design in Aotearoa.</p>
+          <p>My experience in brand, print, digital, photography & industrial design has turned me into a bit of a curious haututū, where I've picked up a wide range of skillsets within the realm of design.</p>
+          <p class="available"><span class="avail-dot"></span>Available for work of all kinds, or just a casual chat to whakawhanaunga.</p>
+          <p>Mauriora</p>
           <p><a href="mailto:m@markwilson.xyz">Email</a>, <a href="https://www.instagram.com/resultsshouldvary/" target="_blank" rel="noopener">Instagram</a></p>
         </section>
 
@@ -492,22 +605,38 @@
         });
       }
 
-      // Text animation + page entry take priority — run before any media loading
-      requestAnimationFrame(function () {
+      var fromMobileMenu = false;
+      try {
+        fromMobileMenu = !!sessionStorage.getItem('mobileMenuNav');
+        sessionStorage.removeItem('mobileMenuNav');
+      } catch (e) {}
+      var isMobileEntry = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+      var entryDelay = (fromMobileMenu && isMobileEntry) ? 300 : 0;
+
+      if (entryDelay > 0) {
+        document.documentElement.classList.add('mobile-menu-arriving');
+      }
+
+      setTimeout(function () {
+        if (entryDelay > 0) {
+          document.documentElement.classList.remove('mobile-menu-arriving');
+        }
         requestAnimationFrame(function () {
-          var main = document.getElementById('page-main');
-          var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
-          if (main) {
-            main.classList.add('page-entered');
-          }
-          if (projectsNavLink) {
-            var rect = projectsNavLink.getBoundingClientRect();
-            document.documentElement.style.setProperty('--content-left', rect.left + 'px');
-          }
-          window.scrollTo(0, 0);
-          initMedia(); // Defer media init until after text has started animating
+          requestAnimationFrame(function () {
+            var main = document.getElementById('page-main');
+            var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
+            if (main) {
+              main.classList.add('page-entered');
+            }
+            if (projectsNavLink) {
+              var rect = projectsNavLink.getBoundingClientRect();
+              document.documentElement.style.setProperty('--content-left', rect.left + 'px');
+            }
+            window.scrollTo(0, 0);
+            initMedia();
+          });
         });
-      });
+      }, entryDelay);
 
       window.addEventListener('resize', function () {
         var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
@@ -554,6 +683,61 @@
           link.addEventListener('click', handleNavClick);
         });
       })();
+    })();
+  </script>
+  <script>
+    (function () {
+      var toggle = document.getElementById('mobileMenuToggle');
+      var menu = document.getElementById('mobileMenu');
+      if (!toggle || !menu) return;
+
+      function isMobile() {
+        return window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+      }
+
+      function closeMenu() {
+        toggle.classList.remove('is-open');
+        menu.classList.remove('is-open');
+        toggle.setAttribute('aria-expanded', 'false');
+        menu.setAttribute('aria-hidden', 'true');
+      }
+
+      toggle.addEventListener('click', function (event) {
+        if (!isMobile()) return;
+        event.preventDefault();
+        var willOpen = !toggle.classList.contains('is-open');
+        toggle.classList.toggle('is-open', willOpen);
+        menu.classList.toggle('is-open', willOpen);
+        toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        menu.setAttribute('aria-hidden', willOpen ? 'false' : 'true');
+      });
+
+      menu.addEventListener('click', function (event) {
+        var target = event.target;
+        if (target && target.tagName === 'A') {
+          var href = target.getAttribute('href');
+          if (!href) return;
+          event.preventDefault();
+          var mediaPanel = document.getElementById('mediaPanel');
+          var dest = (href || '').replace(/^\//, '').split('?')[0].replace(/\/$/, '') || 'index.html';
+          var isHomeOrTools = dest === '' || dest === 'index.html' || dest === 'tools.html';
+          if (mediaPanel && isHomeOrTools) {
+            mediaPanel.classList.add('media-panel--exiting');
+          }
+          document.documentElement.classList.add('mobile-nav-leaving');
+          closeMenu();
+          try { sessionStorage.setItem('mobileMenuNav', '1'); } catch (e) {}
+          setTimeout(function () {
+            window.location.href = href;
+          }, 220);
+        }
+      });
+
+      window.addEventListener('resize', function () {
+        if (!isMobile()) {
+          closeMenu();
+        }
+      });
     })();
   </script>
 </body>
