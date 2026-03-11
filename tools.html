@@ -639,6 +639,9 @@ a.active {
                     if (href && href.indexOf('info') !== -1) {
                         try { sessionStorage.setItem('infoFrom', 'tools'); } catch (e) {}
                     }
+                    if (href && (href === '/' || href.indexOf('index.html') !== -1)) {
+                        try { sessionStorage.setItem('homeFromInternalNav', '1'); } catch (e) {}
+                    }
                     window.location.href = href;
                 }, 650);
             }

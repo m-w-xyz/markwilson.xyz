@@ -674,6 +674,9 @@
             if (href && href.indexOf('projects') !== -1) {
               try { sessionStorage.setItem('projectsFromInfo', '1'); } catch (e) {}
             }
+            if (href && (href === '/' || href.indexOf('index.html') !== -1)) {
+              try { sessionStorage.setItem('homeFromInternalNav', '1'); } catch (e) {}
+            }
             window.location.href = href;
           }, 650);
         }

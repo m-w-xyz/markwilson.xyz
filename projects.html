@@ -1405,6 +1405,9 @@
             if (isInfo) {
               try { sessionStorage.setItem('infoFrom', 'projects'); } catch (e) {}
             }
+            if (isHome) {
+              try { sessionStorage.setItem('homeFromInternalNav', '1'); } catch (e) {}
+            }
             window.location.href = href;
           }, 650);
         }
