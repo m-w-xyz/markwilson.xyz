@@ -251,6 +251,7 @@
     /* Mobile: stack layout, touch-friendly nav, allow scroll */
     @media (max-width: 768px) {
       body { overflow: auto; height: auto; min-height: 100vh; }
+      .media-panel { display: none; }
       .nav { padding: 12px 10px; }
       .nav-links {
         flex: 0 0 auto;
@@ -265,7 +266,7 @@
       }
       main#page-main {
         position: relative;
-        padding-top: 16px;
+        padding-top: 20vh;
         min-height: auto;
       }
       :root { --content-left: 10px; }
@@ -282,9 +283,13 @@
         height: auto;
         min-height: 0;
       }
-      .info-bottom {
+      .info-content .info-bottom {
         grid-template-columns: 1fr;
+        margin-top: 2.5rem;
+        gap: 1.5rem;
+        padding-top: 1.5rem;
       }
+      .info-content .meta-group { gap: 1rem; }
     }
   </style>
 </head>
