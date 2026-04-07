@@ -241,12 +241,6 @@
           <span class="slider-thumb-value" id="speed-value">0.3</span>
         </div>
       </label>
-      <label class="panel-label">Size
-        <div class="slider-container">
-          <input type="range" id="size-slider" min="0" max="10" step="0.1" value="5.0">
-          <span class="slider-thumb-value" id="size-value">5.0</span>
-        </div>
-      </label>
       <label class="panel-label">Spacing
         <div class="slider-container">
           <input type="range" id="word-spacing-slider" min="0" max="10" step="0.1" value="5.0">
@@ -334,8 +328,6 @@
     const unmapSpeed = (val) => (val - 0.0001) / (0.0015 - 0.0001);
     const mapAmp = (val) => 10 + (val / 10) * (300 - 10);
     const unmapAmp = (val) => ((val - 10) / (300 - 10)) * 10;
-    const mapSize = (val) => 14 + (val / 10) * (5000 - 14);
-    const unmapSize = (val) => ((val - 14) / (5000 - 14)) * 10;
     const mapWordSpacing = (val) => (val / 10) * 200;
     const unmapWordSpacing = (val) => (val / 200) * 10;
     const mapSlitHeight = (val) => 2 + (val / 10) * (32 - 2);
@@ -362,7 +354,6 @@
     window.addEventListener('resize', () => {
       updateSliderValue('speed-slider', 'speed-value');
       updateSliderValue('amp-slider', 'amp-value');
-      updateSliderValue('size-slider', 'size-value');
       updateSliderValue('word-spacing-slider', 'word-spacing-value');
       updateSliderValue('slit-slider', 'slit-value');
     });
@@ -371,7 +362,6 @@
     let settings = {
       sweepSpeed: 0.00052, // maps to 0.3
       sweepAmp: 44.8, // maps to 1.2
-      textSize: 263.3, // maps to 0.5
       wordSpacing: 20, // maps to 1.0
       slitHeight: 3.5, // maps to 0.5
       direction: 'both',
@@ -383,7 +373,6 @@
     // Initialize sliders with mapped values
     document.getElementById('speed-slider').value = 0.3;
     document.getElementById('amp-slider').value = 1.2;
-    document.getElementById('size-slider').value = 0.5;
     document.getElementById('word-spacing-slider').value = 1.0;
     document.getElementById('slit-slider').value = 0.5;
     
@@ -391,7 +380,6 @@
     setTimeout(() => {
       updateSliderValue('speed-slider', 'speed-value');
       updateSliderValue('amp-slider', 'amp-value');
-      updateSliderValue('size-slider', 'size-value');
       updateSliderValue('word-spacing-slider', 'word-spacing-value');
       updateSliderValue('slit-slider', 'slit-value');
     }, 10);
@@ -406,11 +394,6 @@
       const mapped = mapAmp(+e.target.value);
       settings.sweepAmp = mapped;
       updateSliderValue('amp-slider', 'amp-value');
-    };
-    document.getElementById('size-slider').oninput = e => {
-      const mapped = mapSize(+e.target.value);
-      settings.textSize = mapped;
-      updateSliderValue('size-slider', 'size-value');
     };
     document.getElementById('word-spacing-slider').oninput = e => {
       const mapped = mapWordSpacing(+e.target.value);
@@ -439,7 +422,6 @@
     document.getElementById('randomize').onclick = () => {
       settings.sweepSpeed = +(Math.random() * 0.002 + 0.0002).toFixed(4);
       settings.sweepAmp = Math.floor(Math.random() * 250 + 30);
-      settings.textSize = Math.floor(Math.random() * 80 + 32);
       settings.wordSpacing = Math.floor(Math.random() * 120);
       settings.slitHeight = Math.floor(Math.random() * 20 + 2);
       settings.direction = ['horizontal','vertical','both','circular','spiral','pulse','diagonal','twist','ripple'][Math.floor(Math.random()*9)];
@@ -450,8 +432,6 @@
       updateSliderValue('speed-slider', 'speed-value');
       document.getElementById('amp-slider').value = unmapAmp(settings.sweepAmp);
       updateSliderValue('amp-slider', 'amp-value');
-      document.getElementById('size-slider').value = unmapSize(settings.textSize);
-      updateSliderValue('size-slider', 'size-value');
       document.getElementById('word-spacing-slider').value = unmapWordSpacing(settings.wordSpacing);
       updateSliderValue('word-spacing-slider', 'word-spacing-value');
       document.getElementById('slit-slider').value = unmapSlitHeight(settings.slitHeight);
@@ -468,7 +448,6 @@
       settings = {
         sweepSpeed: 0.00052,
         sweepAmp: 44.8,
-        textSize: 263.3,
         wordSpacing: 20,
         slitHeight: 3.5,
         direction: 'both',
@@ -480,8 +459,6 @@
       updateSliderValue('speed-slider', 'speed-value');
       document.getElementById('amp-slider').value = 1.2;
       updateSliderValue('amp-slider', 'amp-value');
-      document.getElementById('size-slider').value = 0.5;
-      updateSliderValue('size-slider', 'size-value');
       document.getElementById('word-spacing-slider').value = 1.0;
       updateSliderValue('word-spacing-slider', 'word-spacing-value');
       document.getElementById('slit-slider').value = 0.5;
@@ -494,12 +471,58 @@
       document.getElementById('bg-color').value = settings.bgColor;
       document.getElementById('transparent-bg').checked = settings.transparentBg;
     };
+    function wrapText(drawCtx, text, maxWidth, fontSize) {
+      drawCtx.font = `bold ${fontSize}px TWKLausanne, Arial, Helvetica, sans-serif`;
+      const words = text.split(' ');
+      const lines = [];
+      let currentLine = '';
+      for (const word of words) {
+        const testLine = currentLine ? currentLine + ' ' + word : word;
+        if (drawCtx.measureText(testLine).width > maxWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      return lines;
+    }
+
+    let _cachedFontSize = null;
+    let _cachedFontKey = '';
+    function calculateAutoFontSize(drawCtx, text, canvasWidth) {
+      const key = text + '|' + canvasWidth;
+      if (_cachedFontKey === key && _cachedFontSize !== null) return _cachedFontSize;
+      const maxWidth = canvasWidth;
+      let lo = 14, hi = 5000;
+      while (hi - lo > 1) {
+        const mid = Math.floor((lo + hi) / 2);
+        drawCtx.font = `bold ${mid}px TWKLausanne, Arial, Helvetica, sans-serif`;
+        const lines = wrapText(drawCtx, text, maxWidth, mid);
+        const longestLine = lines.reduce((max, l) => {
+          const w = drawCtx.measureText(l).width;
+          return w > max ? w : max;
+        }, 0);
+        if (longestLine <= maxWidth) {
+          lo = mid;
+        } else {
+          hi = mid;
+        }
+      }
+      _cachedFontSize = lo;
+      _cachedFontKey = key;
+      return lo;
+    }
+
     // Enhanced slit-scan: break each line into strips and offset each strip
     function render(t, forExport = false, exportCtx = null) {
       const drawCtx = forExport ? exportCtx : ctx;
       drawCtx.clearRect(0, 0, canvas.width, canvas.height);
       drawCtx.save();
-      drawCtx.font = `bold ${settings.textSize}px TWKLausanne, Arial, Helvetica, sans-serif`;
+
+      const autoSize = calculateAutoFontSize(drawCtx, sentence, canvas.width);
+      drawCtx.font = `bold ${autoSize}px TWKLausanne, Arial, Helvetica, sans-serif`;
       drawCtx.textBaseline = 'top';
       drawCtx.fillStyle = settings.textColor;
       if (!settings.transparentBg || forExport === false) {
@@ -511,73 +534,81 @@
       } else {
         drawCtx.clearRect(0, 0, canvas.width, canvas.height);
       }
-      const textWidth = drawCtx.measureText(sentence).width;
-      const textHeight = settings.textSize * 0.98;
+      const lines = wrapText(drawCtx, sentence, canvas.width, autoSize);
+      const lineHeight = autoSize * 0.98;
+      const blockHeight = lineHeight * lines.length;
       const stripHeight = settings.slitHeight;
       const sweepSpeed = settings.sweepSpeed;
       const sweepAmp = settings.sweepAmp;
       const ease = (a, b, t) => a + (b - a) * (1 - Math.cos(Math.PI * t)) / 2;
-      for (let y = -textHeight; y < canvas.height + textHeight; y += textHeight) {
-        for (let x = -textWidth; x < canvas.width + textWidth; x += textWidth + settings.wordSpacing) {
-          for (let sy = 0; sy < textHeight; sy += stripHeight) {
-            let base = y + sy;
-            let centerX = x + textWidth / 2;
-            let centerY = y + textHeight / 2;
-            let sweep = Math.sin((base) * 0.04 + t * sweepSpeed) * sweepAmp;
-            let sweep2 = Math.sin((base) * 0.01 - t * sweepSpeed * 0.7) * (sweepAmp * 0.5);
-            let dx = 0, dy = 0;
-            const dir = settings.direction;
-            
-            if (dir === 'horizontal') {
-              dx = ease(sweep, sweep2, 0.5 + 0.5 * Math.sin(t * sweepSpeed * 0.5));
-            } else if (dir === 'vertical') {
-              dy = ease(sweep2, sweep, 0.5 + 0.5 * Math.cos(t * sweepSpeed * 0.5));
-            } else if (dir === 'both') {
-              dx = ease(sweep, sweep2, 0.5 + 0.5 * Math.sin(t * sweepSpeed * 0.5));
-              dy = ease(sweep2, sweep, 0.5 + 0.5 * Math.cos(t * sweepSpeed * 0.5));
-            } else if (dir === 'circular') {
-              const angle = (base * 0.02 + t * sweepSpeed * 2) * Math.PI;
-              const radius = sweepAmp * 0.3;
-              dx = Math.cos(angle) * radius;
-              dy = Math.sin(angle) * radius;
-            } else if (dir === 'spiral') {
-              const angle = (base * 0.05 + t * sweepSpeed * 3) * Math.PI;
-              const radius = (base * 0.1 + t * sweepSpeed * 50) % sweepAmp;
-              dx = Math.cos(angle) * radius * 0.3;
-              dy = Math.sin(angle) * radius * 0.3;
-            } else if (dir === 'pulse') {
-              const pulse = Math.sin(t * sweepSpeed * 5) * 0.5 + 0.5;
-              dx = Math.sin(base * 0.05) * sweepAmp * pulse;
-              dy = Math.cos(base * 0.05) * sweepAmp * pulse;
-            } else if (dir === 'diagonal') {
-              const diag = Math.sin((base * 0.05 + t * sweepSpeed * 2) * Math.PI) * sweepAmp;
-              dx = diag * 0.707;
-              dy = diag * 0.707;
-            } else if (dir === 'twist') {
-              const twistAngle = (base * 0.08 + t * sweepSpeed * 3) * Math.PI;
-              const relX = x - centerX;
-              const relY = (y + sy) - centerY;
-              const dist = Math.sqrt(relX ** 2 + relY ** 2);
-              const twist = Math.sin(twistAngle + dist * 0.01) * sweepAmp * 0.3;
-              const perpAngle = Math.atan2(relY, relX) + Math.PI / 2;
-              dx = Math.cos(perpAngle) * twist;
-              dy = Math.sin(perpAngle) * twist;
-            } else if (dir === 'ripple') {
-              const relX = x - centerX;
-              const relY = (y + sy) - centerY;
-              const dist = Math.sqrt(relX ** 2 + relY ** 2);
-              const ripple = Math.sin((dist * 0.1 - t * sweepSpeed * 3) * Math.PI) * sweepAmp * 0.4;
-              const angle = Math.atan2(relY, relX);
-              dx = Math.cos(angle) * ripple;
-              dy = Math.sin(angle) * ripple;
+
+      for (let blockY = -blockHeight; blockY < canvas.height + blockHeight; blockY += blockHeight + settings.wordSpacing) {
+        for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+          const lineText = lines[lineIdx];
+          const textWidth = drawCtx.measureText(lineText).width;
+          const lineY = blockY + lineIdx * lineHeight;
+
+          for (let x = -textWidth; x < canvas.width + textWidth; x += textWidth + settings.wordSpacing) {
+            for (let sy = 0; sy < lineHeight; sy += stripHeight) {
+              let base = lineY + sy;
+              let centerX = x + textWidth / 2;
+              let centerY = lineY + lineHeight / 2;
+              let sweep = Math.sin((base) * 0.04 + t * sweepSpeed) * sweepAmp;
+              let sweep2 = Math.sin((base) * 0.01 - t * sweepSpeed * 0.7) * (sweepAmp * 0.5);
+              let dx = 0, dy = 0;
+              const dir = settings.direction;
+
+              if (dir === 'horizontal') {
+                dx = ease(sweep, sweep2, 0.5 + 0.5 * Math.sin(t * sweepSpeed * 0.5));
+              } else if (dir === 'vertical') {
+                dy = ease(sweep2, sweep, 0.5 + 0.5 * Math.cos(t * sweepSpeed * 0.5));
+              } else if (dir === 'both') {
+                dx = ease(sweep, sweep2, 0.5 + 0.5 * Math.sin(t * sweepSpeed * 0.5));
+                dy = ease(sweep2, sweep, 0.5 + 0.5 * Math.cos(t * sweepSpeed * 0.5));
+              } else if (dir === 'circular') {
+                const angle = (base * 0.02 + t * sweepSpeed * 2) * Math.PI;
+                const radius = sweepAmp * 0.3;
+                dx = Math.cos(angle) * radius;
+                dy = Math.sin(angle) * radius;
+              } else if (dir === 'spiral') {
+                const angle = (base * 0.05 + t * sweepSpeed * 3) * Math.PI;
+                const radius = (base * 0.1 + t * sweepSpeed * 50) % sweepAmp;
+                dx = Math.cos(angle) * radius * 0.3;
+                dy = Math.sin(angle) * radius * 0.3;
+              } else if (dir === 'pulse') {
+                const pulse = Math.sin(t * sweepSpeed * 5) * 0.5 + 0.5;
+                dx = Math.sin(base * 0.05) * sweepAmp * pulse;
+                dy = Math.cos(base * 0.05) * sweepAmp * pulse;
+              } else if (dir === 'diagonal') {
+                const diag = Math.sin((base * 0.05 + t * sweepSpeed * 2) * Math.PI) * sweepAmp;
+                dx = diag * 0.707;
+                dy = diag * 0.707;
+              } else if (dir === 'twist') {
+                const twistAngle = (base * 0.08 + t * sweepSpeed * 3) * Math.PI;
+                const relX = x - centerX;
+                const relY = (lineY + sy) - centerY;
+                const dist = Math.sqrt(relX ** 2 + relY ** 2);
+                const twist = Math.sin(twistAngle + dist * 0.01) * sweepAmp * 0.3;
+                const perpAngle = Math.atan2(relY, relX) + Math.PI / 2;
+                dx = Math.cos(perpAngle) * twist;
+                dy = Math.sin(perpAngle) * twist;
+              } else if (dir === 'ripple') {
+                const relX = x - centerX;
+                const relY = (lineY + sy) - centerY;
+                const dist = Math.sqrt(relX ** 2 + relY ** 2);
+                const ripple = Math.sin((dist * 0.1 - t * sweepSpeed * 3) * Math.PI) * sweepAmp * 0.4;
+                const angle = Math.atan2(relY, relX);
+                dx = Math.cos(angle) * ripple;
+                dy = Math.sin(angle) * ripple;
+              }
+              drawCtx.save();
+              drawCtx.beginPath();
+              drawCtx.rect(x + dx, lineY + sy + dy, textWidth, stripHeight);
+              drawCtx.clip();
+              drawCtx.fillStyle = settings.textColor;
+              drawCtx.fillText(lineText, x + dx, lineY + dy);
+              drawCtx.restore();
             }
-            drawCtx.save();
-            drawCtx.beginPath();
-            drawCtx.rect(x + dx, y + sy + dy, textWidth, stripHeight);
-            drawCtx.clip();
-            drawCtx.fillStyle = settings.textColor;
-            drawCtx.fillText(sentence, x + dx, y + dy);
-            drawCtx.restore();
           }
         }
       }

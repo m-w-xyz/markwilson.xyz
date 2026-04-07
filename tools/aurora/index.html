@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurora Effect - Three.js</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            opacity: 0;
+            transition: opacity 2s ease-in;
+        }
+        
+        #canvas-container.fade-in {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(28, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        camera.position.z = 5;
+
+        // Vertex Shader - Creates the aurora plane geometry
+        const vertexShader = `
+            varying vec2 vUv;
+            varying vec3 vPosition;
+            
+            void main() {
+                vUv = uv;
+                vPosition = position;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        // Fragment Shader - Creates the aurora effect with noise and colors
+        const fragmentShader = `
+            uniform float uTime;
+            uniform vec2 uResolution;
+            uniform float uSpeed;
+            uniform float uIntensity;
+            uniform float uColorShift;
+            uniform vec2 uMouse;
+            uniform float uMousePressed;
+            
+            varying vec2 vUv;
+            varying vec3 vPosition;
+            
+            // Hash function for noise
+            vec3 hash3(vec3 p) {
+                p = vec3(dot(p, vec3(127.1, 311.7, 74.7)),
+                         dot(p, vec3(269.5, 183.3, 246.1)),
+                         dot(p, vec3(113.5, 271.9, 124.6)));
+                return fract(sin(p) * 43758.5453123);
+            }
+            
+            // 3D Noise function
+            float noise3D(vec3 p) {
+                vec3 i = floor(p);
+                vec3 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                
+                float n = i.x + i.y * 57.0 + 113.0 * i.z;
+                return mix(
+                    mix(mix(hash3(vec3(n + 0.0)), hash3(vec3(n + 1.0)), f.x),
+                        mix(hash3(vec3(n + 57.0)), hash3(vec3(n + 58.0)), f.x), f.y),
+                    mix(mix(hash3(vec3(n + 113.0)), hash3(vec3(n + 114.0)), f.x),
+                        mix(hash3(vec3(n + 170.0)), hash3(vec3(n + 171.0)), f.x), f.y),
+                    f.z
+                ).x;
+            }
+            
+            // FBM (Fractal Brownian Motion) for organic patterns - increased octaves for better quality
+            float fbm(vec3 p) {
+                float value = 0.0;
+                float amplitude = 0.5;
+                float frequency = 1.0;
+                
+                for (int i = 0; i < 6; i++) {
+                    value += amplitude * noise3D(p * frequency);
+                    amplitude *= 0.5;
+                    frequency *= 2.0;
+                }
+                
+                return value;
+            }
+            
+            // Smootherstep function for ultra-smooth blending
+            float smootherstep(float edge0, float edge1, float x) {
+                x = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+                return x * x * x * (x * (x * 6.0 - 15.0) + 10.0);
+            }
+            
+            // Aurora color gradient with smooth continuous blending and anti-aliasing
+            vec3 auroraColor(float t) {
+                // Create high-resolution gradient from blue -> green -> yellow -> orange -> red
+                vec3 colors[21];
+                colors[0] = vec3(0.1, 0.2, 0.8);    // Deep blue
+                colors[1] = vec3(0.12, 0.3, 0.825); // Blue
+                colors[2] = vec3(0.15, 0.4, 0.85);  // Blue-cyan
+                colors[3] = vec3(0.17, 0.5, 0.875); // Cyan-blue
+                colors[4] = vec3(0.2, 0.6, 0.9);    // Light blue
+                colors[5] = vec3(0.22, 0.675, 0.8); // Cyan
+                colors[6] = vec3(0.25, 0.75, 0.7);  // Cyan-green
+                colors[7] = vec3(0.27, 0.825, 0.6); // Green-cyan
+                colors[8] = vec3(0.3, 0.9, 0.5);    // Green
+                colors[9] = vec3(0.35, 0.925, 0.45); // Yellow-green
+                colors[10] = vec3(0.4, 0.95, 0.4);  // Yellow-green
+                colors[11] = vec3(0.5, 0.95, 0.4);  // Yellow-green
+                colors[12] = vec3(0.65, 0.925, 0.35); // Yellow
+                colors[13] = vec3(0.9, 0.9, 0.3);   // Yellow
+                colors[14] = vec3(0.925, 0.8, 0.275); // Yellow-orange
+                colors[15] = vec3(0.95, 0.7, 0.25);  // Yellow-orange
+                colors[16] = vec3(0.925, 0.6, 0.225); // Orange
+                colors[17] = vec3(0.9, 0.5, 0.2);   // Orange
+                colors[18] = vec3(0.875, 0.425, 0.175); // Orange-red
+                colors[19] = vec3(0.85, 0.35, 0.15); // Orange-red
+                colors[20] = vec3(0.8, 0.2, 0.1);   // Red
+                
+                t = mod(t + uColorShift, 1.0);
+                
+                // Use continuous interpolation with higher precision for seamless blending
+                float scaledT = t * 20.0;
+                float indexF = floor(scaledT);
+                int index = int(indexF);
+                float localT = fract(scaledT);
+                
+                // Clamp index to valid range
+                index = clamp(index, 0, 19);
+                int nextIndex = clamp(index + 1, 0, 20);
+                
+                // Use smootherstep for ultra-smooth blending
+                float blendT = smootherstep(0.0, 1.0, localT);
+                
+                // Blend between colors with smooth interpolation
+                vec3 color = mix(colors[index], colors[nextIndex], blendT);
+                
+                // Add subtle multi-sample anti-aliasing to break up hard edges
+                // Sample adjacent colors for smoother transitions
+                if (localT < 0.1 && index > 0) {
+                    float prevBlend = smootherstep(0.0, 0.1, localT);
+                    color = mix(colors[index - 1], color, prevBlend);
+                } else if (localT > 0.9 && nextIndex < 20) {
+                    float nextBlend = smootherstep(0.9, 1.0, localT);
+                    int nextNextIndex = clamp(nextIndex + 1, 0, 20);
+                    vec3 nextColor = mix(colors[nextIndex], colors[nextNextIndex], (localT - 0.9) * 10.0);
+                    color = mix(color, nextColor, nextBlend);
+                }
+                
+                return color;
+            }
+            
+            void main() {
+                vec2 uv = vUv;
+                vec2 p = (vUv - 0.5) * 2.0;
+                p.x *= uResolution.x / uResolution.y;
+                
+                // Convert mouse position to normalized coordinates - fix offset
+                vec2 mousePos = (uMouse - 0.5) * 2.0;
+                mousePos.x *= uResolution.x / uResolution.y;
+                
+                // Calculate distance and direction to cursor
+                vec2 toMouse = p - mousePos;
+                float mouseDist = length(toMouse);
+                
+                // Adjust radius based on mouse press - smaller when pressed for aurora effect
+                float baseRadius = 0.8; // Base radius for normal interaction
+                float pressedRadius = 0.3; // Much smaller radius when pressed (aurora mode)
+                float mouseRadius = mix(baseRadius, pressedRadius, uMousePressed);
+                
+                // Ultra-smooth, eased influence falloff around cursor
+                float mouseInfluence = 1.0 - smoothstep(0.0, mouseRadius, mouseDist);
+                // Use smootherstep for even smoother transitions
+                mouseInfluence = mouseInfluence * mouseInfluence * mouseInfluence * (mouseInfluence * (mouseInfluence * 6.0 - 15.0) + 10.0);
+                
+                // Calculate horizontal bend amount with smoother easing
+                // Bend direction: bands bend away from cursor position
+                // Increase base bend, but reduce when pressed for aurora effect
+                float baseBend = 1.0; // Increased from 0.7 for more bend
+                float pressedBend = 0.2; // Much less bend when pressed (aurora mode)
+                float bendAmount = mouseInfluence * mix(baseBend, pressedBend, uMousePressed);
+                
+                // Smooth bend calculation with eased transitions
+                float bendFactor = clamp(toMouse.x / mouseRadius, -1.0, 1.0);
+                // Apply smooth easing curve (smoothstep-like) for gradual bending
+                float easedBend = bendFactor * bendFactor * (3.0 - 2.0 * abs(bendFactor)) * sign(bendFactor);
+                float horizontalBend = easedBend * mouseRadius * bendAmount * (1.0 - abs(p.y) * 0.15);
+                
+                // Time-based animation
+                float time = uTime * uSpeed;
+                
+                // Create vertical flow pattern (aurora streaks)
+                float verticalFlow = p.y * 0.5 + 0.5;
+                
+                // Add horizontal wave patterns for texture
+                float horizontalWave = sin(p.x * 2.0 + time * 0.2) * 0.3;
+                float horizontalWave2 = sin(p.x * 1.5 + time * 0.16) * 0.2;
+                float horizontalWave3 = sin(p.x * 3.0 + time * 0.24) * 0.15;
+                
+                // Create noise-based flow field
+                vec3 noiseCoord = vec3(
+                    p.x * 0.5 + horizontalWave,
+                    p.y * 1.5 + time * 0.13,
+                    time * 0.065
+                );
+                
+                float noise = fbm(noiseCoord);
+                
+                // Create prominent vertical streaks/columns - more defined and numerous
+                // Base vertical structure with varying widths
+                float verticalStreaks = 0.0;
+                
+                for (int i = 0; i < 7; i++) {
+                    float bentX = p.x + horizontalBend * (0.8 + float(i) * 0.08);
+                    float colX = bentX * (1.5 + float(i) * 0.7) + sin(time * 0.13 + float(i) * 1.3) * 0.5;
+                    float colWidth = 0.12 + sin(time * 0.1 + float(i) * 2.0) * 0.08;
+                    float colIntensity = 1.0 - smoothstep(0.0, colWidth, abs(fract(colX) - 0.5) * 2.0);
+                    colIntensity *= (0.7 + sin(p.y * 3.0 + time * 0.26 + float(i)) * 0.3);
+                    float partSmooth = mouseInfluence * mouseInfluence * (3.0 - 2.0 * mouseInfluence);
+                    colIntensity *= (1.0 - partSmooth * 0.2);
+                    verticalStreaks += colIntensity * 0.2;
+                }
+                
+                // Curtain-fold lines at tighter spacing
+                for (int i = 0; i < 4; i++) {
+                    float foldX = p.x + horizontalBend * (0.5 + float(i) * 0.12);
+                    float fold = sin(foldX * (6.0 + float(i) * 3.5) + sin(p.y * (1.8 + float(i) * 0.4) + time * 0.18) * (1.2 + float(i) * 0.3) + time * 0.09 + float(i) * 0.7) * 0.5 + 0.5;
+                    fold = pow(fold, 3.5 + float(i) * 0.5);
+                    float foldPart = mouseInfluence * mouseInfluence * (3.0 - 2.0 * mouseInfluence);
+                    fold *= (1.0 - foldPart * 0.15);
+                    verticalStreaks += fold * (0.18 - float(i) * 0.02);
+                }
+                
+                // Wavy vertical columns with undulation
+                float wavyBentX = p.x + horizontalBend * 0.7;
+                float wavyCols = sin(wavyBentX * 4.0 + sin(p.y * 2.0 + time * 0.2) * 1.5 + time * 0.13) * 0.5 + 0.5;
+                wavyCols = pow(wavyCols, 3.0);
+                float wavyPart = mouseInfluence * mouseInfluence * (3.0 - 2.0 * mouseInfluence);
+                wavyCols *= (1.0 - wavyPart * 0.15);
+                verticalStreaks += wavyCols * 0.25;
+                
+                float wavyBentX2 = p.x + horizontalBend * 0.55;
+                float wavyCols2 = sin(wavyBentX2 * 5.5 + sin(p.y * 2.8 + time * 0.15) * 1.8 + time * 0.1 + 1.5) * 0.5 + 0.5;
+                wavyCols2 = pow(wavyCols2, 3.5);
+                wavyCols2 *= (1.0 - wavyPart * 0.15);
+                verticalStreaks += wavyCols2 * 0.18;
+                
+                // Narrow delicate streaks at multiple frequencies
+                float narrowBentX = p.x + horizontalBend * 0.6;
+                float narrowStreaks = sin(narrowBentX * 8.0 + sin(p.y * 1.5) * 2.0) * 0.5 + 0.5;
+                narrowStreaks = pow(narrowStreaks, 4.0);
+                float narrowPart = mouseInfluence * mouseInfluence * (3.0 - 2.0 * mouseInfluence);
+                narrowStreaks *= (1.0 - narrowPart * 0.15);
+                verticalStreaks += narrowStreaks * 0.18;
+                
+                float narrowBentX2 = p.x + horizontalBend * 0.45;
+                float narrowStreaks2 = sin(narrowBentX2 * 11.0 + sin(p.y * 2.2 + time * 0.12) * 1.6 + 2.3) * 0.5 + 0.5;
+                narrowStreaks2 = pow(narrowStreaks2, 5.0);
+                narrowStreaks2 *= (1.0 - narrowPart * 0.12);
+                verticalStreaks += narrowStreaks2 * 0.12;
+                
+                float narrowBentX3 = p.x + horizontalBend * 0.35;
+                float narrowStreaks3 = sin(narrowBentX3 * 15.0 + sin(p.y * 1.2 + time * 0.08) * 1.0 + 4.1) * 0.5 + 0.5;
+                narrowStreaks3 = pow(narrowStreaks3, 6.0);
+                narrowStreaks3 *= (1.0 - narrowPart * 0.1);
+                verticalStreaks += narrowStreaks3 * 0.08;
+                
+                // Filament lines — very thin, high-frequency
+                for (int i = 0; i < 3; i++) {
+                    float filX = p.x + horizontalBend * (0.3 + float(i) * 0.05);
+                    float filament = sin(filX * (18.0 + float(i) * 7.0) + p.y * (0.8 + float(i) * 0.3) + time * (0.06 + float(i) * 0.02) + float(i) * 3.14) * 0.5 + 0.5;
+                    filament = pow(filament, 7.0 + float(i) * 2.0);
+                    filament *= (0.6 + noise * 0.4);
+                    verticalStreaks += filament * (0.07 - float(i) * 0.01);
+                }
+                
+                // Create vertical falloff
+                float streaks = abs(p.y) * 2.0;
+                streaks = pow(streaks, 0.8);
+                verticalStreaks *= (1.0 - streaks * 0.7);
+                
+                float verticalTexture = sin(p.y * 8.0 + time * 0.26) * 0.1;
+                verticalTexture += sin(p.y * 15.0 + time * 0.33) * 0.05;
+                verticalTexture += sin(p.y * 25.0 + time * 0.4) * 0.03;
+                verticalTexture += sin(p.y * 40.0 + time * 0.52) * 0.02;
+                verticalTexture += sin(p.y * 55.0 + time * 0.6) * 0.015;
+                verticalTexture += sin(p.y * 75.0 + time * 0.7) * 0.01;
+                
+                // Cross-hatching texture for depth
+                float crossTexture = sin(p.x * 3.0 + p.y * 5.0 + time * 0.15) * 0.04;
+                crossTexture += sin(p.x * 5.0 - p.y * 3.0 + time * 0.11) * 0.03;
+                verticalTexture += crossTexture;
+                
+                float horizontalTexture = sin(p.x * 4.0 + p.y * 2.0 + time * 0.13) * 0.08;
+                horizontalTexture += sin(p.x * 6.0 + p.y * 1.5 + time * 0.2) * 0.05;
+                horizontalTexture += sin(p.x * 9.0 + p.y * 3.5 + time * 0.17) * 0.03;
+                horizontalTexture += sin(p.x * 13.0 + p.y * 0.8 + time * 0.23) * 0.02;
+                
+                // Combine noise with prominent vertical streaks and texture
+                // Apply smooth flow around cursor for parting effect
+                float flowOffset = mouseInfluence * 0.08; // Further reduced for smoother effect
+                vec3 flowNoiseCoord = vec3(
+                    noiseCoord.x + toMouse.x * flowOffset,
+                    noiseCoord.y + toMouse.y * flowOffset * 0.5,
+                    noiseCoord.z
+                );
+                float flowNoise = fbm(flowNoiseCoord);
+                // Smoother mixing with eased transition
+                float mixFactor = mouseInfluence * mouseInfluence * (3.0 - 2.0 * mouseInfluence); // Smoothstep
+                float aurora = mix(noise, flowNoise, mixFactor * 0.2) * (1.0 - streaks);
+                aurora += verticalStreaks; // Add prominent vertical columns (already bent)
+                aurora += verticalTexture * (1.0 - streaks * 0.5);
+                aurora += horizontalTexture;
+                // Smooth parting effect on overall aurora
+                float partFactor = mouseInfluence * mouseInfluence * (3.0 - 2.0 * mouseInfluence); // Smoothstep
+                aurora *= (1.0 - partFactor * 0.12); // Smoother parting
+                aurora = pow(aurora, 1.5);
+                
+                // Add more detail with higher frequency noise
+                vec3 detailCoord = vec3(
+                    p.x * 2.0 + time * 0.1,
+                    p.y * 3.0 + time * 0.16,
+                    time * 0.13
+                );
+                float detail = fbm(detailCoord) * 0.3;
+                aurora += detail;
+                
+                // Add fine-grained texture layer
+                vec3 fineTextureCoord = vec3(
+                    p.x * 5.0 + time * 0.26,
+                    p.y * 8.0 + time * 0.4,
+                    time * 0.2
+                );
+                float fineTexture = fbm(fineTextureCoord) * 0.15;
+                aurora += fineTexture;
+                
+                // Add very fine grain texture
+                vec3 grainCoord = vec3(
+                    p.x * 12.0 + time * 0.33,
+                    p.y * 18.0 + time * 0.46,
+                    time * 0.26
+                );
+                float grain = fbm(grainCoord) * 0.08;
+                aurora += grain;
+                
+                // Add shimmering/sparkling effect like real light
+                // Time-based flickering for shimmer
+                float shimmer = sin(time * 2.6 + p.x * 10.0 + p.y * 8.0) * 0.5 + 0.5;
+                shimmer = pow(shimmer, 8.0); // Make it more sparkly
+                shimmer *= (0.3 + noise * 0.7); // Vary by noise
+                
+                // Add multiple shimmer frequencies for realistic light
+                float shimmer2 = sin(time * 4.55 + p.x * 15.0 + p.y * 12.0) * 0.5 + 0.5;
+                shimmer2 = pow(shimmer2, 10.0);
+                shimmer2 *= (0.2 + noise * 0.8);
+                
+                float shimmer3 = sin(time * 1.95 + p.x * 20.0 + p.y * 15.0) * 0.5 + 0.5;
+                shimmer3 = pow(shimmer3, 12.0);
+                shimmer3 *= (0.15 + noise * 0.85);
+                
+                // Combine shimmer effects
+                float totalShimmer = (shimmer * 0.4 + shimmer2 * 0.3 + shimmer3 * 0.2) * 0.15;
+                aurora += totalShimmer;
+                
+                // Add light scattering/shimmer based on intensity
+                float scatterShimmer = pow(noise, 2.0) * sin(time * 5.2 + p.x * 25.0) * 0.08;
+                scatterShimmer *= (1.0 - streaks * 0.5); // More visible in brighter areas
+                aurora += scatterShimmer;
+                
+                // Create color variation based on position and noise with smoother sampling
+                float colorValue = (noise + p.x * 0.3 + uColorShift) * 0.5 + 0.5;
+                
+                // Add much more dithering to prevent hard edges and color banding
+                // Use UV coordinates for consistent dithering pattern
+                float dither = fract(sin(dot(uv * uResolution, vec2(12.9898, 78.233))) * 43758.5453) * 0.025;
+                colorValue += dither;
+                
+                // Clamp to prevent artifacts at boundaries
+                colorValue = clamp(colorValue, 0.0, 1.0);
+                vec3 color = auroraColor(colorValue);
+                
+                // Intensity and glow with texture modulation and shimmer
+                float intensity = aurora * uIntensity;
+                
+                intensity *= 0.72;
+                
+                // Reduce brightness in the center (horizontal falloff)
+                float centerFalloff = 1.0 - smoothstep(0.0, 0.4, abs(p.x));
+                centerFalloff = mix(0.6, 1.0, centerFalloff); // Reduce center to 60% brightness
+                intensity *= centerFalloff;
+                
+                // Add texture-based intensity variation for more organic feel
+                float textureIntensity = 1.0 + fineTexture * 0.3 + grain * 0.2;
+                // Add shimmer-based intensity variation for realistic light flicker
+                float shimmerIntensity = 1.0 + totalShimmer * 2.0 + scatterShimmer * 1.5;
+                intensity *= textureIntensity * shimmerIntensity;
+                
+                color *= intensity;
+                
+                float glow = pow(intensity, 0.5) * 0.25;
+                glow += (fineTexture + grain) * 0.05;
+                glow += totalShimmer * 0.12 + scatterShimmer * 0.08;
+                color += glow * vec3(0.5, 0.7, 1.0);
+                
+                // Falloff / field of view - increased horizontal breadth
+                // Less aggressive horizontal fade to allow light to extend wider
+                float edgeFade = 1.0 - smoothstep(0.0, 0.8, abs(p.x));
+                // Less aggressive vertical fade to ensure light reaches top and bottom
+                edgeFade *= 1.0 - smoothstep(0.6, 1.0, abs(p.y));
+                color *= edgeFade;
+                
+                // Output
+                gl_FragColor = vec4(color, intensity);
+            }
+        `;
+
+        // Create multiple aurora layers for depth
+        const auroraLayers = [];
+        const layerCount = 4;
+
+        for (let i = 0; i < layerCount; i++) {
+            const geometry = new THREE.PlaneGeometry(30, 20);
+            const material = new THREE.ShaderMaterial({
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                uniforms: {
+                    uTime: { value: 0 },
+                    uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                    uSpeed: { value: 0.22 + i * 0.1 },
+                    uIntensity: { value: 0.68 - i * 0.12 },
+                    uColorShift: { value: i * 0.17 },
+                    uMouse: { value: new THREE.Vector2(0.5, 0.5) },
+                    uMousePressed: { value: 0.0 }
+                },
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            const aurora = new THREE.Mesh(geometry, material);
+            aurora.position.z = -1.2 + i * 0.25;
+            aurora.position.x = (i - 1.5) * 0.4;
+            scene.add(aurora);
+            auroraLayers.push({ mesh: aurora, material: material });
+        }
+
+        // Mouse tracking for gentle bending and parting effect
+        const mouse = new THREE.Vector2(0.5, 0.5);
+        const targetMouse = new THREE.Vector2(0.5, 0.5);
+        let isMousePressed = false;
+        let mousePressedValue = 0.0;
+        
+        document.addEventListener('mousemove', (event) => {
+            targetMouse.x = event.clientX / window.innerWidth;
+            targetMouse.y = 1.0 - (event.clientY / window.innerHeight); // Flip Y coordinate
+        });
+        
+        // Mouse press tracking
+        document.addEventListener('mousedown', () => {
+            isMousePressed = true;
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isMousePressed = false;
+        });
+        
+        // Touch support
+        document.addEventListener('touchstart', (event) => {
+            isMousePressed = true;
+            if (event.touches.length > 0) {
+                targetMouse.x = event.touches[0].clientX / window.innerWidth;
+                targetMouse.y = 1.0 - (event.touches[0].clientY / window.innerHeight);
+            }
+        }, { passive: true });
+        
+        document.addEventListener('touchmove', (event) => {
+            if (event.touches.length > 0) {
+                targetMouse.x = event.touches[0].clientX / window.innerWidth;
+                targetMouse.y = 1.0 - (event.touches[0].clientY / window.innerHeight);
+            }
+        }, { passive: true });
+        
+        document.addEventListener('touchend', () => {
+            isMousePressed = false;
+        });
+
+        // Animation loop
+        let time = 10.0; // Start with higher initial time for immediate full brightness
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.013; // Slightly faster animation
+
+            // Slower return to original position - detect if mouse is actively moving
+            const mouseMovement = Math.abs(targetMouse.x - mouse.x) + Math.abs(targetMouse.y - mouse.y);
+            // Use faster lerp when actively moving, much slower when returning to center
+            const lerpSpeed = mouseMovement > 0.01 ? 0.15 : 0.04; // Much slower return (0.04 vs 0.2)
+            mouse.lerp(targetMouse, lerpSpeed);
+            
+            // Smooth mouse press value interpolation
+            const targetPressed = isMousePressed ? 1.0 : 0.0;
+            mousePressedValue += (targetPressed - mousePressedValue) * 0.12; // Smooth transition
+
+            // Update aurora layers
+            auroraLayers.forEach((layer, index) => {
+                layer.material.uniforms.uTime.value = time;
+                layer.material.uniforms.uMouse.value.copy(mouse);
+                layer.material.uniforms.uMousePressed.value = mousePressedValue;
+                
+                // Subtle movement - keep horizon level (no rotation)
+                layer.mesh.position.x = Math.sin(time * 0.05 + index) * 0.3;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            auroraLayers.forEach(layer => {
+                layer.material.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
+            });
+        });
+
+        // Start animation and fade in canvas
+        animate();
+        
+        // Fade in the canvas container smoothly
+        setTimeout(() => {
+            document.getElementById('canvas-container').classList.add('fade-in');
+        }, 100);
+    </script>
+</body>
+</html>
