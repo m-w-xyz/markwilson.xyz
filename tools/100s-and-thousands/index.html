@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Type0100’s and Thousands</title>
+  <style>
+    @font-face {
+      font-family: "ABC Daily Slab";
+      src: url("./ABCDailySlab-RegularItalic-Trial.otf") format("opentype");
+      font-weight: 400;
+      font-style: italic;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    #wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .title-row {
+      position: absolute;
+      top: 1.25rem;
+      left: var(--grid-left, 1.25rem);
+      width: var(--grid-width, calc(100vw - 2.5rem));
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      z-index: 1;
+      box-sizing: border-box;
+      font-family: "ABC Daily Slab", Georgia, "Times New Roman", serif;
+      font-size: clamp(0.5rem, 1.35vw + 0.38rem, 1rem);
+      line-height: 1.2;
+      color: #000;
+    }
+
+    .title {
+      flex: 1 1 auto;
+      min-width: 0;
+      margin: 0;
+      text-align: left;
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      font: inherit;
+      pointer-events: none;
+    }
+
+    .title a {
+      pointer-events: auto;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .title a:hover {
+      text-decoration: underline;
+    }
+
+    .title a:focus-visible {
+      outline: 1px solid currentColor;
+      outline-offset: 2px;
+    }
+
+    .title-pop {
+      flex: 0 0 auto;
+      margin: 0;
+      padding: 0;
+      font: inherit;
+      color: inherit;
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-align: right;
+      white-space: nowrap;
+      pointer-events: auto;
+      align-self: flex-start;
+    }
+
+    .title-pop:hover {
+      text-decoration: underline;
+    }
+
+    .title-pop:focus-visible {
+      outline: 1px solid currentColor;
+      outline-offset: 2px;
+    }
+
+    .classifier-ui {
+      display: none;
+      position: absolute;
+      bottom: 1.25rem;
+      left: var(--grid-left, 1.25rem);
+      z-index: 2;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      font-family: "ABC Daily Slab", Georgia, serif;
+      font-size: 0.8rem;
+    }
+
+    .classifier-ui button {
+      font: inherit;
+      padding: 0.35rem 0.65rem;
+      cursor: pointer;
+      background: #fff;
+      border: 1px solid #000;
+      border-radius: 2px;
+    }
+
+    .classifier-ui button:hover {
+      background: #f5f5f5;
+    }
+
+    #classifier-hint {
+      margin: 0;
+      font-size: 0.75rem;
+      max-width: min(36ch, 85vw);
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div class="title-row" id="title-row">
+      <p class="title" id="title">
+        Welcome to Type0100’s and Thousands, a typographic fairy bread designed to celebrate one specific phrase housed within Issue 10 of Type01. By
+        <a
+          href="https://instagram.com/deskofsonia/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Desk Of Sonia</a>.
+      </p>
+      <button type="button" class="title-pop" id="btn-make-it-pop">
+        Make it pop
+      </button>
+    </div>
+    <canvas id="c" aria-label="Interactive dot grid"></canvas>
+    <div class="classifier-ui" aria-live="polite">
+      <button type="button" id="btn-export-sample">Export training PNG</button>
+      <button type="button" id="btn-check-word">Check word</button>
+      <p id="classifier-hint"></p>
+    </div>
+  </div>
+  <script src="./grid-classifier.js"></script>
+  <script>
+    (function () {
+      const canvas = document.getElementById("c");
+      const ctx = canvas.getContext("2d");
+
+      const COLORS = ["#FF0000", "#FFFF00", "#00AD38", "#00A2FF"];
+
+      const PAD = 24;
+      /** Extra space between title row and first row of circles */
+      const GRID_GAP_BELOW_TITLE = 32;
+      const GAP = 4;
+      /** Slightly tighter grid; scales with viewport */
+      const BASE_CELL = 26;
+
+      let dpr = 1;
+      let cols = 0;
+      let rows = 0;
+      let cell = BASE_CELL;
+      let radius = 0;
+      let grid = [];
+
+      /** @type {'idle'|'bounce'|'falloff'} */
+      let physicsPhase = "idle";
+      /** @type {{ x: number, y: number, vx: number, vy: number, r: number, color: string, mass: number, rest: number }[]} */
+      let particles = [];
+
+      let lastTs = 0;
+
+      let dragging = false;
+      /** @type {'fill'|'erase'|null} */
+      let dragMode = null;
+      let lastPaintX = 0;
+      let lastPaintY = 0;
+
+      /** Easter egg: when every cell is filled, shuffle colours on an interval until pop / fall / clear. */
+      const FULL_GRID_RAINBOW_MS = 300;
+      let fullGridRainbowId = null;
+
+      /** Screensaver: after idle, fill one random dot per second until the user acts. */
+      const SCREENSAVER_IDLE_MS = 30000;
+      const SCREENSAVER_TICK_MS = 1000;
+      let screensaverIdleTimer = null;
+      let screensaverFillId = null;
+
+      function randomColor() {
+        return COLORS[(Math.random() * COLORS.length) | 0];
+      }
+
+      function stopFullGridRainbow() {
+        if (fullGridRainbowId != null) {
+          clearInterval(fullGridRainbowId);
+          fullGridRainbowId = null;
+        }
+      }
+
+      function isGridFullyFilled() {
+        if (grid.length === 0) return false;
+        for (let i = 0; i < grid.length; i++) {
+          if (!grid[i]) return false;
+        }
+        return true;
+      }
+
+      function randomizeAllGridColors() {
+        for (let i = 0; i < grid.length; i++) {
+          grid[i] = randomColor();
+        }
+      }
+
+      function syncFullGridRainbow() {
+        if (physicsPhase !== "idle") {
+          stopFullGridRainbow();
+          return;
+        }
+        if (!isGridFullyFilled()) {
+          stopFullGridRainbow();
+          return;
+        }
+        if (fullGridRainbowId != null) return;
+        randomizeAllGridColors();
+        fullGridRainbowId = setInterval(function () {
+          if (physicsPhase !== "idle" || !isGridFullyFilled()) {
+            stopFullGridRainbow();
+            return;
+          }
+          randomizeAllGridColors();
+        }, FULL_GRID_RAINBOW_MS);
+      }
+
+      function stopScreensaverFill() {
+        if (screensaverFillId != null) {
+          clearInterval(screensaverFillId);
+          screensaverFillId = null;
+        }
+      }
+
+      function scheduleScreensaverIdle() {
+        if (screensaverIdleTimer != null) {
+          clearTimeout(screensaverIdleTimer);
+          screensaverIdleTimer = null;
+        }
+        screensaverIdleTimer = setTimeout(function () {
+          screensaverIdleTimer = null;
+          startScreensaver();
+        }, SCREENSAVER_IDLE_MS);
+      }
+
+      function bumpUserActivity() {
+        stopScreensaverFill();
+        scheduleScreensaverIdle();
+      }
+
+      function screensaverFillTick() {
+        if (physicsPhase !== "idle") {
+          stopScreensaverFill();
+          scheduleScreensaverIdle();
+          return;
+        }
+        const n = grid.length;
+        if (n === 0) return;
+
+        const empty = [];
+        for (let i = 0; i < n; i++) {
+          if (!grid[i]) empty.push(i);
+        }
+
+        if (empty.length > 0) {
+          grid[empty[(Math.random() * empty.length) | 0]] = randomColor();
+        } else {
+          grid[(Math.random() * n) | 0] = randomColor();
+        }
+        syncFullGridRainbow();
+        if (fullGridRainbowId != null) {
+          stopScreensaverFill();
+          scheduleScreensaverIdle();
+        }
+      }
+
+      function startScreensaver() {
+        if (physicsPhase !== "idle") {
+          scheduleScreensaverIdle();
+          return;
+        }
+        if (grid.length === 0) {
+          scheduleScreensaverIdle();
+          return;
+        }
+        if (fullGridRainbowId != null) {
+          scheduleScreensaverIdle();
+          return;
+        }
+        if (screensaverFillId != null) return;
+        screensaverFillTick();
+        screensaverFillId = setInterval(screensaverFillTick, SCREENSAVER_TICK_MS);
+      }
+
+      function index(c, r) {
+        return r * cols + c;
+      }
+
+      function getTitleReserve() {
+        const el = document.getElementById("title-row");
+        if (!el) return 96;
+        const rect = el.getBoundingClientRect();
+        return rect.bottom + GRID_GAP_BELOW_TITLE;
+      }
+
+      function rebuildGrid() {
+        stopFullGridRainbow();
+        stopScreensaverFill();
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const titleReserve = getTitleReserve();
+        const cw = Math.max(200, w - PAD * 2);
+        const ch = Math.max(160, h - titleReserve - PAD);
+        cell = Math.max(12, Math.min(BASE_CELL, Math.floor(Math.min(cw, ch) / 32)));
+        radius = (cell - GAP) / 2;
+        const newCols = Math.max(1, Math.floor((cw + GAP) / cell));
+        const newRows = Math.max(1, Math.floor((ch + GAP) / cell));
+
+        const oldCols = cols;
+        const oldRows = rows;
+        const oldGrid = grid;
+
+        cols = newCols;
+        rows = newRows;
+        grid = new Array(cols * rows).fill(null);
+
+        const copyR = Math.min(oldRows, rows);
+        const copyC = Math.min(oldCols, cols);
+        for (let r = 0; r < copyR; r++) {
+          for (let c = 0; c < copyC; c++) {
+            grid[index(c, r)] = oldGrid[r * oldCols + c];
+          }
+        }
+        syncFullGridRainbow();
+      }
+
+      /** Match title left edge to the grid’s left edge (same as first circle’s left). */
+      function syncTitleToGrid() {
+        const w = window.innerWidth;
+        const totalW = cols * cell - GAP;
+        const gridLeft = (w - totalW) / 2;
+        document.documentElement.style.setProperty("--grid-left", gridLeft + "px");
+        document.documentElement.style.setProperty("--grid-width", totalW + "px");
+      }
+
+      function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        canvas.style.width = w + "px";
+        canvas.style.height = h + "px";
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        rebuildGrid();
+        syncTitleToGrid();
+        rebuildGrid();
+        syncTitleToGrid();
+      }
+
+      function gridOrigin() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const titleReserve = getTitleReserve();
+        const totalW = cols * cell - GAP;
+        const totalH = rows * cell - GAP;
+        const contentHeight = h - titleReserve - PAD;
+        const oy =
+          titleReserve + radius + Math.max(0, (contentHeight - totalH) / 2);
+        return {
+          ox: (w - totalW) / 2 + radius,
+          oy: oy,
+        };
+      }
+
+      function cellCenter(c, r) {
+        const { ox, oy } = gridOrigin();
+        return {
+          x: ox + c * cell,
+          y: oy + r * cell,
+        };
+      }
+
+      function drawGrid() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        ctx.clearRect(0, 0, w, h);
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 0.5;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const { x, y } = cellCenter(c, r);
+            if (
+              (physicsPhase === "idle" || physicsPhase === "falloff") &&
+              grid[index(c, r)]
+            ) {
+              ctx.fillStyle = grid[index(c, r)];
+              ctx.beginPath();
+              ctx.arc(x, y, radius, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+
+      function drawParticles() {
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "#000";
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      function spawnPhysicsFromGrid() {
+        const pending = [];
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const col = grid[index(c, r)];
+            if (!col) continue;
+            const { x, y } = cellCenter(c, r);
+            pending.push({ x, y, color: col, c, r });
+          }
+        }
+        if (pending.length === 0) return;
+
+        let cx = 0;
+        let cy = 0;
+        for (let i = 0; i < pending.length; i++) {
+          cx += pending[i].x;
+          cy += pending[i].y;
+        }
+        cx /= pending.length;
+        cy /= pending.length;
+
+        /** Radial burst from centroid (px/s) */
+        const EXPLODE = 1550;
+        const EXPLODE_JITTER = 320;
+
+        particles = [];
+        for (let i = 0; i < pending.length; i++) {
+          const t = pending[i];
+          const dx = t.x - cx;
+          const dy = t.y - cy;
+          const len = Math.hypot(dx, dy);
+          let ux;
+          let uy;
+          if (len < 1e-6) {
+            const a = Math.random() * Math.PI * 2;
+            ux = Math.cos(a);
+            uy = Math.sin(a);
+          } else {
+            ux = dx / len;
+            uy = dy / len;
+          }
+          const mass = 0.78 + Math.random() * 0.44;
+          const rest = REST * (0.88 + 0.12 * Math.random());
+          const burst =
+            EXPLODE * (0.82 + 0.2 * Math.random()) +
+            (Math.random() - 0.5) * EXPLODE_JITTER;
+          particles.push({
+            x: t.x,
+            y: t.y,
+            vx: ux * burst + (Math.random() - 0.5) * 220,
+            vy: uy * burst + (Math.random() - 0.5) * 220,
+            r: radius,
+            color: t.color,
+            mass: mass,
+            rest: rest,
+          });
+          grid[index(t.c, t.r)] = null;
+        }
+      }
+
+      const GRAVITY = 2200;
+      const REST = 0.72;
+      const FRICTION = 0.985;
+      /** Extra horizontal damping when sliding on the floor (reduces side-to-side shuffle). */
+      const FLOOR_VX_DAMP = 0.86;
+      const FLOOR_SETTLE_VY = 320;
+
+      function stepPhysics(dt, phase) {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const floorY = h - PAD;
+
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          const m = p.mass;
+          const fr = Math.pow(FRICTION, 0.92 / m);
+          p.vy += (GRAVITY * dt) / m;
+          p.vx *= fr;
+          if (
+            phase === "bounce" &&
+            p.y + p.r >= floorY - 0.75 &&
+            Math.abs(p.vy) < FLOOR_SETTLE_VY
+          ) {
+            p.vx *= FLOOR_VX_DAMP;
+          }
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+
+          const rest = p.rest;
+
+          if (phase === "bounce") {
+            if (p.y + p.r > floorY) {
+              p.y = floorY - p.r;
+              p.vy = -Math.abs(p.vy) * rest;
+            }
+            if (p.x - p.r < PAD) {
+              p.x = PAD + p.r;
+              p.vx = Math.abs(p.vx) * rest;
+            }
+            if (p.x + p.r > w - PAD) {
+              p.x = w - PAD - p.r;
+              p.vx = -Math.abs(p.vx) * rest;
+            }
+          } else {
+            if (p.x - p.r < PAD) {
+              p.x = PAD + p.r;
+              p.vx *= -0.3;
+            }
+            if (p.x + p.r > w - PAD) {
+              p.x = w - PAD - p.r;
+              p.vx *= -0.3;
+            }
+          }
+        }
+
+        if (phase === "falloff") {
+          particles = particles.filter(function (p) {
+            return p.y - p.r < h + 80;
+          });
+        }
+      }
+
+      function frame(ts) {
+        if (!lastTs) lastTs = ts;
+        const dt = Math.min(0.05, (ts - lastTs) / 1000);
+        lastTs = ts;
+
+        if (physicsPhase === "bounce" || physicsPhase === "falloff") {
+          stepPhysics(dt, physicsPhase);
+        }
+
+        drawGrid();
+        if (physicsPhase !== "idle") {
+          drawParticles();
+        }
+
+        if (physicsPhase === "falloff" && particles.length === 0) {
+          physicsPhase = "idle";
+          lastTs = 0;
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      function paintAt(canvasX, canvasY) {
+        if (!dragMode) return;
+        const hit = hitTest(canvasX, canvasY);
+        if (!hit) return;
+        const i = index(hit.c, hit.r);
+        if (dragMode === "fill") {
+          grid[i] = randomColor();
+        } else {
+          grid[i] = null;
+        }
+        syncFullGridRainbow();
+      }
+
+      function paintStroke(x0, y0, x1, y1) {
+        const dist = Math.hypot(x1 - x0, y1 - y0);
+        const step = Math.max(radius * 0.35, 2);
+        const n = Math.max(1, Math.ceil(dist / step));
+        for (let s = 0; s <= n; s++) {
+          const t = s / n;
+          paintAt(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);
+        }
+      }
+
+      /** Nearest grid cell to the point (gaps between circles map to closest dot). */
+      function hitTest(clientX, clientY) {
+        if (cols < 1 || rows < 1) return null;
+        const { ox, oy } = gridOrigin();
+        const x = clientX - ox;
+        const y = clientY - oy;
+        let c = Math.round(x / cell);
+        let r = Math.round(y / cell);
+        c = Math.max(0, Math.min(cols - 1, c));
+        r = Math.max(0, Math.min(rows - 1, r));
+        return { c, r };
+      }
+
+      function onPointerDown(e) {
+        if (e.button !== 0) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const hit = hitTest(x, y);
+        if (!hit) return;
+
+        if (physicsPhase === "bounce") {
+          stopFullGridRainbow();
+          physicsPhase = "falloff";
+          for (let i = 0; i < particles.length; i++) {
+            particles[i].vy += 900 + Math.random() * 450;
+          }
+        }
+
+        if (physicsPhase !== "idle" && physicsPhase !== "falloff") return;
+        e.preventDefault();
+        try {
+          canvas.setPointerCapture(e.pointerId);
+        } catch (_) {}
+        const i = index(hit.c, hit.r);
+        if (grid[i]) {
+          dragMode = "erase";
+          grid[i] = null;
+        } else {
+          dragMode = "fill";
+          grid[i] = randomColor();
+        }
+        dragging = true;
+        lastPaintX = x;
+        lastPaintY = y;
+        syncFullGridRainbow();
+      }
+
+      function onPointerMove(e) {
+        if (
+          !dragging ||
+          (physicsPhase !== "idle" && physicsPhase !== "falloff") ||
+          !dragMode
+        )
+          return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        paintStroke(lastPaintX, lastPaintY, x, y);
+        lastPaintX = x;
+        lastPaintY = y;
+      }
+
+      function endDrag(e) {
+        if (!dragging) return;
+        dragging = false;
+        dragMode = null;
+        try {
+          if (e && e.pointerId != null) {
+            canvas.releasePointerCapture(e.pointerId);
+          }
+        } catch (_) {}
+      }
+
+      function onPointerUp(e) {
+        endDrag(e);
+      }
+
+      function onPointerCancel(e) {
+        endDrag(e);
+      }
+
+      function loadScript(src) {
+        return new Promise(function (resolve, reject) {
+          const s = document.createElement("script");
+          s.src = src;
+          s.onload = resolve;
+          s.onerror = function () {
+            reject(new Error("Failed to load " + src));
+          };
+          document.head.appendChild(s);
+        });
+      }
+
+      let tfLoading = null;
+      let wordModel = null;
+      let lastWordModelError = "";
+
+      function ensureTf() {
+        if (window.tf) return Promise.resolve();
+        if (!tfLoading) {
+          tfLoading = loadScript(
+            "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"
+          ).then(function () {
+            tfLoading = null;
+          });
+        }
+        return tfLoading;
+      }
+
+      async function getWordModel() {
+        if (wordModel) return wordModel;
+        lastWordModelError = "";
+        await ensureTf();
+        if (window.location.protocol === "file:") {
+          lastWordModelError =
+            "Open the site via http://localhost (not a file:// path) so the model files can load.";
+          return null;
+        }
+        const candidates = [
+          "model/butter-model/model.json",
+          "model/butter-model/butter-model.json",
+        ];
+        let lastErr = null;
+        for (let i = 0; i < candidates.length; i++) {
+          try {
+            wordModel = await tf.loadLayersModel(candidates[i]);
+            return wordModel;
+          } catch (e) {
+            lastErr = e;
+            console.warn("Model load failed:", candidates[i], e);
+          }
+        }
+        lastWordModelError = lastErr
+          ? String(lastErr.message || lastErr)
+          : "Could not load model.";
+        if (
+          /fetch|404|Failed to fetch/i.test(lastWordModelError) ||
+          /weights/i.test(lastWordModelError)
+        ) {
+          lastWordModelError +=
+            " — Put model.json (or butter-model.json) and the .weights.bin in model/butter-model/ (same folder). Re-download from Train page if the .bin is missing.";
+        }
+        return null;
+      }
+
+      function setClassifierHint(text) {
+        const el = document.getElementById("classifier-hint");
+        if (el) el.textContent = text || "";
+      }
+
+      function canvasToInputTensor(canvas) {
+        return tf.tidy(function () {
+          return tf.browser
+            .fromPixels(canvas)
+            .toFloat()
+            .div(255)
+            .mean(2)
+            .expandDims(-1)
+            .expandDims(0);
+        });
+      }
+
+      async function runWordCheck() {
+        if (physicsPhase !== "idle") {
+          setClassifierHint("Wait until dots settle.");
+          return;
+        }
+        let any = false;
+        for (let i = 0; i < grid.length; i++) {
+          if (grid[i]) {
+            any = true;
+            break;
+          }
+        }
+        if (!any) {
+          setClassifierHint("Fill some dots first.");
+          return;
+        }
+        setClassifierHint("Checking…");
+        try {
+          const model = await getWordModel();
+          if (!model) {
+            setClassifierHint(
+              lastWordModelError ||
+                "No model — train in train-classifier.html and add files under model/butter-model/."
+            );
+            return;
+          }
+          const canvas = GridClassifier.gridToBitmapCanvas(
+            grid,
+            cols,
+            rows,
+            cell,
+            radius,
+            GAP,
+            GridClassifier.DEFAULT_SIZE
+          );
+          const tensor = canvasToInputTensor(canvas);
+          const pred = model.predict(tensor);
+          const prob = pred.dataSync()[0];
+          tensor.dispose();
+          pred.dispose();
+          setClassifierHint(
+            prob >= 0.55
+              ? "Match (" + (prob * 100).toFixed(0) + "% confidence)."
+              : "No match (" + (prob * 100).toFixed(0) + "%)."
+          );
+        } catch (err) {
+          console.error(err);
+          setClassifierHint(
+            "Could not run classifier — check the console and model path."
+          );
+        }
+      }
+
+      function exportTrainingPng() {
+        if (physicsPhase !== "idle") {
+          setClassifierHint("Wait until dots settle.");
+          return;
+        }
+        const canvas = GridClassifier.gridToBitmapCanvas(
+          grid,
+          cols,
+          rows,
+          cell,
+          radius,
+          GAP,
+          GridClassifier.DEFAULT_SIZE
+        );
+        const a = document.createElement("a");
+        a.download = "grid-training-sample.png";
+        a.href = canvas.toDataURL("image/png");
+        a.click();
+        setClassifierHint("PNG saved — add it to training/ and manifest.json.");
+      }
+
+      document
+        .getElementById("btn-export-sample")
+        .addEventListener("click", exportTrainingPng);
+      document.getElementById("btn-check-word").addEventListener("click", runWordCheck);
+
+      function makeItPop() {
+        stopFullGridRainbow();
+        stopScreensaverFill();
+        if (physicsPhase === "idle") {
+          let any = false;
+          for (let i = 0; i < grid.length; i++) {
+            if (grid[i]) {
+              any = true;
+              break;
+            }
+          }
+          if (!any) return;
+          spawnPhysicsFromGrid();
+          physicsPhase = "bounce";
+          lastTs = 0;
+          return;
+        }
+
+        if (physicsPhase === "bounce") {
+          physicsPhase = "falloff";
+          for (let i = 0; i < particles.length; i++) {
+            particles[i].vy += 900 + Math.random() * 450;
+          }
+        }
+      }
+
+      document
+        .getElementById("btn-make-it-pop")
+        .addEventListener("click", function () {
+          makeItPop();
+        });
+
+      function onKeyDown(e) {
+        if (e.code === "KeyB" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault();
+          runWordCheck();
+          return;
+        }
+        if (e.code !== "Enter" && e.code !== "Space") return;
+        e.preventDefault();
+        makeItPop();
+      }
+
+      function onUserActivity() {
+        bumpUserActivity();
+      }
+
+      window.addEventListener("resize", function () {
+        bumpUserActivity();
+        resize();
+      });
+      window.addEventListener("pointerdown", onUserActivity, true);
+      window.addEventListener("pointermove", onUserActivity, true);
+      window.addEventListener("keydown", onUserActivity, true);
+      window.addEventListener("wheel", onUserActivity, { passive: true, capture: true });
+
+      canvas.addEventListener("pointerdown", onPointerDown);
+      canvas.addEventListener("pointermove", onPointerMove);
+      canvas.addEventListener("pointerup", onPointerUp);
+      canvas.addEventListener("pointercancel", onPointerCancel);
+      canvas.addEventListener("lostpointercapture", function () {
+        dragging = false;
+        dragMode = null;
+      });
+      window.addEventListener("keydown", onKeyDown);
+
+      resize();
+      scheduleScreensaverIdle();
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function () {
+          resize();
+        });
+      }
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>

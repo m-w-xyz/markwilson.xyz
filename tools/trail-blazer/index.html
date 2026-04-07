@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blaze steering</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: #ffffff;
+      color: #1a1a1a;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    main {
+      flex: 0 0 auto;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <main id="sketch-host"></main>
+
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js"></script>
+  <script>
+    /** #064900 → #705800 at 15% over white */
+    const BG_BASE = '#ffffff';
+    const GRADIENT_TOP = 'rgba(6, 73, 0, 0.15)';
+    const GRADIENT_BOTTOM = 'rgba(112, 88, 0, 0.15)';
+
+    const POPULATION = 250;
+    const SPRITE_HEIGHT = 14;
+    const MAX_SPEED = 1.8;
+    const MAX_FORCE = 0.08;
+    const SEP_DIST = 26;
+    const ALIGN_DIST = 58;
+    const COH_DIST = 58;
+    const SEP_WEIGHT = 1.65;
+    const ALIGN_WEIGHT = 1.0;
+    const COH_WEIGHT = 0.75;
+    const TRAIL_LENGTH = 220;
+    const TRAIL_COLOR = 'rgba(224, 122, 47, 0.35)';
+    const BLAZE_FILL = '#FF6016';
+    const BLAZE_SVG = './blaze.svg';
+
+    let blazeImg = null;
+    let agents = [];
+    /** Click cycles: attract → repel → murmuration → attract */
+    const STEER_ATTRACT = 0;
+    const STEER_REPEL = 1;
+    const STEER_MURMURATION = 2;
+    let steerMode = STEER_ATTRACT;
+
+    function torusDelta(p, q) {
+      let dx = q.x - p.x;
+      let dy = q.y - p.y;
+      if (dx > width / 2) dx -= width;
+      else if (dx < -width / 2) dx += width;
+      if (dy > height / 2) dy -= height;
+      else if (dy < -height / 2) dy += height;
+      return createVector(dx, dy);
+    }
+
+    function preload() {
+      blazeImg = loadImage(
+        BLAZE_SVG,
+        function () {},
+        function () {
+          blazeImg = null;
+        }
+      );
+    }
+
+    class Blaze {
+      constructor() {
+        this.pos = createVector(random(width), random(height));
+        this.vel = p5.Vector.random2D().mult(random(0.5, MAX_SPEED));
+        this.history = [];
+      }
+
+      updateCursor(target, repel) {
+        let toward = p5.Vector.sub(target, this.pos);
+        if (repel) {
+          toward.mult(-1);
+        }
+        if (toward.magSq() < 1e-6) {
+          toward = this.vel.copy();
+          if (toward.magSq() < 1e-6) {
+            toward = p5.Vector.random2D();
+          }
+        }
+        toward.normalize();
+        toward.mult(MAX_SPEED);
+        let steer = p5.Vector.sub(toward, this.vel);
+        steer.limit(MAX_FORCE);
+        this.vel.add(steer);
+        this.vel.limit(MAX_SPEED);
+        this.integrate();
+      }
+
+      updateFlock(allAgents, idx) {
+        let sepSteer = createVector(0, 0);
+        let alignSum = createVector(0, 0);
+        let alignCount = 0;
+        let cohSum = createVector(0, 0);
+        let cohCount = 0;
+
+        for (let j = 0; j < allAgents.length; j++) {
+          if (j === idx) continue;
+          const other = allAgents[j];
+          const delta = torusDelta(this.pos, other.pos);
+          const d = delta.mag();
+          if (d < 1e-6) continue;
+
+          if (d < SEP_DIST) {
+            const push = delta.copy().normalize().mult(-1);
+            push.div(d);
+            sepSteer.add(push);
+          }
+          if (d < ALIGN_DIST) {
+            alignSum.add(other.vel);
+            alignCount++;
+          }
+          if (d < COH_DIST) {
+            cohSum.add(other.pos);
+            cohCount++;
+          }
+        }
+
+        let acc = createVector(0, 0);
+
+        if (sepSteer.magSq() > 0) {
+          sepSteer.normalize().mult(MAX_SPEED);
+          acc.add(
+            p5.Vector.sub(sepSteer, this.vel)
+              .limit(MAX_FORCE)
+              .mult(SEP_WEIGHT)
+          );
+        }
+
+        if (alignCount > 0) {
+          const avg = alignSum.copy().div(alignCount);
+          avg.setMag(MAX_SPEED);
+          acc.add(
+            p5.Vector.sub(avg, this.vel)
+              .limit(MAX_FORCE)
+              .mult(ALIGN_WEIGHT)
+          );
+        }
+
+        if (cohCount > 0) {
+          const center = cohSum.copy().div(cohCount);
+          const toCenter = torusDelta(this.pos, center);
+          if (toCenter.magSq() > 1e-6) {
+            const desired = toCenter.copy().normalize().mult(MAX_SPEED);
+            acc.add(
+              p5.Vector.sub(desired, this.vel)
+                .limit(MAX_FORCE)
+                .mult(COH_WEIGHT)
+            );
+          }
+        }
+
+        this.vel.add(acc.limit(MAX_FORCE));
+        this.vel.limit(MAX_SPEED);
+        this.integrate();
+      }
+
+      integrate() {
+        this.pos.add(this.vel);
+
+        if (this.pos.x < 0) this.pos.x += width;
+        else if (this.pos.x > width) this.pos.x -= width;
+        if (this.pos.y < 0) this.pos.y += height;
+        else if (this.pos.y > height) this.pos.y -= height;
+
+        this.history.push(this.pos.copy());
+        if (this.history.length > TRAIL_LENGTH) {
+          this.history.shift();
+        }
+      }
+
+      drawTrail() {
+        if (this.history.length < 2) return;
+        const ctx = drawingContext;
+        const w = width;
+        const h = height;
+        const wrapBreak = Math.min(w, h) * 0.48;
+
+        ctx.save();
+        ctx.strokeStyle = TRAIL_COLOR;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 8]);
+        ctx.beginPath();
+        ctx.moveTo(this.history[0].x, this.history[0].y);
+        for (let i = 1; i < this.history.length; i++) {
+          const a = this.history[i - 1];
+          const b = this.history[i];
+          if (p5.Vector.dist(a, b) > wrapBreak) {
+            ctx.moveTo(b.x, b.y);
+          } else {
+            ctx.lineTo(b.x, b.y);
+          }
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+
+      drawSprite(wd, ht) {
+        if (blazeImg && blazeImg.width > 0) {
+          image(blazeImg, 0, 0, wd, ht);
+          return;
+        }
+        fill(BLAZE_FILL);
+        noStroke();
+        triangle(0, -ht * 0.5, -wd * 0.5, ht * 0.5, wd * 0.5, ht * 0.5);
+      }
+
+      draw() {
+        const ht = SPRITE_HEIGHT;
+        const wd = blazeImg && blazeImg.width > 0
+          ? blazeImg.width * (ht / blazeImg.height)
+          : ht * (100 / 129);
+        push();
+        translate(this.pos.x, this.pos.y);
+        rotate(this.vel.heading() + HALF_PI);
+        this.drawSprite(wd, ht);
+        pop();
+      }
+    }
+
+    function drawGradientBackground() {
+      const ctx = drawingContext;
+      ctx.save();
+      ctx.fillStyle = BG_BASE;
+      ctx.fillRect(0, 0, width, height);
+      const g = ctx.createLinearGradient(0, 0, 0, height);
+      g.addColorStop(0, GRADIENT_TOP);
+      g.addColorStop(1, GRADIENT_BOTTOM);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
+
+    function canvasHeightPx() {
+      const viewH = Math.max(window.innerHeight, document.documentElement.clientHeight);
+      return Math.max(viewH, 120);
+    }
+
+    function initAgents() {
+      agents = [];
+      for (let i = 0; i < POPULATION; i++) {
+        agents.push(new Blaze());
+      }
+    }
+
+    function bindCanvasInput(cnv) {
+      cnv.elt.addEventListener('click', function () {
+        steerMode = (steerMode + 1) % 3;
+      });
+    }
+
+    function setup() {
+      const cnv = createCanvas(windowWidth, canvasHeightPx());
+      cnv.parent('sketch-host');
+      bindCanvasInput(cnv);
+
+      initAgents();
+
+      imageMode(CENTER);
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, canvasHeightPx());
+    }
+
+    function draw() {
+      drawGradientBackground();
+
+      const target = createVector(mouseX, mouseY);
+
+      if (steerMode === STEER_MURMURATION) {
+        for (let i = 0; i < agents.length; i++) {
+          agents[i].updateFlock(agents, i);
+        }
+      } else {
+        const repel = steerMode === STEER_REPEL;
+        for (let i = 0; i < agents.length; i++) {
+          agents[i].updateCursor(target, repel);
+        }
+      }
+
+      for (let i = 0; i < agents.length; i++) {
+        agents[i].drawTrail();
+      }
+
+      for (let i = 0; i < agents.length; i++) {
+        agents[i].draw();
+      }
+    }
+  </script>
+</body>
+</html>
