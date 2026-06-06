@@ -611,7 +611,6 @@
   <header class="nav">
     <a href="/" class="name">Mark Wilson</a>
     <nav class="nav-links">
-      <a href="projects.html">Projects</a>
       <a href="info.html">Info</a>
       <a href="tools.html">Tools</a>
     </nav>
@@ -623,7 +622,6 @@
 
   <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
     <nav class="mobile-menu-nav">
-      <a href="projects.html">Projects</a>
       <a href="info.html">Info</a>
       <a href="tools.html">Tools</a>
     </nav>
@@ -1337,15 +1335,15 @@
           requestAnimationFrame(function () {
             var main = document.getElementById('page-main');
             var filterBar = document.getElementById('filterBar');
-            var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
+            var infoNavLink = document.querySelector('.nav-links a[href="info.html"]');
             if (main) {
               main.classList.add('page-entered');
             }
             if (filterBar) {
               filterBar.classList.add('filter-entered');
             }
-            if (projectsNavLink) {
-              var rect = projectsNavLink.getBoundingClientRect();
+            if (infoNavLink) {
+              var rect = infoNavLink.getBoundingClientRect();
               document.documentElement.style.setProperty('--content-left', rect.left + 'px');
             }
             if (mediaPanel && !fromInfo) {
@@ -1358,9 +1356,9 @@
       }, entryDelay);
 
       window.addEventListener('resize', function () {
-        var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
-        if (!projectsNavLink) return;
-        var rect = projectsNavLink.getBoundingClientRect();
+        var infoNavLink = document.querySelector('.nav-links a[href="info.html"]');
+        if (!infoNavLink) return;
+        var rect = infoNavLink.getBoundingClientRect();
         document.documentElement.style.setProperty('--content-left', rect.left + 'px');
       });
 

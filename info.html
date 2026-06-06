@@ -219,7 +219,7 @@
       grid-column: 1 / -1;
       position: relative;
       z-index: 2;
-      /* Align content with the "Projects" nav label */
+      /* Align content with the "Info" nav label */
       padding-left: calc(var(--content-left) - 10px);
       padding-right: 0;
       padding-bottom: 0;
@@ -307,11 +307,11 @@
 
     /* Bottom section: skills left, education+collab right (aligned to column 10) */
     .info-bottom {
+      display: none;
       margin-top: auto;
       padding-top: 10px;
       padding-bottom: 10px;
       border-top: 1px solid rgba(0, 0, 0, 0.4);
-      display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
       align-items: stretch;
@@ -401,7 +401,6 @@
   <header class="nav">
     <a href="/index.html" class="name">Mark Wilson</a>
     <nav class="nav-links">
-      <a href="/projects.html">Projects</a>
       <a href="/info.html">Info</a>
       <a href="/tools.html">Tools</a>
     </nav>
@@ -413,7 +412,6 @@
 
   <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
     <nav class="mobile-menu-nav">
-      <a href="/projects.html">Projects</a>
       <a href="/info.html">Info</a>
       <a href="/tools.html">Tools</a>
     </nav>
@@ -429,8 +427,8 @@
       <div class="info-content">
         <section class="about">
           <p>I'm a designer with a functional head and a creative heart. I'm excited by creative technologies and their role in contemporary design, particularly with motion systems and how they can breathe life into modern identities.</p>
-          <p>I'm currently seeking good people to connect and collaborate with, who want to do good and meaningful work, and who want to push the envelope of design in Aotearoa.</p>
-          <p>My experience in brand, print, digital, photography & industrial design has turned me into a bit of a curious haututū, where I've picked up a wide range of skillsets within the realm of design.</p>
+        <p>I'm currently collaborating with good people & studios, who are doing good and meaningful work, and who want to push the envelope of design in Aotearoa.</p>
+          <!--  <p>My experience in brand, print, digital, photography & industrial design has turned me into a bit of a curious haututū, where I've picked up a wide range of skillsets within the realm of design.</p> -->
           <p class="available"><span class="avail-dot"></span>Available for work of all kinds, or just a casual chat to whakawhanaunga.</p>
           <p>Mauri ora</p>
           <p><a href="mailto:m@markwilson.xyz">Email</a>, <a href="https://www.instagram.com/resultsshouldvary/" target="_blank" rel="noopener">Instagram</a></p>
@@ -630,12 +628,12 @@
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
             var main = document.getElementById('page-main');
-            var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
+            var infoNavLink = document.querySelector('.nav-links a[href="/info.html"]');
             if (main) {
               main.classList.add('page-entered');
             }
-            if (projectsNavLink) {
-              var rect = projectsNavLink.getBoundingClientRect();
+            if (infoNavLink) {
+              var rect = infoNavLink.getBoundingClientRect();
               document.documentElement.style.setProperty('--content-left', rect.left + 'px');
             }
             window.scrollTo(0, 0);
@@ -645,9 +643,9 @@
       }, entryDelay);
 
       window.addEventListener('resize', function () {
-        var projectsNavLink = document.querySelector('.nav-links a[href="projects.html"]');
-        if (!projectsNavLink) return;
-        var rect = projectsNavLink.getBoundingClientRect();
+        var infoNavLink = document.querySelector('.nav-links a[href="/info.html"]');
+        if (!infoNavLink) return;
+        var rect = infoNavLink.getBoundingClientRect();
         document.documentElement.style.setProperty('--content-left', rect.left + 'px');
       });
 
