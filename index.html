@@ -39,6 +39,11 @@
       align-items: center;
       justify-content: space-between;
     }
+    /* Nav hidden — site title, info, and tools */
+    .nav,
+    .mobile-menu {
+      display: none !important;
+    }
     .nav .name {
       font: 18px Arial, sans-serif;
       color: #000;
@@ -211,6 +216,17 @@
     </div>
   </main>
 
+  <script>
+    // Alternate the browser tab title every 1.5s
+    (function () {
+      var titles = ['Mark Wilson', 'm@markwilson.xyz'];
+      var index = 0;
+      setInterval(function () {
+        index = (index + 1) % titles.length;
+        document.title = titles[index];
+      }, 1500);
+    })();
+  </script>
   <script>
     (function () {
       var main = document.getElementById('page-main');
