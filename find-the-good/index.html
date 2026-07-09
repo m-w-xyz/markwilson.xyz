@@ -251,8 +251,7 @@
       cursorFieldK: 34,
       cursorRadius: 88,
       cursorReach: 200,
-      cursorFadeIn: 0.42,
-      cursorFadeOut: 0.86
+      cursorFadeIn: 0.42
     };
 
     const INV_CELL_W = 1 / CFG.cellW;
@@ -334,8 +333,8 @@
     let faceVelBoost = 1;
     let cursorX = 0;
     let cursorY = 0;
+    let cursorAffectorOn = false;
     let cursorPresence = 0;
-    let cursorOnStage = false;
     let cursorSpeed = 0;
     let cursorLastMs = 0;
     let cursorVelBoost = 1;
@@ -606,25 +605,30 @@
       if (dirty) masksDirty = true;
     }
 
-    function updateCursor(dtMs) {
-      if (cursorOnStage) return;
-      if (cursorPresence <= 0) return;
-      const factor = Math.pow(CFG.cursorFadeOut, dtMs / 16.67);
-      cursorPresence *= factor;
-      if (cursorPresence < 0.04) {
-        cursorPresence = 0;
-        cursorSpeed = 0;
-        cursorVelBoost = 1;
-        cursorLastMs = 0;
-      }
+    function pointerInViewport(x, y) {
+      return x >= 0 && y >= 0 && x < stageW && y < stageH;
+    }
+
+    function clearCursor() {
+      cursorAffectorOn = false;
+      cursorPresence = 0;
+      cursorSpeed = 0;
+      cursorVelBoost = 1;
+      cursorLastMs = 0;
+      cursorX = -1e6;
+      cursorY = -1e6;
     }
 
     function onPointerMove(e) {
-      const nowMs = performance.now();
       const nx = e.clientX;
       const ny = e.clientY;
+      if (!pointerInViewport(nx, ny)) {
+        clearCursor();
+        return;
+      }
 
-      if (cursorLastMs > 0 && cursorPresence > 0.04) {
+      const nowMs = performance.now();
+      if (cursorAffectorOn && cursorLastMs > 0) {
         const dt = Math.max(nowMs - cursorLastMs, 1);
         const dcx = nx - cursorX;
         const dcy = ny - cursorY;
@@ -634,25 +638,31 @@
         cursorSpeed = 0;
       }
 
+      cursorAffectorOn = true;
       cursorX = nx;
       cursorY = ny;
       cursorLastMs = nowMs;
-      cursorOnStage = true;
       cursorPresence = Math.min(1, cursorPresence + CFG.cursorFadeIn);
       cursorVelBoost = velBoost(cursorSpeed);
     }
 
     function onPointerEnter(e) {
-      cursorOnStage = true;
+      if (!pointerInViewport(e.clientX, e.clientY)) return;
       onPointerMove(e);
     }
 
     function onPointerLeave() {
-      cursorOnStage = false;
+      clearCursor();
+    }
+
+    function onPointerOut(e) {
+      const next = e.relatedTarget;
+      if (next && document.documentElement.contains(next)) return;
+      clearCursor();
     }
 
     function onPointerUp(e) {
-      if (e.pointerType !== 'mouse') onPointerLeave();
+      if (e.pointerType !== 'mouse') clearCursor();
     }
 
     function pointInPolygon(x, y, polyX, polyY, n) {
@@ -1431,7 +1441,7 @@
           handB = handVelBoost[h];
         }
       }
-      const cursorB = cursorPresence > 0.04 ? cursorVelBoost : 1;
+      const cursorB = cursorAffectorOn ? cursorVelBoost : 1;
       const motionBoost = faceB > handB
         ? (faceB > cursorB ? faceB : cursorB)
         : (handB > cursorB ? handB : cursorB);
@@ -1510,7 +1520,7 @@
         }
 
         let pushedByCursor = false;
-        if (cursorPresence > 0.04) {
+        if (cursorAffectorOn) {
           const dxc = posX - cursorX;
           const dyc = posY - cursorY;
           const reach = CFG.cursorReach;
@@ -1584,7 +1594,7 @@
             }
           }
 
-          if (pushedByCursor) {
+          if (pushedByCursor && cursorAffectorOn) {
             const field = magneticField(
               posX, posY, cursorX, cursorY, CFG.cursorRadius, CFG.cursorFieldK, false,
               { mul: cursorPresence * cursorVelBoost }
@@ -1751,7 +1761,6 @@
       lastFrameTime = now;
       runTracking();
       updateHandInfluence(dt);
-      updateCursor(dt);
       updateParticles(dt);
       draw();
     }
@@ -1767,6 +1776,12 @@
       window.addEventListener('pointerleave', onPointerLeave);
       window.addEventListener('pointerup', onPointerUp, { passive: true });
       window.addEventListener('blur', onPointerLeave);
+      document.documentElement.addEventListener('mouseleave', onPointerLeave);
+      document.documentElement.addEventListener('pointerleave', onPointerLeave);
+      document.addEventListener('pointerout', onPointerOut);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') clearCursor();
+      });
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -1828,11 +1843,7 @@
       handSpeed.fill(0);
       handLastMs.fill(0);
       handVelBoost.fill(1);
-      cursorPresence = 0;
-      cursorOnStage = false;
-      cursorSpeed = 0;
-      cursorLastMs = 0;
-      cursorVelBoost = 1;
+      clearCursor();
       masksDirty = true;
     });
 
