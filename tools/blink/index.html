@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blink and you'll miss it</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Special+Gothic+Condensed+One&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #9EABB3;
+    font-family: "Special Gothic Condensed One", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  #video { position: fixed; left: -9999px; width: 640px; height: 480px; opacity: 0; pointer-events: none; }
+  #canvas {
+    position: fixed; inset: 0; z-index: 0; width: 100%; height: 100%;
+    display: block; pointer-events: none;
+  }
+  #word {
+    position: fixed; inset: 0; z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    color: #EDFFFF;
+    font-size: 200px;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #gif-layer {
+    position: fixed; inset: 0; z-index: 2;
+    pointer-events: none; overflow: hidden;
+  }
+  #gif-layer img {
+    position: absolute; display: block; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+  <div id="word">BLINK</div>
+  <div id="gif-layer" hidden></div>
+
+  <script type="module">
+    const MP_VERSION = '0.10.14';
+    const MP_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}`;
+    const FACE_MODEL_URL =
+      'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+
+    const WORDS = ['BLINK', 'AND', "YOU'LL", 'MISS', 'IT'];
+
+    const video   = document.getElementById('video');
+    const wordEl   = document.getElementById('word');
+    const canvas   = document.getElementById('canvas');
+    const gifLayer = document.getElementById('gif-layer');
+    const ctx      = canvas.getContext('2d');
+
+    // ---------- Closed-eye scene: gradient on canvas, animated GIFs in DOM ----------
+    const GIF_URLS = [
+      'burst.gif',
+      'cloud.gif',
+      'spiral.gif',
+      'sun.gif',
+      'star 1.gif',
+      'star 2.gif',
+    ];
+
+    let gradientSpec = null;
+    let gifPlacements = [];
+
+    function resizeCanvas(){
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(window.innerWidth * dpr);
+      canvas.height = Math.round(window.innerHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function hsl(h, s, l){
+      return `hsl(${((h % 360) + 360) % 360} ${s}% ${l}%)`;
+    }
+
+    function randomGradient(){
+      const baseHue = Math.random() * 360;
+      const angle = Math.random() * Math.PI * 2;
+      const spread = 18 + Math.random() * 28;
+      const colors = [
+        hsl(baseHue, 92 + Math.random() * 8, 48 + Math.random() * 14),
+        hsl(baseHue + spread * 0.6, 88 + Math.random() * 10, 38 + Math.random() * 12),
+        hsl(baseHue - spread * 0.4, 90 + Math.random() * 8, 56 + Math.random() * 10),
+        hsl(baseHue + spread, 85 + Math.random() * 12, 44 + Math.random() * 16),
+        hsl(baseHue - spread * 0.8, 94 + Math.random() * 6, 52 + Math.random() * 12),
+      ];
+      return { angle, colors };
+    }
+
+    function randomGifPlacements(){
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      const minDim = Math.min(W, H);
+      const count = 18 + Math.floor(Math.random() * 15);
+      const placements = [];
+      for (let i = 0; i < count; i++){
+        const url = GIF_URLS[Math.floor(Math.random() * GIF_URLS.length)];
+        const size = minDim * (0.55 + Math.random() * 0.4);
+        const drawW = size;
+        const drawH = size;
+        placements.push({
+          url,
+          x: Math.random() * (W + drawW) - drawW * 0.5,
+          y: Math.random() * (H + drawH) - drawH * 0.5,
+          w: drawW,
+          h: drawH,
+        });
+      }
+      return placements;
+    }
+
+    function mountGifPlacements(){
+      gifLayer.replaceChildren();
+      for (const g of gifPlacements){
+        const el = document.createElement('img');
+        el.src = g.url;
+        el.alt = '';
+        el.style.left = `${g.x}px`;
+        el.style.top = `${g.y}px`;
+        el.style.width = `${g.w}px`;
+        el.style.height = `${g.h}px`;
+        gifLayer.appendChild(el);
+      }
+      gifLayer.hidden = false;
+    }
+
+    function resetBlinkScene(){
+      gradientSpec = randomGradient();
+      gifPlacements = randomGifPlacements();
+      drawBlinkScene();
+      mountGifPlacements();
+    }
+
+    function clearBlinkScene(){
+      gradientSpec = null;
+      gifPlacements = [];
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      gifLayer.replaceChildren();
+      gifLayer.hidden = true;
+    }
+
+    function drawBlinkScene(){
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      if (!gradientSpec) return;
+
+      const { angle, colors } = gradientSpec;
+      const cx = W * 0.5;
+      const cy = H * 0.5;
+      const len = Math.hypot(W, H) * 0.5;
+      const x0 = cx - Math.cos(angle) * len;
+      const y0 = cy - Math.sin(angle) * len;
+      const x1 = cx + Math.cos(angle) * len;
+      const y1 = cy + Math.sin(angle) * len;
+      const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+      colors.forEach((c, i) => grad.addColorStop(i / (colors.length - 1), c));
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    let wordIndex = 0;
+    function nextWord(){
+      wordIndex = (wordIndex + 1) % WORDS.length;
+      wordEl.textContent = WORDS[wordIndex];
+    }
+
+    // ---------- Fit the widest word ("YOU'LL") to the canvas width ----------
+    const REF_WORD = "YOU'LL";
+    const WIDTH_FILL = 0.94;   // leave a small breathing margin at the edges
+    const BASE_PX = 200;       // measurement reference size
+    let fittedPx = BASE_PX;
+
+    function fitText(){
+      const meas = document.createElement('span');
+      meas.textContent = REF_WORD;
+      const cs = getComputedStyle(wordEl);
+      meas.style.cssText =
+        `position:fixed;left:-9999px;top:-9999px;visibility:hidden;white-space:nowrap;` +
+        `font-family:${cs.fontFamily};font-weight:${cs.fontWeight};` +
+        `letter-spacing:${cs.letterSpacing};text-transform:${cs.textTransform};` +
+        `font-size:${BASE_PX}px;line-height:1;`;
+      document.body.appendChild(meas);
+      const refW = meas.getBoundingClientRect().width;
+      meas.remove();
+      if (refW > 0){
+        const target = window.innerWidth * WIDTH_FILL;
+        fittedPx = Math.max(24, Math.floor(BASE_PX * target / refW));
+        wordEl.style.fontSize = fittedPx + 'px';
+      }
+    }
+
+    // ---------- Blink detection via face blendshapes ----------
+    const BLINK_ON  = 0.48;   // eyes considered closed above this
+    const BLINK_OFF = 0.46;   // eyes considered open below this — tight band for instant hide
+    let eyesClosed = false;
+    let lastSwitch = 0;
+    const MIN_GAP = 120;      // ms — debounce so one blink = one change
+
+    function handleBlend(res){
+      const bs = res.faceBlendshapes && res.faceBlendshapes[0];
+      if (!bs){
+        if (eyesClosed) clearBlinkScene();
+        eyesClosed = false;
+        return;
+      }
+      let left = 0, right = 0;
+      for (const c of bs.categories){
+        if (c.categoryName === 'eyeBlinkLeft')  left  = c.score;
+        else if (c.categoryName === 'eyeBlinkRight') right = c.score;
+      }
+      const blink = (left + right) * 0.5;
+      const now = performance.now();
+      if (!eyesClosed && blink > BLINK_ON){
+        eyesClosed = true;
+        resetBlinkScene();
+        if (now - lastSwitch > MIN_GAP){ nextWord(); lastSwitch = now; }
+      } else if (eyesClosed && blink < BLINK_OFF){
+        eyesClosed = false;
+        clearBlinkScene();
+      }
+    }
+
+    // ---------- Tracking loop ----------
+    let faceLandmarker = null, detectTs = 0;
+    function runTracking(){
+      if (video.readyState < 2 || !faceLandmarker) return;
+      detectTs = Math.max(detectTs + 1, performance.now());
+      try { handleBlend(faceLandmarker.detectForVideo(video, detectTs)); }
+      catch (e) { console.error(e); }
+    }
+
+    function frame(){
+      requestAnimationFrame(frame);
+      runTracking();
+    }
+
+    // ---------- Boot ----------
+    async function boot(){
+      try {
+        wordEl.textContent = WORDS[0];
+        fitText();
+        resizeCanvas();
+        if (document.fonts && document.fonts.ready){ document.fonts.ready.then(fitText); }
+        window.addEventListener('resize', () => {
+          fitText();
+          resizeCanvas();
+          if (eyesClosed && gradientSpec) drawBlinkScene();
+        });
+        requestAnimationFrame(frame);
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+        video.srcObject = stream;
+        await new Promise((res, rej) => { video.onloadedmetadata = res; video.onerror = rej; });
+        await video.play();
+
+        const { FaceLandmarker, FilesetResolver } = await import(MP_BASE);
+        const vision = await FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
+        const opts = {
+          baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate: 'GPU' },
+          runningMode: 'VIDEO', numFaces: 1, outputFaceBlendshapes: true,
+        };
+        try { faceLandmarker = await FaceLandmarker.createFromOptions(vision, opts); }
+        catch (_) {
+          faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+            ...opts, baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate: 'CPU' } });
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    boot();
+  </script>
+</body>
+</html>

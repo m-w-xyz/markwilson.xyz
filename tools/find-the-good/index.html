@@ -1,0 +1,1746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Find the good</title>
+  <style>
+    @font-face{font-family:'Penray';src:url('data:font/woff2;base64,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') format('woff2'),url('data:font/woff;base64,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') format('woff');font-display:swap;}
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #061008;
+    }
+
+    body {
+      background:
+        radial-gradient(ellipse at 50% 55%, rgba(40, 72, 48, 0.55) 0%, transparent 55%),
+        radial-gradient(ellipse at 30% 70%, rgba(18, 38, 24, 0.9) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 30%, rgba(22, 44, 28, 0.85) 0%, transparent 45%),
+        linear-gradient(165deg, #0a1410 0%, #061008 40%, #0c1812 100%);
+    }
+
+    #video {
+      position: fixed;
+      left: -9999px;
+      width: 640px;
+      height: 480px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #stage {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+
+    #canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background: radial-gradient(ellipse at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.45) 100%);
+    }
+  </style>
+</head>
+<body>
+  <video id="video" autoplay playsinline muted></video>
+  <div id="stage"><canvas id="canvas"></canvas></div>
+  <div class="vignette"></div>
+
+  <script type="module">
+    const MP_VERSION = '0.10.14';
+    const MP_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}`;
+    const FACE_MODEL_URL =
+      'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+    const HAND_MODEL_URL =
+      'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+    const HAND_PALM_IDX = Int16Array.from([0, 5, 9, 13, 17]);
+    const HAND_LM_COUNT = 21;
+    const MAX_HANDS = 2;
+
+    const FACE_OVAL = Int16Array.from([
+      10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
+      397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136,
+      172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109
+    ]);
+    const LIPS = Int16Array.from([
+      61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146
+    ]);
+    const LEFT_EYE = Int16Array.from([
+      33, 246, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163, 7
+    ]);
+    const RIGHT_EYE = Int16Array.from([
+      362, 398, 384, 385, 386, 387, 388, 466, 263, 249, 390, 373, 374, 380, 381, 382
+    ]);
+    const NOSE = Int16Array.from([1, 2, 4, 5, 6, 19, 94, 168, 195, 197]);
+    const HAND_EDGES = Int16Array.from([
+      0, 1, 1, 2, 2, 3, 3, 4,
+      0, 5, 5, 6, 6, 7, 7, 8,
+      0, 9, 9, 10, 10, 11, 11, 12,
+      0, 13, 13, 14, 14, 15, 15, 16,
+      0, 17, 17, 18, 18, 19, 19, 20,
+      5, 9, 9, 13, 13, 17
+    ]);
+    const HAND_TIPS = Int16Array.from([4, 8, 12, 16, 20]);
+    const HAND_LM_RADII = Float32Array.from([
+      20, 12, 11, 11, 15, 12, 11, 11, 15, 12, 11, 11, 15, 12, 11, 11, 15, 12, 11, 11, 15
+    ]);
+    const HAND_LM_PEAK = Float32Array.from([
+      0.78, 0.84, 0.88, 0.92, 1, 0.84, 0.88, 0.92, 1, 0.84, 0.88, 0.92, 1,
+      0.84, 0.88, 0.92, 1, 0.84, 0.88, 0.92, 1
+    ]);
+
+    const FACE_FEATURE_SET = new Set([
+      ...FACE_OVAL, ...LIPS, ...LEFT_EYE, ...RIGHT_EYE, ...NOSE
+    ]);
+    const FACE_FEATURE_IDX = Int16Array.from(FACE_FEATURE_SET);
+
+    const POEM_LINES = [
+      'TO MAKE SENSE',
+      'OF THE MESS',
+      'IN THE WORLD',
+      'FIND THE GOOD',
+      'YOU CAN DO',
+      'WITHIN IT.'
+    ];
+    // Column offsets for staggered poem syntax (in grid cells)
+    const POEM_OFFSETS = [3, -2, 5, -1, 2, -4];
+    const SENTENCE_CHARS = (POEM_LINES.join(' ') + ' ').toUpperCase();
+    const SENTENCE_LEN = SENTENCE_CHARS.length;
+
+    function poemBlockStartRow(h) {
+      return Math.max(0, Math.floor((h / CFG.cellH - POEM_LINES.length) / 2));
+    }
+
+    function getRowLayout(row, w, h) {
+      const blockStart = poemBlockStartRow(h);
+      const lineIdx = row - blockStart;
+      const cols = Math.ceil(w / CFG.cellW) + 1;
+      const centerCol = Math.floor(cols / 2);
+
+      if (lineIdx >= 0 && lineIdx < POEM_LINES.length) {
+        const line = POEM_LINES[lineIdx];
+        const offset = POEM_OFFSETS[lineIdx] ?? 0;
+        let startCol = centerCol - Math.floor(line.length / 2) + offset;
+        startCol = Math.max(0, Math.min(startCol, cols - line.length));
+
+        const anchor = SENTENCE_CHARS.indexOf(line);
+        const rowStart = anchor >= 0
+          ? ((anchor - startCol) % SENTENCE_LEN + SENTENCE_LEN) % SENTENCE_LEN
+          : (Math.random() * SENTENCE_LEN) | 0;
+        return { rowStart, pinStart: startCol, pinEnd: startCol + line.length };
+      }
+
+      return {
+        rowStart: (Math.random() * SENTENCE_LEN) | 0,
+        pinStart: -1,
+        pinEnd: -1
+      };
+    }
+
+    function charAt(rowStart, col) {
+      return SENTENCE_CHARS.charCodeAt((rowStart + col) % SENTENCE_LEN);
+    }
+
+    const WEIGHT_BUCKETS = Int16Array.from([100, 250, 450, 650, 850]);
+    const FONT_STRS = Array.from(WEIGHT_BUCKETS, () => `11px 'Penray', sans-serif`);
+
+    const CFG = {
+      cellW: 14,
+      cellH: 18,
+      minWeight: 100,
+      maxWeight: 900,
+      maxDisp: 230,
+      maxSpeed: 4.6,
+      maxAccel: 8.5,
+      springK: 0.038,
+      springKRest: 0.05,
+      fieldK: 17,
+      fieldRadiusMul: 5.8,
+      fieldRangeMul: 7.6,
+      faceScaleBoost: 1.28,
+      faceFieldMul: 1.9,
+      faceSegRadius: 32,
+      faceLmRadius: 18,
+      faceNoseRadius: 34,
+      faceEyeRadius: 32,
+      faceMouthRadius: 38,
+      insideBoost: 3.4,
+      faceEdgePush: 0.24,
+      faceClearMargin: 70,
+      fieldFeather: 1.55,
+      faceFieldFeather: 2.5,
+      fieldFalloffPow: 0.42,
+      faceRangeMargin: 0.54,
+      mouthSmooth: 0.14,
+      mouthOpenRef: 0.2,
+      mouthDispMul: 2,
+      handRadiusMul: 2.85,
+      handRangeMul: 4.4,
+      handScaleBoost: 1.22,
+      handFieldK: 26,
+      handFieldSegMul: 1.38,
+      handFieldLmMul: 1.48,
+      handEdgePush: 0.3,
+      handNormalBlend: 60,
+      handClearMargin: 52,
+      handInsideDepth: 20,
+      handFadeIn: 0.24,
+      handFadeOut: 0.968,
+      handFadeOutPerFrame: 0.55,
+      handFadeOutOffstage: 0.3,
+      handClearThreshold: 0.04,
+      handStageMargin: 18,
+      handMinOnStagePts: 6,
+      damping: 0.892,
+      dampingFace: 0.902,
+      forceSmooth: 0.58,
+      forceDecay: 0.9,
+      dampingRest: 0.985,
+      dampingCoast: 0.988,
+      restDrag: 0.03,
+      returnSnap: 0,
+      springKCoast: 0.05,
+      coastMinDisp: 1.0,
+      coastMinSpeed: 0.05,
+      settleDist: 0.35,
+      settleSpeed: 0.08,
+      settleNudge: 0.035,
+      curlStrength: 4.4,
+      curlScale: 0.0082,
+      curlTimeSpeed: 0.00036,
+      windK: 0.6,
+      windKY: 0.22,
+      windScale: 0.0032,
+      windTimeSpeed: 0.00042,
+      windLowerBias: 1.0,
+      windGustAmp: 0.5,
+      curlOctaves: 2,
+      curlLacunarity: 2.05,
+      curlPersistence: 0.52,
+      curlMinDisp: 999,
+      dampingDisp: 0.905,
+      weightFollow: 0.22,
+      imprintFollow: 0.48,
+      imprintReleaseFollow: 0.5,
+      letterAlphaRest: 1,
+      letterAlphaAffected: 0.82,
+      handSegRadius: 13,
+      handPalmSegRadius: 20,
+      pointSmooth: 0.5,
+      handDetectStride: 1,
+      rippleK: 0.32,
+      rippleDamp: 0.985,
+      boundaryStabilizeZone: 45,
+      boundaryStabilizeDamp: 0.75,
+      // Velocity-driven exaggeration: the faster a hand/head moves, the more it
+      // displaces the letters. Speed is measured in px/ms of the tracked
+      // centroid between detections.
+      velRef: 0.72,        // px/ms that counts as a "fast" move
+      velRatioMax: 2.1,    // clamp how far speed can push the boost
+      velExaggerate: 0.46, // slight exaggeration amount (boost up to ~1.97x)
+      velSmooth: 0.55      // speed smoothing (higher = snappier response)
+    };
+
+    const INV_CELL_W = 1 / CFG.cellW;
+    const INV_CELL_H = 1 / CFG.cellH;
+    const BUCKET_POOL = [[], [], [], [], []];
+    const SCRATCH_LIP_X = new Float32Array(LIPS.length);
+    const SCRATCH_LIP_Y = new Float32Array(LIPS.length);
+    const SCRATCH_EYE_LX = new Float32Array(LEFT_EYE.length);
+    const SCRATCH_EYE_LY = new Float32Array(LEFT_EYE.length);
+    const SCRATCH_EYE_RX = new Float32Array(RIGHT_EYE.length);
+    const SCRATCH_EYE_RY = new Float32Array(RIGHT_EYE.length);
+
+    // Per-particle scratch: hand signed-distance + outward normal computed once
+    // per hand, then reused across the push/boundary/field passes.
+    const handSdScratch = new Float32Array(MAX_HANDS);
+    const handNxScratch = new Float32Array(MAX_HANDS);
+    const handNyScratch = new Float32Array(MAX_HANDS);
+    const handInRangeScratch = new Uint8Array(MAX_HANDS);
+
+    // Cache single-character strings so draw() doesn't allocate every frame.
+    const CHAR_CACHE = [];
+    function charStr(code) {
+      return CHAR_CACHE[code] ?? (CHAR_CACHE[code] = String.fromCharCode(code));
+    }
+
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { alpha: true });
+
+    let stageW = 0;
+    let stageH = 0;
+    let gridCols = 0;
+    let gridRows = 0;
+    let dpr = 1;
+
+    let count = 0;
+    let px, py, x, y, vx, vy, weight, impHome, faceImpHome, handImpHome, chars, cellIdx, drawAlpha, smAx, smAy, neighborIdx, prevDispX, prevDispY;
+    let pinnedCount = 0;
+    let pinX, pinY, pinChars;
+
+    let faceX, faceY;
+    let faceLmX = null;
+    let faceLmY = null;
+    let faceMask = null;
+    let imprintStrength = null;
+    let handImprintGrid = null;
+    let faceRadius = 80;
+    let faceRadiusMax = 100;
+    let fieldRadius = 190;
+    let fieldRange = 250;
+    let fieldRangeSq = 62500;
+
+    let faceLandmarker = null;
+    let handLandmarker = null;
+    let handCentroidX = new Float32Array(MAX_HANDS);
+    let handCentroidY = new Float32Array(MAX_HANDS);
+    let handLmX = Array.from({ length: MAX_HANDS }, () => new Float32Array(HAND_LM_COUNT));
+    let handLmY = Array.from({ length: MAX_HANDS }, () => new Float32Array(HAND_LM_COUNT));
+    let handRadius = new Float32Array(MAX_HANDS);
+    let handFieldRadius = new Float32Array(MAX_HANDS);
+    let handFieldRange = new Float32Array(MAX_HANDS);
+    let handActive = new Uint8Array(MAX_HANDS);
+    let handNormX = 0;
+    let handNormY = 0;
+    let handPresence = new Float32Array(MAX_HANDS);
+    let handTracked = new Uint8Array(MAX_HANDS);
+    let handInit = new Uint8Array(MAX_HANDS);
+    // Velocity tracking for motion-driven exaggeration.
+    let handPrevCX = new Float32Array(MAX_HANDS);
+    let handPrevCY = new Float32Array(MAX_HANDS);
+    let handSpeed = new Float32Array(MAX_HANDS);
+    let handLastMs = new Float32Array(MAX_HANDS);
+    let handVelBoost = new Float32Array(MAX_HANDS).fill(1);
+    let facePrevCX = 0;
+    let facePrevCY = 0;
+    let faceSpeed = 0;
+    let faceLastMs = 0;
+    let facePrevValid = false;
+    let faceVelBoost = 1;
+    let lastVideoTime = -1;
+    let lastFrameTime = performance.now();
+    let detectTimestamp = 0;
+    let viewportMap = null;
+    let centroidX = 0;
+    let centroidY = 0;
+    let magNoseX = 0;
+    let magNoseY = 0;
+    let magLeftEyeX = 0;
+    let magLeftEyeY = 0;
+    let magRightEyeX = 0;
+    let magRightEyeY = 0;
+    let magMouthX = 0;
+    let magMouthY = 0;
+    let mouthOpenNorm = 0;
+    let hasFace = false;
+    let faceInit = false;
+    let noiseTime = 0;
+    let masksDirty = true;
+    let handDetectFrame = 0;
+    // Detection is the heaviest main-thread work. Cap its rate and run only ONE
+    // model per tick (alternating face/hands) so a single frame never pays for
+    // both inferences at once — keeps the render loop smooth and responsive.
+    let lastDetectMs = 0;
+    let detCycle = 0;
+    const DETECT_MIN_MS = 20;
+
+    function hashNoise(x, y) {
+      let n = (x * 374761393 + y * 668265263) | 0;
+      n = (n ^ (n >>> 13)) * 1274126177;
+      n = n ^ (n >>> 16);
+      return n * 2.328306e-10 - 1;
+    }
+
+    function valueNoise(x, y) {
+      const x0 = Math.floor(x);
+      const y0 = Math.floor(y);
+      const tx = x - x0;
+      const ty = y - y0;
+      const sx = tx * tx * (3 - 2 * tx);
+      const sy = ty * ty * (3 - 2 * ty);
+      const n00 = hashNoise(x0, y0);
+      const n10 = hashNoise(x0 + 1, y0);
+      const n01 = hashNoise(x0, y0 + 1);
+      const n11 = hashNoise(x0 + 1, y0 + 1);
+      const nx0 = n00 + (n10 - n00) * sx;
+      const nx1 = n01 + (n11 - n01) * sx;
+      return nx0 + (nx1 - nx0) * sy;
+    }
+
+    function fbm(x, y) {
+      let amp = 1;
+      let freq = 1;
+      let sum = 0;
+      let norm = 0;
+      for (let o = 0; o < CFG.curlOctaves; o++) {
+        sum += valueNoise(x * freq, y * freq) * amp;
+        norm += amp;
+        amp *= CFG.curlPersistence;
+        freq *= CFG.curlLacunarity;
+      }
+      return sum / norm;
+    }
+
+    function curlNoise(sx, sy, st) {
+      const eps = 1.1;
+      const nyp = fbm(sx, sy + eps + st * 0.31);
+      const nym = fbm(sx, sy - eps + st * 0.31);
+      const nxp = fbm(sx + eps + st * 0.23, sy);
+      const nxm = fbm(sx - eps + st * 0.23, sy);
+      return {
+        fx: (nyp - nym) / (2 * eps),
+        fy: -(nxp - nxm) / (2 * eps)
+      };
+    }
+
+    function curlForceAt(wx, wy, phase) {
+      const sx = wx * CFG.curlScale;
+      const sy = wy * CFG.curlScale;
+      const st = noiseTime + phase;
+      return curlNoise(sx, sy, st);
+    }
+
+    function windForceAt(wx, wy) {
+      const sx = wx * CFG.windScale;
+      const sy = wy * CFG.windScale;
+      return curlNoise(sx, sy, noiseTime);
+    }
+
+    async function loadFont() {
+      await document.fonts.load("11px 'Penray'");
+      await document.fonts.ready;
+    }
+
+    function resizeStage() {
+      stageW = window.innerWidth;
+      stageH = window.innerHeight;
+
+      dpr = Math.min(window.devicePixelRatio, 2);
+      canvas.width = Math.round(stageW * dpr);
+      canvas.height = Math.round(stageH * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      viewportMap = updateViewportMap();
+      buildGrid();
+      masksDirty = true;
+    }
+
+    function buildGrid() {
+      if (!stageW || !stageH) return;
+
+      gridCols = Math.ceil(stageW / CFG.cellW) + 1;
+      gridRows = Math.ceil(stageH / CFG.cellH) + 1;
+      faceMask = new Uint8Array(gridCols * gridRows);
+      imprintStrength = new Float32Array(gridCols * gridRows);
+      handImprintGrid = new Float32Array(gridCols * gridRows);
+
+      const pinTmpX = [];
+      const pinTmpY = [];
+      const pinTmpC = [];
+      const pxTmp = [];
+      const pyTmp = [];
+      const cTmp = [];
+      const cellTmp = [];
+
+      for (let row = 0; row < gridRows; row++) {
+        const { rowStart, pinStart, pinEnd } = getRowLayout(row, stageW, stageH);
+
+        for (let col = 0; col < gridCols; col++) {
+          const cx = col * CFG.cellW + CFG.cellW * 0.5;
+          const cy = row * CFG.cellH + CFG.cellH * 0.5;
+          const code = charAt(rowStart, col);
+          const isPinned = col >= pinStart && col < pinEnd;
+
+          if (isPinned) {
+            pinTmpX.push(cx);
+            pinTmpY.push(cy);
+            pinTmpC.push(code);
+          } else {
+            pxTmp.push(cx);
+            pyTmp.push(cy);
+            cTmp.push(code);
+            cellTmp.push(row * gridCols + col);
+          }
+        }
+      }
+
+      count = pxTmp.length;
+      pinnedCount = pinTmpX.length;
+
+      px = Float32Array.from(pxTmp);
+      py = Float32Array.from(pyTmp);
+      x = Float32Array.from(pxTmp);
+      y = Float32Array.from(pyTmp);
+      vx = new Float32Array(count);
+      vy = new Float32Array(count);
+      smAx = new Float32Array(count);
+      smAy = new Float32Array(count);
+      weight = new Float32Array(count);
+      weight.fill(CFG.minWeight);
+      impHome = new Float32Array(count);
+      faceImpHome = new Float32Array(count);
+      handImpHome = new Float32Array(count);
+      drawAlpha = new Float32Array(count);
+      cellIdx = Uint32Array.from(cellTmp);
+      chars = Uint16Array.from(cTmp);
+
+      neighborIdx = new Int32Array(count * 4).fill(-1);
+      prevDispX = new Float32Array(count);
+      prevDispY = new Float32Array(count);
+      const cellToParticle = new Int32Array(gridCols * gridRows).fill(-1);
+      for (let i = 0; i < count; i++) cellToParticle[cellIdx[i]] = i;
+      for (let i = 0; i < count; i++) {
+        const cell = cellIdx[i];
+        const row = (cell / gridCols) | 0;
+        const col = cell - row * gridCols;
+        const nb = i * 4;
+        if (row > 0) neighborIdx[nb] = cellToParticle[cell - gridCols];
+        if (row < gridRows - 1) neighborIdx[nb + 1] = cellToParticle[cell + gridCols];
+        if (col > 0) neighborIdx[nb + 2] = cellToParticle[cell - 1];
+        if (col < gridCols - 1) neighborIdx[nb + 3] = cellToParticle[cell + 1];
+      }
+
+      pinX = Float32Array.from(pinTmpX);
+      pinY = Float32Array.from(pinTmpY);
+      pinChars = Uint16Array.from(pinTmpC);
+    }
+
+    function updateViewportMap() {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh || !stageW || !stageH) return null;
+
+      const coverScale = Math.max(stageW / vw, stageH / vh);
+      const displayW = vw * coverScale;
+      const displayH = vh * coverScale;
+
+      return {
+        vw, vh,
+        sx: stageW,
+        sy: stageH,
+        coverScale,
+        offsetX: (displayW - stageW) * 0.5,
+        offsetY: (displayH - stageH) * 0.5
+      };
+    }
+
+    function mapLandmarkToStage(nx, ny) {
+      const { vw, vh, sx, coverScale, offsetX, offsetY } = viewportMap;
+      const vx = nx * vw;
+      const vy = ny * vh;
+      return {
+        x: sx - (vx * coverScale - offsetX),
+        y: vy * coverScale - offsetY
+      };
+    }
+
+    function pointOnStage(x, y, margin) {
+      const m = margin ?? CFG.handStageMargin;
+      return x >= -m && x <= stageW + m && y >= -m && y <= stageH + m;
+    }
+
+    function handLandmarksOnStage(lms) {
+      let onStage = 0;
+      for (let i = 0; i < lms.length; i++) {
+        const mapped = mapLandmarkToStage(lms[i].x, lms[i].y);
+        if (pointOnStage(mapped.x, mapped.y)) onStage++;
+      }
+      return onStage >= CFG.handMinOnStagePts;
+    }
+
+    function clearHand(h) {
+      handPresence[h] = 0;
+      handInit[h] = 0;
+      handTracked[h] = 0;
+      handActive[h] = 0;
+      handSpeed[h] = 0;
+      handLastMs[h] = 0;
+      handVelBoost[h] = 1;
+    }
+
+    function decayHand(h, fast, dtMs) {
+      const base = fast ? CFG.handFadeOutOffstage : CFG.handFadeOutPerFrame;
+      const factor = Math.pow(base, dtMs / 16.67);
+      handPresence[h] *= factor;
+      if (handPresence[h] < CFG.handClearThreshold) clearHand(h);
+    }
+
+    function totalHandInfluence() {
+      let sum = 0;
+      for (let h = 0; h < MAX_HANDS; h++) sum += handPresence[h];
+      return sum;
+    }
+
+    function updateHandInfluence(dtMs) {
+      let dirty = false;
+      for (let h = 0; h < MAX_HANDS; h++) {
+        if (handPresence[h] <= 0) continue;
+        if (!handTracked[h]) {
+          const before = handPresence[h];
+          decayHand(h, false, dtMs);
+          if (handPresence[h] !== before) dirty = true;
+        }
+      }
+      if (dirty) masksDirty = true;
+    }
+
+    function pointInPolygon(x, y, polyX, polyY, n) {
+      let inside = false;
+      for (let i = 0, j = n - 1; i < n; j = i++) {
+        const yi = polyY[i];
+        const yj = polyY[j];
+        if (yi > y !== yj > y) {
+          const xi = polyX[i];
+          const xj = polyX[j];
+          if (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+        }
+      }
+      return inside;
+    }
+
+    function distToSegment(px, py, x0, y0, x1, y1) {
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      const len2 = dx * dx + dy * dy;
+      if (len2 < 0.01) {
+        const ex = px - x0;
+        const ey = py - y0;
+        return Math.sqrt(ex * ex + ey * ey);
+      }
+      let t = ((px - x0) * dx + (py - y0) * dy) / len2;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const ex = px - (x0 + t * dx);
+      const ey = py - (y0 + t * dy);
+      return Math.sqrt(ex * ex + ey * ey);
+    }
+
+    function stampDisc(cx, cy, radius, peak, grid) {
+      const target = grid ?? imprintStrength;
+      if (!target || radius <= 0 || peak <= 0) return;
+      const c0 = Math.max(0, Math.floor((cx - radius) / CFG.cellW));
+      const c1 = Math.min(gridCols, Math.ceil((cx + radius) / CFG.cellW) + 1);
+      const r0 = Math.max(0, Math.floor((cy - radius) / CFG.cellH));
+      const r1 = Math.min(gridRows, Math.ceil((cy + radius) / CFG.cellH) + 1);
+      const invR = 1 / radius;
+
+      for (let row = r0; row < r1; row++) {
+        const py = row * CFG.cellH + CFG.cellH * 0.5;
+        for (let col = c0; col < c1; col++) {
+          const px = col * CFG.cellW + CFG.cellW * 0.5;
+          const ex = px - cx;
+          const ey = py - cy;
+          const dist = Math.sqrt(ex * ex + ey * ey);
+          if (dist >= radius) continue;
+          const t = 1 - dist * invR;
+          const v = peak * t * t;
+          const idx = row * gridCols + col;
+          if (v > target[idx]) target[idx] = v;
+        }
+      }
+    }
+
+    function stampSegment(x0, y0, x1, y1, radius, peak, grid) {
+      const target = grid ?? imprintStrength;
+      if (!target || radius <= 0 || peak <= 0) return;
+      const minX = Math.min(x0, x1) - radius;
+      const maxX = Math.max(x0, x1) + radius;
+      const minY = Math.min(y0, y1) - radius;
+      const maxY = Math.max(y0, y1) + radius;
+      const c0 = Math.max(0, Math.floor(minX / CFG.cellW));
+      const c1 = Math.min(gridCols, Math.ceil(maxX / CFG.cellW) + 1);
+      const r0 = Math.max(0, Math.floor(minY / CFG.cellH));
+      const r1 = Math.min(gridRows, Math.ceil(maxY / CFG.cellH) + 1);
+      const invR = 1 / radius;
+
+      for (let row = r0; row < r1; row++) {
+        const py = row * CFG.cellH + CFG.cellH * 0.5;
+        for (let col = c0; col < c1; col++) {
+          const px = col * CFG.cellW + CFG.cellW * 0.5;
+          const dist = distToSegment(px, py, x0, y0, x1, y1);
+          if (dist >= radius) continue;
+          const t = 1 - dist * invR;
+          const v = peak * t * t;
+          const idx = row * gridCols + col;
+          if (v > target[idx]) target[idx] = v;
+        }
+      }
+    }
+
+    function stampDiscToGrid(grid, cx, cy, radius, peak) {
+      stampDisc(cx, cy, radius, peak, grid);
+    }
+
+    function stampSegmentToGrid(grid, x0, y0, x1, y1, radius, peak) {
+      stampSegment(x0, y0, x1, y1, radius, peak, grid);
+    }
+
+    function featureCentroid(indices, xs, ys) {
+      let cx = 0;
+      let cy = 0;
+      for (let i = 0; i < indices.length; i++) {
+        const p = indices[i];
+        cx += xs[p];
+        cy += ys[p];
+      }
+      const inv = 1 / indices.length;
+      return { x: cx * inv, y: cy * inv };
+    }
+
+    function fillPolygonStrength(polyX, polyY, n, peak) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (let i = 0; i < n; i++) {
+        if (polyX[i] < minX) minX = polyX[i];
+        if (polyY[i] < minY) minY = polyY[i];
+        if (polyX[i] > maxX) maxX = polyX[i];
+        if (polyY[i] > maxY) maxY = polyY[i];
+      }
+
+      const c0 = Math.max(0, Math.floor(minX / CFG.cellW) - 1);
+      const c1 = Math.min(gridCols, Math.ceil(maxX / CFG.cellW) + 2);
+      const r0 = Math.max(0, Math.floor(minY / CFG.cellH) - 1);
+      const r1 = Math.min(gridRows, Math.ceil(maxY / CFG.cellH) + 2);
+
+      for (let row = r0; row < r1; row++) {
+        const cy = row * CFG.cellH + CFG.cellH * 0.5;
+        for (let col = c0; col < c1; col++) {
+          const cx = col * CFG.cellW + CFG.cellW * 0.5;
+          if (!pointInPolygon(cx, cy, polyX, polyY, n)) continue;
+          const idx = row * gridCols + col;
+          if (peak > imprintStrength[idx]) imprintStrength[idx] = peak;
+        }
+      }
+    }
+
+    function rebuildFaceMask() {
+      faceMask.fill(0);
+      if (!hasFace) return;
+
+      const n = FACE_OVAL.length;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (let i = 0; i < n; i++) {
+        const fx = faceX[i];
+        const fy = faceY[i];
+        if (fx < minX) minX = fx;
+        if (fy < minY) minY = fy;
+        if (fx > maxX) maxX = fx;
+        if (fy > maxY) maxY = fy;
+      }
+
+      const c0 = Math.max(0, Math.floor(minX / CFG.cellW) - 1);
+      const c1 = Math.min(gridCols, Math.ceil(maxX / CFG.cellW) + 2);
+      const r0 = Math.max(0, Math.floor(minY / CFG.cellH) - 1);
+      const r1 = Math.min(gridRows, Math.ceil(maxY / CFG.cellH) + 2);
+
+      for (let row = r0; row < r1; row++) {
+        const cy = row * CFG.cellH + CFG.cellH * 0.5;
+        for (let col = c0; col < c1; col++) {
+          const cx = col * CFG.cellW + CFG.cellW * 0.5;
+          if (pointInPolygon(cx, cy, faceX, faceY, n)) {
+            faceMask[row * gridCols + col] = 1;
+          }
+        }
+      }
+    }
+
+    function rebuildImprintField() {
+      imprintStrength.fill(0);
+      handImprintGrid.fill(0);
+
+      if (hasFace && faceLmX && faceLmY) {
+        fillPolygonStrength(faceX, faceY, FACE_OVAL.length, 0.5);
+        stampDisc(magNoseX, magNoseY, CFG.faceNoseRadius * 0.9, 0.95);
+        stampDisc(magLeftEyeX, magLeftEyeY, CFG.faceEyeRadius * 0.9, 0.92);
+        stampDisc(magRightEyeX, magRightEyeY, CFG.faceEyeRadius * 0.9, 0.92);
+        stampDisc(magMouthX, magMouthY, CFG.faceMouthRadius * 0.9 * mouthOpenMul(), 1);
+      }
+
+      for (let h = 0; h < MAX_HANDS; h++) {
+        if (!handTracked[h] || handPresence[h] <= 0.04) continue;
+
+        const xs = handLmX[h];
+        const ys = handLmY[h];
+
+        for (let e = 0; e < HAND_EDGES.length; e += 2) {
+          const a = HAND_EDGES[e];
+          const b = HAND_EDGES[e + 1];
+          const lo = a < b ? a : b;
+          const hi = a < b ? b : a;
+          const palmSeg = (lo === 0 && hi >= 5) || (lo === 5 && hi === 9) || (lo === 9 && hi === 13) || (lo === 13 && hi === 17);
+          const segR = palmSeg ? CFG.handPalmSegRadius : CFG.handSegRadius;
+          const peak = palmSeg ? 0.92 : 1;
+          stampSegmentToGrid(handImprintGrid, xs[a], ys[a], xs[b], ys[b], segR, peak);
+        }
+
+        for (let i = 0; i < HAND_LM_COUNT; i++) {
+          stampDiscToGrid(handImprintGrid, xs[i], ys[i], HAND_LM_RADII[i], HAND_LM_PEAK[i]);
+        }
+
+        for (let i = 0; i < HAND_TIPS.length; i++) {
+          const p = HAND_TIPS[i];
+          stampDiscToGrid(handImprintGrid, xs[p], ys[p], 18, 1);
+        }
+      }
+    }
+
+    function cellAt(x, y) {
+      const col = (x * INV_CELL_W) | 0;
+      const row = (y * INV_CELL_H) | 0;
+      if (col < 0 || row < 0 || col >= gridCols || row >= gridRows) return -1;
+      return row * gridCols + col;
+    }
+
+    function maskAtCell(idx) {
+      return idx >= 0 ? faceMask[idx] : 0;
+    }
+
+    function imprintAtCell(idx) {
+      return idx >= 0 ? imprintStrength[idx] : 0;
+    }
+
+    function updateFaceFieldSize() {
+      let sum = 0;
+      let maxSq = 0;
+      for (let i = 0; i < FACE_OVAL.length; i++) {
+        const dx = faceX[i] - centroidX;
+        const dy = faceY[i] - centroidY;
+        const dSq = dx * dx + dy * dy;
+        sum += Math.sqrt(dSq);
+        if (dSq > maxSq) maxSq = dSq;
+      }
+      faceRadius = (sum / FACE_OVAL.length) * CFG.faceScaleBoost;
+      // Every point on the face-oval polygon lies within faceRadiusMax of the
+      // centroid, so it bounds the reach of both the boundary push and the
+      // stabilization zone -> lets updateParticles cull far-away particles.
+      faceRadiusMax = Math.sqrt(maxSq);
+      fieldRadius = faceRadius * CFG.fieldRadiusMul;
+      fieldRange = faceRadius * CFG.fieldRangeMul;
+      fieldRangeSq = fieldRange * fieldRange;
+    }
+
+    function smoothFalloff(t) {
+      const u = t <= 0 ? 0 : t >= 1 ? 1 : t;
+      return u * u * (3 - 2 * u);
+    }
+
+    // Maps a centroid speed (px/ms) to a displacement multiplier >= 1.
+    function velBoost(speed) {
+      let r = speed / CFG.velRef;
+      if (r < 0) r = 0;
+      else if (r > CFG.velRatioMax) r = CFG.velRatioMax;
+      return 1 + r * CFG.velExaggerate;
+    }
+
+    function wideFalloff(t, pow) {
+      const u = t <= 0 ? 0 : t >= 1 ? 1 : t;
+      return Math.pow(u, pow ?? CFG.fieldFalloffPow);
+    }
+
+    function mouthOpenMul() {
+      return 1 + mouthOpenNorm * CFG.mouthDispMul;
+    }
+
+    function updateMouthOpenness() {
+      if (!faceLmX || !hasFace) {
+        mouthOpenNorm += (0 - mouthOpenNorm) * CFG.mouthSmooth;
+        return;
+      }
+
+      const odx = faceLmX[13] - faceLmX[14];
+      const ody = faceLmY[13] - faceLmY[14];
+      const openDist = Math.sqrt(odx * odx + ody * ody);
+      const ref = Math.max(faceRadius * CFG.mouthOpenRef, 8);
+      const raw = (openDist - ref * 0.45) / (ref * 1.05);
+      const target = raw <= 0 ? 0 : raw > 1 ? 1 : raw;
+      mouthOpenNorm += (target - mouthOpenNorm) * CFG.mouthSmooth;
+    }
+
+    function magneticField(px, py, cx, cy, radius, fieldK, inside, opts = null) {
+      const dx = px - cx;
+      const dy = py - cy;
+      const distSq = dx * dx + dy * dy;
+      const dist = Math.sqrt(distSq);
+      const feather = opts?.feather ?? CFG.fieldFeather;
+      const outer = radius * feather;
+      if (dist >= outer) return { fx: 0, fy: 0 };
+
+      const t = 1 - dist / outer;
+      const falloff = opts?.wide
+        ? wideFalloff(t, opts.falloffPow)
+        : smoothFalloff(t <= 0 ? 0 : t > 1 ? 1 : t);
+      if (falloff <= 0) return { fx: 0, fy: 0 };
+
+      const distSafe = dist > 0.5 ? dist : 0.5;
+      const boost = inside ? (opts?.insideBoost ?? CFG.insideBoost) : 1;
+      const strength = falloff * fieldK * boost * (opts?.mul ?? 1);
+
+      return {
+        fx: (dx / distSafe) * strength,
+        fy: (dy / distSafe) * strength
+      };
+    }
+
+    function closestPointOnSegment(px, py, x0, y0, x1, y1) {
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      const len2 = dx * dx + dy * dy;
+      if (len2 < 0.01) return { x: x0, y: y0 };
+      let t = ((px - x0) * dx + (py - y0) * dy) / len2;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      return { x: x0 + t * dx, y: y0 + t * dy };
+    }
+
+    // Signed distance from a point to the hand "skeleton" (capsule bones +
+    // landmark discs). Negative = inside the hand. The returned distance (used
+    // for strength/falloff) is the true min over the whole skeleton, so the hand
+    // SHAPE is preserved. The outward normal, however, is a smooth
+    // distance-weighted blend of the outward directions from every nearby
+    // bone/landmark instead of the direction away from the single nearest one.
+    // The nearest feature flips abruptly as a letter passes between fingers or
+    // joints, and that direction flip is what makes letters wiggle; blending it
+    // makes the normal change continuously, the hand analogue of the face's
+    // smooth centroid-radial normal (nearestFaceBoundary), so letters get a nice
+    // falloff and settle instead of jittering.
+    function nearestHandSurface(px, py, h) {
+      const xs = handLmX[h];
+      const ys = handLmY[h];
+      let bestSd = Infinity;
+      const blend = CFG.handNormalBlend;
+      const invBlend = 1 / blend;
+      let nbx = 0;
+      let nby = 0;
+      let wsum = 0;
+
+      for (let e = 0; e < HAND_EDGES.length; e += 2) {
+        const a = HAND_EDGES[e];
+        const b = HAND_EDGES[e + 1];
+        const lo = a < b ? a : b;
+        const hi = a < b ? b : a;
+        const palmSeg = (lo === 0 && hi >= 5) || (lo === 5 && hi === 9) ||
+          (lo === 9 && hi === 13) || (lo === 13 && hi === 17);
+        const segR = (palmSeg ? CFG.handPalmSegRadius : CFG.handSegRadius) * CFG.handFieldSegMul;
+        const cp = closestPointOnSegment(px, py, xs[a], ys[a], xs[b], ys[b]);
+        const ex = px - cp.x;
+        const ey = py - cp.y;
+        const d = Math.sqrt(ex * ex + ey * ey);
+        const sd = d - segR;
+        if (sd < bestSd) bestSd = sd;
+        const surf = sd > 0 ? sd : 0;
+        if (d > 0.01 && surf < blend) {
+          const w = (1 - surf * invBlend);
+          const ws = w * w;
+          const inv = ws / d;
+          nbx += ex * inv;
+          nby += ey * inv;
+          wsum += ws;
+        }
+      }
+
+      for (let i = 0; i < HAND_LM_COUNT; i++) {
+        const rad = HAND_LM_RADII[i] * CFG.handFieldLmMul;
+        const ex = px - xs[i];
+        const ey = py - ys[i];
+        const d = Math.sqrt(ex * ex + ey * ey);
+        const sd = d - rad;
+        if (sd < bestSd) bestSd = sd;
+        const surf = sd > 0 ? sd : 0;
+        if (d > 0.01 && surf < blend) {
+          const w = (1 - surf * invBlend);
+          const ws = w * w;
+          const inv = ws / d;
+          nbx += ex * inv;
+          nby += ey * inv;
+          wsum += ws;
+        }
+      }
+
+      const nl = Math.sqrt(nbx * nbx + nby * nby);
+      if (nl > 0.0001) {
+        handNormX = nbx / nl;
+        handNormY = nby / nl;
+      } else {
+        let nx = px - handCentroidX[h];
+        let ny = py - handCentroidY[h];
+        const cl = Math.sqrt(nx * nx + ny * ny) || 1;
+        handNormX = nx / cl;
+        handNormY = ny / cl;
+      }
+
+      return bestSd;
+    }
+
+    function faceHomeInRange(hx, hy) {
+      const margin = fieldRange * CFG.faceRangeMargin;
+      const n = FACE_OVAL.length;
+      for (let i = 0; i < n; i++) {
+        const dx = hx - faceX[i];
+        const dy = hy - faceY[i];
+        const reach = CFG.faceSegRadius + margin;
+        if (dx * dx + dy * dy < reach * reach) return true;
+      }
+      const fdx = hx - centroidX;
+      const fdy = hy - centroidY;
+      return fdx * fdx + fdy * fdy < fieldRangeSq;
+    }
+
+    function nearestFaceBoundary(px, py) {
+      const n = FACE_OVAL.length;
+      let bestDistSq = Infinity;
+      let bx = centroidX;
+      let by = centroidY;
+
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        const cp = closestPointOnSegment(px, py, faceX[i], faceY[i], faceX[j], faceY[j]);
+        const dx = px - cp.x;
+        const dy = py - cp.y;
+        const dSq = dx * dx + dy * dy;
+        if (dSq < bestDistSq) {
+          bestDistSq = dSq;
+          bx = cp.x;
+          by = cp.y;
+        }
+      }
+
+      let ox = bx - centroidX;
+      let oy = by - centroidY;
+      const ol = Math.sqrt(ox * ox + oy * oy);
+      if (ol < 0.01) {
+        ox = px - centroidX;
+        oy = py - centroidY;
+        const pl = Math.sqrt(ox * ox + oy * oy) || 1;
+        ox /= pl;
+        oy /= pl;
+      } else {
+        ox /= ol;
+        oy /= ol;
+      }
+
+      return {
+        bx, by,
+        dist: Math.sqrt(bestDistSq),
+        ox, oy
+      };
+    }
+
+    function facePointInside(px, py) {
+      if (!hasFace) return false;
+      return pointInPolygon(px, py, faceX, faceY, FACE_OVAL.length);
+    }
+
+    function faceFeatureFields(px, py, fieldK, insideFace) {
+      if (!faceLmX) return { fx: 0, fy: 0 };
+
+      const mouthMul = mouthOpenMul();
+      const faceOpts = { wide: true, feather: CFG.faceFieldFeather, insideBoost: CFG.insideBoost };
+      const nodes = [
+        { cx: magNoseX, cy: magNoseY, r: CFG.faceNoseRadius, k: 0.92 },
+        { cx: magLeftEyeX, cy: magLeftEyeY, r: CFG.faceEyeRadius, k: 0.82 },
+        { cx: magRightEyeX, cy: magRightEyeY, r: CFG.faceEyeRadius, k: 0.82 },
+        { cx: magMouthX, cy: magMouthY, r: CFG.faceMouthRadius * mouthMul, k: 0.95 * mouthMul }
+      ];
+
+      let fx = 0;
+      let fy = 0;
+
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        const f = magneticField(px, py, n.cx, n.cy, n.r, fieldK * n.k, insideFace, faceOpts);
+        fx += f.fx;
+        fy += f.fy;
+      }
+
+      return { fx, fy };
+    }
+
+    function faceMagneticField(px, py, insideFace, boundary) {
+      const fieldK = CFG.fieldK * CFG.faceFieldMul * faceVelBoost;
+      const mouthMul = mouthOpenMul();
+      const clearance = CFG.faceClearMargin * mouthMul;
+      const outer = (clearance + CFG.faceSegRadius * 0.45) * CFG.faceFieldFeather;
+      let fx = 0;
+      let fy = 0;
+
+      if (insideFace || boundary.dist < outer) {
+        // Continuous, smooth outward field along a stable radial normal.
+        // Deep inside the face the push is strong (clears the interior); it
+        // ramps smoothly down to a gentle edge push at the boundary and tapers
+        // to exactly zero at the outer radius. No cliff and no inside/outside
+        // discontinuity, so letters never oscillate across a hard edge and
+        // neighbours get near-identical pushes -> they spread instead of clump.
+        let strength;
+        if (insideFace) {
+          const depth = clearance > 0 ? Math.min(boundary.dist / clearance, 1) : 1;
+          const boost = CFG.faceEdgePush +
+            (CFG.insideBoost - CFG.faceEdgePush) * smoothFalloff(depth);
+          strength = fieldK * boost * mouthMul;
+        } else {
+          const t = 1 - boundary.dist / outer;
+          strength = smoothFalloff(t) * fieldK * CFG.faceEdgePush * mouthMul;
+        }
+
+        fx += boundary.ox * strength;
+        fy += boundary.oy * strength;
+      }
+
+      const feat = faceFeatureFields(px, py, fieldK, insideFace);
+      fx += feat.fx;
+      fy += feat.fy;
+
+      return { fx, fy };
+    }
+
+    // NOTE: the hand magnetic field is inlined into updateParticles' per-particle
+    // loop so it can reuse the signed-distance + normal computed once per hand.
+    // The continuous profile it applies (strong deep inside the hand, ramping to
+    // a gentle surface push, tapering to zero at the outer reach) matches the
+    // face field's, so neighbouring letters get near-identical pushes and spread
+    // out instead of clumping.
+
+    function updateHandFieldSize(h) {
+      handFieldRadius[h] = handRadius[h] * CFG.handRadiusMul;
+      handFieldRange[h] = handRadius[h] * CFG.handRangeMul;
+    }
+
+    function weightBucket(w) {
+      if (w < 175) return 0;
+      if (w < 350) return 1;
+      if (w < 550) return 2;
+      if (w < 750) return 3;
+      return 4;
+    }
+
+    function rebuildMasks() {
+      rebuildFaceMask();
+      rebuildImprintField();
+      for (let i = 0; i < count; i++) {
+        const idx = cellIdx[i];
+        faceImpHome[i] = imprintStrength[idx];
+        handImpHome[i] = handImprintGrid[idx];
+        impHome[i] = faceImpHome[i] + handImpHome[i];
+      }
+    }
+
+    function runHandDetection() {
+      handActive.fill(0);
+      if (!handLandmarker) return;
+
+      handDetectFrame++;
+      const runDetect = handDetectFrame % CFG.handDetectStride === 0;
+
+      if (!runDetect) {
+        for (let h = 0; h < MAX_HANDS; h++) {
+          if (handInit[h] && handPresence[h] > 0.04 && handTracked[h]) handActive[h] = 1;
+        }
+        return;
+      }
+
+      handTracked.fill(0);
+
+      try {
+        const result = handLandmarker.detectForVideo(video, detectTimestamp);
+        const hands = result.landmarks || [];
+        const t = CFG.pointSmooth;
+        const nowMs = performance.now();
+
+        for (let h = 0; h < MAX_HANDS; h++) {
+          const lms = hands[h];
+          if (!lms) continue;
+
+          let cx = 0;
+          let cy = 0;
+          for (let i = 0; i < HAND_PALM_IDX.length; i++) {
+            const lm = lms[HAND_PALM_IDX[i]];
+            const mapped = mapLandmarkToStage(lm.x, lm.y);
+            cx += mapped.x;
+            cy += mapped.y;
+          }
+          cx /= HAND_PALM_IDX.length;
+          cy /= HAND_PALM_IDX.length;
+
+          if (!handLandmarksOnStage(lms) && !pointOnStage(cx, cy)) continue;
+
+          handPresence[h] = Math.min(1, handPresence[h] + CFG.handFadeIn);
+          handTracked[h] = 1;
+
+          const xs = handLmX[h];
+          const ys = handLmY[h];
+
+          if (!handInit[h]) {
+            handCentroidX[h] = cx;
+            handCentroidY[h] = cy;
+            handInit[h] = 1;
+            for (let i = 0; i < lms.length; i++) {
+              const mapped = mapLandmarkToStage(lms[i].x, lms[i].y);
+              xs[i] = mapped.x;
+              ys[i] = mapped.y;
+            }
+          } else {
+            handCentroidX[h] += (cx - handCentroidX[h]) * t;
+            handCentroidY[h] += (cy - handCentroidY[h]) * t;
+            for (let i = 0; i < lms.length; i++) {
+              const mapped = mapLandmarkToStage(lms[i].x, lms[i].y);
+              xs[i] += (mapped.x - xs[i]) * t;
+              ys[i] += (mapped.y - ys[i]) * t;
+            }
+          }
+
+          if (handLastMs[h] === 0) {
+            handSpeed[h] = 0;
+          } else {
+            const hdt = Math.max(nowMs - handLastMs[h], 1);
+            const dcx = handCentroidX[h] - handPrevCX[h];
+            const dcy = handCentroidY[h] - handPrevCY[h];
+            const inst = Math.sqrt(dcx * dcx + dcy * dcy) / hdt;
+            handSpeed[h] += (inst - handSpeed[h]) * CFG.velSmooth;
+          }
+          handLastMs[h] = nowMs;
+          handPrevCX[h] = handCentroidX[h];
+          handPrevCY[h] = handCentroidY[h];
+          handVelBoost[h] = velBoost(handSpeed[h]);
+
+          let spread = 0;
+          for (let i = 0; i < lms.length; i++) {
+            const sdx = xs[i] - handCentroidX[h];
+            const sdy = ys[i] - handCentroidY[h];
+            spread += Math.sqrt(sdx * sdx + sdy * sdy);
+          }
+          handRadius[h] = (spread / lms.length) * CFG.handScaleBoost;
+          updateHandFieldSize(h);
+          handActive[h] = 1;
+        }
+
+        for (let h = 0; h < MAX_HANDS; h++) {
+          if (handInit[h] && !handTracked[h]) masksDirty = true;
+        }
+      } catch (err) {
+        handActive.fill(0);
+        handTracked.fill(0);
+        console.error(err);
+      }
+    }
+
+    function runTracking() {
+      if (video.readyState < 2) return;
+
+      const nowMs = performance.now();
+      if (nowMs - lastDetectMs < DETECT_MIN_MS) return;   // cap detection rate
+
+      const frameTime = video.currentTime;
+      if (frameTime === lastVideoTime) return;
+      lastVideoTime = frameTime;
+      lastDetectMs = nowMs;
+
+      viewportMap = updateViewportMap();
+      if (!viewportMap) return;
+
+      detectTimestamp = Math.max(detectTimestamp + 33, nowMs);
+
+      // Alternate: one model per tick so a frame never runs face + hand together.
+      detCycle ^= 1;
+
+      if (faceLandmarker && detCycle === 0) {
+        try {
+          const result = faceLandmarker.detectForVideo(video, detectTimestamp);
+          const lms = result.faceLandmarks?.[0];
+
+          if (lms) {
+            const lmCount = lms.length;
+            if (!faceLmX || faceLmX.length !== lmCount) {
+              faceLmX = new Float32Array(lmCount);
+              faceLmY = new Float32Array(lmCount);
+              faceX = new Float32Array(FACE_OVAL.length);
+              faceY = new Float32Array(FACE_OVAL.length);
+            }
+            const t = CFG.pointSmooth;
+
+            for (let i = 0; i < FACE_FEATURE_IDX.length; i++) {
+              const fi = FACE_FEATURE_IDX[i];
+              const mapped = mapLandmarkToStage(lms[fi].x, lms[fi].y);
+              if (!faceInit) {
+                faceLmX[fi] = mapped.x;
+                faceLmY[fi] = mapped.y;
+              } else {
+                faceLmX[fi] += (mapped.x - faceLmX[fi]) * t;
+                faceLmY[fi] += (mapped.y - faceLmY[fi]) * t;
+              }
+            }
+
+            for (let i = 0; i < FACE_OVAL.length; i++) {
+              const p = FACE_OVAL[i];
+              faceX[i] = faceLmX[p];
+              faceY[i] = faceLmY[p];
+            }
+
+            faceInit = true;
+            centroidX = 0;
+            centroidY = 0;
+            for (let i = 0; i < FACE_OVAL.length; i++) {
+              centroidX += faceX[i];
+              centroidY += faceY[i];
+            }
+            centroidX /= FACE_OVAL.length;
+            centroidY /= FACE_OVAL.length;
+
+            const fdt = Math.max(nowMs - faceLastMs, 1);
+            faceLastMs = nowMs;
+            if (facePrevValid) {
+              const dcx = centroidX - facePrevCX;
+              const dcy = centroidY - facePrevCY;
+              const inst = Math.sqrt(dcx * dcx + dcy * dcy) / fdt;
+              faceSpeed += (inst - faceSpeed) * CFG.velSmooth;
+            }
+            facePrevCX = centroidX;
+            facePrevCY = centroidY;
+            facePrevValid = true;
+            faceVelBoost = velBoost(faceSpeed);
+
+            const nose = featureCentroid(NOSE, faceLmX, faceLmY);
+            magNoseX = nose.x;
+            magNoseY = nose.y;
+            const leftEye = featureCentroid(LEFT_EYE, faceLmX, faceLmY);
+            magLeftEyeX = leftEye.x;
+            magLeftEyeY = leftEye.y;
+            const rightEye = featureCentroid(RIGHT_EYE, faceLmX, faceLmY);
+            magRightEyeX = rightEye.x;
+            magRightEyeY = rightEye.y;
+            const mouth = featureCentroid(LIPS, faceLmX, faceLmY);
+            magMouthX = mouth.x;
+            magMouthY = mouth.y;
+
+            updateFaceFieldSize();
+            updateMouthOpenness();
+            hasFace = true;
+          } else {
+            hasFace = false;
+            faceInit = false;
+            facePrevValid = false;
+            faceSpeed = 0;
+            faceVelBoost = 1;
+            updateMouthOpenness();
+          }
+        } catch (err) {
+          hasFace = false;
+          console.error(err);
+        }
+      }
+
+      if (detCycle !== 0) runHandDetection();
+      masksDirty = true;
+    }
+
+    function updateParticles(dtMs) {
+      const dt = Math.min(dtMs, 32) * 0.032;
+
+      noiseTime += dtMs * CFG.windTimeSpeed;
+      const gust = 1 + CFG.windGustAmp * valueNoise(noiseTime * 1.7, 37.2);
+      const windK = CFG.windK * gust;
+      const windKY = CFG.windKY * gust;
+      const invStageH = stageH > 0 ? 1 / stageH : 0;
+
+      if (masksDirty) {
+        rebuildMasks();
+        masksDirty = false;
+      }
+
+      for (let i = 0; i < count; i++) {
+        prevDispX[i] = x[i] - px[i];
+        prevDispY[i] = y[i] - py[i];
+      }
+
+      const hasFaceNow = hasFace;
+      const mouthMul = mouthOpenMul();
+
+      // Motion-driven exaggeration: fast head/hand movement raises the caps so
+      // letters get flung further; the field strengths are boosted per-source
+      // below (faceVelBoost / handVelBoost[h]).
+      const faceB = hasFaceNow ? faceVelBoost : 1;
+      let handB = 1;
+      for (let h = 0; h < MAX_HANDS; h++) {
+        if (handInit[h] && handPresence[h] > 0.04 && handVelBoost[h] > handB) {
+          handB = handVelBoost[h];
+        }
+      }
+      const motionBoost = faceB > handB ? faceB : handB;
+
+      const maxDisp = CFG.maxDisp * mouthMul * motionBoost;
+      const invMaxDisp = 1 / maxDisp;
+      const springK = CFG.springK;
+      const springKRest = CFG.springKRest;
+      const springKCoast = CFG.springKCoast;
+      const damping = CFG.damping;
+      const dampingRest = CFG.dampingRest;
+      const dampingCoast = CFG.dampingCoast;
+      const restDrag = CFG.restDrag;
+      const returnSnap = CFG.returnSnap;
+      const coastMinDisp = CFG.coastMinDisp;
+      const coastMinSpeed = CFG.coastMinSpeed;
+      const maxAccel = CFG.maxAccel * motionBoost;
+      const maxSpeed = CFG.maxSpeed * motionBoost;
+      const dampingFace = CFG.dampingFace;
+      const minW = CFG.minWeight;
+      const wSpan = CFG.maxWeight - minW;
+      const faceOuter = (CFG.faceClearMargin * mouthMul + CFG.faceSegRadius * 0.45) * CFG.faceFieldFeather;
+      // Broad-phase radius: beyond this a particle can be neither inside the
+      // face nor within faceOuter/boundaryStabilizeZone of the oval, so all the
+      // expensive per-segment boundary math can be skipped (lossless cull).
+      const faceCull = faceRadiusMax +
+        (faceOuter > CFG.boundaryStabilizeZone ? faceOuter : CFG.boundaryStabilizeZone);
+      const faceCullSq = faceCull * faceCull;
+      const handInfluence = totalHandInfluence();
+      const handAffecting = handInfluence > 0.04;
+
+      for (let i = 0; i < count; i++) {
+        const homeX = px[i];
+        const homeY = py[i];
+        const posX = x[i];
+        const posY = y[i];
+
+        // --- Face proximity: compute the nearest-boundary once and reuse it
+        // for the push test, boundary stabilization, and the magnetic field. ---
+        let insideFaceNow = false;
+        let faceBoundary = null;
+        let pushedByFace = false;
+        if (hasFaceNow) {
+          const dcx = posX - centroidX;
+          const dcy = posY - centroidY;
+          if (dcx * dcx + dcy * dcy < faceCullSq) {
+            insideFaceNow = facePointInside(posX, posY);
+            faceBoundary = nearestFaceBoundary(posX, posY);
+            pushedByFace = insideFaceNow || faceBoundary.dist < faceOuter;
+          }
+        }
+
+        // --- Hand proximity: compute signed distance + normal once per hand,
+        // stored in scratch for reuse across every pass below. ---
+        let pushedByHand = false;
+        let insideHandNow = false;
+        if (handAffecting) {
+          for (let h = 0; h < MAX_HANDS; h++) {
+            handInRangeScratch[h] = 0;
+            const presence = handPresence[h];
+            if (presence <= 0.04 || !handInit[h]) continue;
+            const dxc = posX - handCentroidX[h];
+            const dyc = posY - handCentroidY[h];
+            const br = handFieldRange[h] + CFG.handClearMargin;
+            if (dxc * dxc + dyc * dyc > br * br) continue;
+            const sd = nearestHandSurface(posX, posY, h);
+            handSdScratch[h] = sd;
+            handNxScratch[h] = handNormX;
+            handNyScratch[h] = handNormY;
+            handInRangeScratch[h] = 1;
+            if (sd < CFG.handClearMargin) {
+              pushedByHand = true;
+              if (sd <= 0) insideHandNow = true;
+            }
+          }
+        }
+
+        const beingPushed = pushedByFace || pushedByHand;
+
+        const ddx = posX - homeX;
+        const ddy = posY - homeY;
+        const dispNow = Math.sqrt(ddx * ddx + ddy * ddy);
+        const speedBefore = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]);
+        const coasting = !beingPushed && dispNow > coastMinDisp && speedBefore > coastMinSpeed;
+
+        let nearBoundary = false;
+        let boundaryDist = Infinity;
+        if (faceBoundary && faceBoundary.dist < CFG.boundaryStabilizeZone) {
+          nearBoundary = true;
+          boundaryDist = faceBoundary.dist;
+        }
+        if (handAffecting) {
+          for (let h = 0; h < MAX_HANDS; h++) {
+            if (!handInRangeScratch[h]) continue;
+            const raw = handSdScratch[h];
+            const sd = raw < 0 ? -raw : raw;
+            if (sd < CFG.boundaryStabilizeZone) {
+              nearBoundary = true;
+              if (sd < boundaryDist) boundaryDist = sd;
+            }
+          }
+        }
+
+        let ax;
+        let ay;
+        let damp;
+
+        if (beingPushed) {
+          let spring = springK;
+          if (insideFaceNow || insideHandNow) spring *= 0.15;
+          damp = pushedByFace ? dampingFace : damping;
+          ax = (homeX - posX) * spring;
+          ay = (homeY - posY) * spring;
+
+          if (pushedByFace) {
+            const field = faceMagneticField(posX, posY, insideFaceNow, faceBoundary);
+            ax += field.fx;
+            ay += field.fy;
+          }
+
+          if (pushedByHand) {
+            for (let h = 0; h < MAX_HANDS; h++) {
+              if (!handInRangeScratch[h]) continue;
+              const sd = handSdScratch[h];
+              const reach = CFG.handClearMargin;
+              if (sd >= reach) continue;
+              let strength;
+              if (sd <= 0) {
+                const depth = CFG.handInsideDepth > 0
+                  ? Math.min(-sd / CFG.handInsideDepth, 1)
+                  : 1;
+                const boost = CFG.handEdgePush +
+                  (CFG.insideBoost - CFG.handEdgePush) * smoothFalloff(depth);
+                strength = CFG.handFieldK * boost;
+              } else {
+                const t = 1 - sd / reach;
+                strength = smoothFalloff(t) * CFG.handFieldK * CFG.handEdgePush;
+              }
+              strength *= handPresence[h] * handVelBoost[h];
+              ax += handNxScratch[h] * strength;
+              ay += handNyScratch[h] * strength;
+            }
+          }
+
+          const accelMag = Math.sqrt(ax * ax + ay * ay);
+          if (accelMag > maxAccel) {
+            const s = maxAccel / accelMag;
+            ax *= s;
+            ay *= s;
+          }
+
+          const forceBlend = CFG.forceSmooth;
+          smAx[i] += (ax - smAx[i]) * forceBlend;
+          smAy[i] += (ay - smAy[i]) * forceBlend;
+          ax = smAx[i];
+          ay = smAy[i];
+        } else {
+          smAx[i] *= CFG.forceDecay;
+          smAy[i] *= CFG.forceDecay;
+          let spring = coasting ? springKCoast : springKRest;
+          if (!handAffecting && !pushedByFace && dispNow > 0.5) {
+            spring *= 1 + Math.min(dispNow / 55, 0.9);
+          }
+          damp = coasting ? dampingCoast : dampingRest;
+          ax = (homeX - posX) * spring - vx[i] * restDrag;
+          ay = (homeY - posY) * spring - vy[i] * restDrag;
+        }
+
+        const nb = i * 4;
+        let nax = 0;
+        let nay = 0;
+        let ncount = 0;
+        for (let k = 0; k < 4; k++) {
+          const n = neighborIdx[nb + k];
+          if (n < 0) continue;
+          nax += prevDispX[n];
+          nay += prevDispY[n];
+          ncount++;
+        }
+        if (ncount > 0) {
+          const inv = 1 / ncount;
+          ax += (nax * inv - prevDispX[i]) * CFG.rippleK;
+          ay += (nay * inv - prevDispY[i]) * CFG.rippleK;
+        }
+
+        const wind = windForceAt(homeX, homeY);
+        const windBias = CFG.windLowerBias + (1 - CFG.windLowerBias) * (homeY * invStageH);
+        ax += wind.fx * windK * windBias;
+        ay += wind.fy * windKY * windBias;
+
+        vx[i] = (vx[i] + ax * dt) * damp;
+        vy[i] = (vy[i] + ay * dt) * damp;
+
+        if (nearBoundary) {
+          const stabilizeFactor = boundaryDist / CFG.boundaryStabilizeZone;
+          const extraDamp = 1 - (1 - CFG.boundaryStabilizeDamp) * (1 - stabilizeFactor);
+          vx[i] *= extraDamp;
+          vy[i] *= extraDamp;
+        }
+
+        let speed = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]);
+        if (speed > maxSpeed) {
+          const scale = maxSpeed / speed;
+          vx[i] *= scale;
+          vy[i] *= scale;
+          speed = maxSpeed;
+        }
+
+        x[i] = posX + vx[i] * dt;
+        y[i] = posY + vy[i] * dt;
+
+        if (!beingPushed) {
+          const rdx = homeX - x[i];
+          const rdy = homeY - y[i];
+          const restDisp = Math.sqrt(rdx * rdx + rdy * rdy);
+          const restSpeed = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]);
+          if (restDisp < CFG.settleDist && restSpeed < CFG.settleSpeed) {
+            x[i] += (homeX - x[i]) * CFG.settleNudge;
+            y[i] += (homeY - y[i]) * CFG.settleNudge;
+            vx[i] *= 0.92;
+            vy[i] *= 0.92;
+          }
+        }
+
+        const dispLimit = maxDisp;
+        const ldx = x[i] - homeX;
+        const ldy = y[i] - homeY;
+        const disp = Math.sqrt(ldx * ldx + ldy * ldy);
+        if (disp > dispLimit) {
+          const scale = dispLimit / disp;
+          x[i] = homeX + (x[i] - homeX) * scale;
+          y[i] = homeY + (y[i] - homeY) * scale;
+          vx[i] *= 0.88;
+          vy[i] *= 0.88;
+        }
+
+        const dispNormVis = disp >= dispLimit ? 1 : disp / dispLimit;
+        const handImpVal = handAffecting ? handImpHome[i] : 0;
+        const impVal = faceImpHome[i] + handImpVal;
+        const impCurve = impVal > 0 ? Math.pow(impVal, 0.65) : 0;
+        const dispTarget = minW + wSpan * dispNormVis * dispNormVis;
+        const imprintTarget = minW + wSpan * impCurve;
+        const target = dispTarget > imprintTarget ? dispTarget : imprintTarget;
+        const impFollow = handImpVal > 0.08
+          ? CFG.imprintFollow
+          : (handImpHome[i] > 0.08 ? CFG.imprintReleaseFollow : CFG.weightFollow);
+        weight[i] += (target - weight[i]) * impFollow;
+
+        const affect = impVal > dispNormVis * dispNormVis * 0.75 ? impVal : dispNormVis * dispNormVis * 0.75;
+        drawAlpha[i] = CFG.letterAlphaRest -
+          affect * (CFG.letterAlphaRest - CFG.letterAlphaAffected);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, stageW, stageH);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const buckets = BUCKET_POOL;
+      for (let b = 0; b < 5; b++) buckets[b].length = 0;
+      for (let i = 0; i < count; i++) {
+        buckets[weightBucket(weight[i])].push(i);
+      }
+
+      let lastAlpha = -1;
+      for (let b = 0; b < 5; b++) {
+        const list = buckets[b];
+        if (!list.length) continue;
+        ctx.font = FONT_STRS[b];
+        for (let k = 0, n = list.length; k < n; k++) {
+          const i = list[k];
+          const alpha = drawAlpha[i];
+          if (alpha !== lastAlpha) {
+            ctx.globalAlpha = alpha;
+            lastAlpha = alpha;
+          }
+          ctx.fillText(charStr(chars[i]), x[i], y[i]);
+        }
+      }
+
+      ctx.globalAlpha = 1;
+      ctx.font = FONT_STRS[0];
+      for (let i = 0; i < pinnedCount; i++) {
+        ctx.fillText(charStr(pinChars[i]), pinX[i], pinY[i]);
+      }
+    }
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const dt = now - lastFrameTime;
+      lastFrameTime = now;
+      runTracking();
+      updateHandInfluence(dt);
+      updateParticles(dt);
+      draw();
+    }
+
+    async function boot() {
+      if (!window.isSecureContext) return;
+
+      await loadFont();
+      resizeStage();
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false
+        });
+        video.srcObject = stream;
+        await new Promise((res, rej) => { video.onloadedmetadata = res; video.onerror = rej; });
+        await video.play();
+        viewportMap = updateViewportMap();
+
+        const { FaceLandmarker, HandLandmarker, FilesetResolver } = await import(`${MP_BASE}`);
+        const vision = await FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
+        const faceOpts = {
+          baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate: 'GPU' },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+          outputFaceBlendshapes: false,
+          outputFacialTransformationMatrixes: false
+        };
+        const handOpts = {
+          baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'GPU' },
+          runningMode: 'VIDEO',
+          numHands: MAX_HANDS
+        };
+        try {
+          faceLandmarker = await FaceLandmarker.createFromOptions(vision, faceOpts);
+          handLandmarker = await HandLandmarker.createFromOptions(vision, handOpts);
+        } catch (_) {
+          faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+            ...faceOpts,
+            baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate: 'CPU' }
+          });
+          handLandmarker = await HandLandmarker.createFromOptions(vision, {
+            ...handOpts,
+            baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'CPU' }
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        return;
+      }
+
+      animate(performance.now());
+    }
+
+    window.addEventListener('resize', () => {
+      resizeStage();
+      hasFace = false;
+      faceInit = false;
+      facePrevValid = false;
+      faceSpeed = 0;
+      faceVelBoost = 1;
+      mouthOpenNorm = 0;
+      handActive.fill(0);
+      handPresence.fill(0);
+      handTracked.fill(0);
+      handInit.fill(0);
+      handSpeed.fill(0);
+      handLastMs.fill(0);
+      handVelBoost.fill(1);
+      masksDirty = true;
+    });
+
+    boot();
+  </script>
+</body>
+</html>

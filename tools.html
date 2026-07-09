@@ -303,6 +303,9 @@ main#page-main.page-exiting {
 .container > div:nth-child(13) { animation-delay: 490ms; }
 .container > div:nth-child(14) { animation-delay: 530ms; }
 .container > div:nth-child(15) { animation-delay: 570ms; }
+.container > div:nth-child(16) { animation-delay: 610ms; }
+.container > div:nth-child(17) { animation-delay: 650ms; }
+.container > div:nth-child(18) { animation-delay: 690ms; }
 @keyframes tools-item-in {
     to { opacity: 1; transform: translateY(0); }
 }
@@ -558,6 +561,18 @@ a.active {
 
         <div>
             <a href="./tools/pest-control/index-single.html" data-project="pest-control">Pest Control</a>
+        </div>
+
+        <div>
+            <a href="./tools/blink/" data-project="blink">Blink</a>
+        </div>
+
+        <div>
+            <a href="./tools/find-the-good/" data-project="find-the-good">Find the Good</a>
+        </div>
+
+        <div>
+            <a href="./tools/your-actions-have-impact/" data-project="your-actions-have-impact">Your Actions Have Impact</a>
         </div>
 
         <div class="back">
@@ -823,24 +838,17 @@ a.active {
         // Also update after a short delay to ensure nav is fully rendered
         setTimeout(updateIframePosition, 100);
 
-        // Map project names to their URLs
-        const projectMap = {
-            'type-face': './tools/type-face/',
-            'pretty-fly': './tools/pretty-fly/',
-            'outer-stellar': './tools/outer-stellar/',
-            'aurora': './tools/aurora/',
+        // Map project names to their URLs (built from sidebar links)
+        const projectMap = {};
+        document.querySelectorAll('a[data-project]').forEach((link) => {
+            projectMap[link.dataset.project] = link.getAttribute('href');
+        });
+
+        // Legacy/alias projects that can be loaded via ?project= but aren't in the sidebar
+        Object.assign(projectMap, {
             'face-mask': './tools/face-mask/index.html',
-            'from-from': './tools/from-from/',
-            'pattern-pattern': './tools/pattern pattern/',
-            'pattern-tool': './tools/pattern-tool/',
-            'thy-typer': './tools/thy-typer/',
-            'interactive-typer': './tools/interactive-typer/',
-            'move-ment': './tools/move-ment/',
-            'snow-globe': './tools/snow-globe/',
-            'trail-blazer': './tools/trail-blazer/',
-            '100s-and-thousands': './tools/100s-and-thousands/',
-            'pest-control': './tools/pest-control/index-single.html'
-        };
+            'pattern-tool': './tools/pattern-tool/'
+        });
 
         // Projects that use camera
         const cameraProjects = ['type-face', 'face-mask', 'from-from'];

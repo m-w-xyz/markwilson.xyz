@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Your Actions Have Impact</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #04050a;
+    color: #e8ecf5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  #video { position: fixed; left: -9999px; width: 640px; height: 480px; opacity: 0; pointer-events: none; }
+  #canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #status { display: none; }
+</style>
+</head>
+<body>
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+
+  <div id="status"></div>
+
+  <script type="module">
+    // ---------- MediaPipe (face mesh + hands) ----------
+    const MP_VERSION = '0.10.14';
+    const MP_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}`;
+    const FACE_MODEL_URL =
+      'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+    const HAND_MODEL_URL =
+      'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+
+    const HAND_LM_COUNT = 21;
+    const MAX_HANDS = 2;
+
+    // Gallery installation: wide camera, distant/small faces
+    const GALLERY = true;
+    const MIRROR_CAM = true;   // selfie-style horizontal flip (video + tracking)
+
+    // Ripple source slots
+    const SRC = { HEAD: 0, HAND_L: 1, HAND_R: 2 };
+    const MAX_SOURCES = 3;
+
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const statusEl = document.getElementById('status');
+
+    const gl = canvas.getContext('webgl', { premultipliedAlpha: false, antialias: true });
+    if (!gl) statusEl.textContent = 'WebGL is not available in this browser.';
+
+    const RIPPLES = 56;
+
+    // ---------- Shader (pure gentle ripple field) ----------
+    const VERT = `attribute vec2 aPos; void main(){ gl_Position = vec4(aPos,0.0,1.0); }`;
+    const FRAG = `
+      #extension GL_OES_standard_derivatives : enable
+      precision highp float;
+      #define RIPPLES ${RIPPLES}
+      uniform vec2      uRes;
+      uniform float     uTime;
+      uniform float     uFlow;     // 0..1 -> smoothed movement energy (swells the field)
+      uniform int       uRCount;   // number of active ripples (early-out loop)
+      uniform vec4      uR[RIPPLES];   // xy = origin px, z = age s, w = strength
+      uniform vec2      uSrcPos[3];    // persistent sources: head, hand0, hand1
+      uniform float     uSrcAmp[3];    // 0..1 faded presence per source
+      uniform vec2      uAmbC[4];      // ambient wave-source centres (px, CPU-animated)
+      uniform sampler2D uTex;          // live webcam frame
+      uniform vec2      uTexRes;       // webcam pixel size (for cover-fit)
+      uniform sampler2D uTextTex;      // white message overlay (screen-space)
+      uniform vec4      uVideoRect;    // xy = offset, zw = scale (cover-fit)
+      uniform float     uMirror;       // 1 = selfie mirror, 0 = gallery camera
+
+      const float REFRACT = 0.22;  // how strongly the ripple slope bends the image
+      const float GLOW    = 1.15;  // coloured sheen picked up by ripple crests
+
+      const float WAVE_SPEED = 220.0;   // expansion rate of the wavefront (px/s)
+      const float WAVE_FREQ  = 0.122;   // wider rings -> silkier, less shimmer
+      const float AGE_DECAY  = 0.15;    // long, soft life (reach the edges)
+      const float DIST_DECAY = 0.0011;  // slow fade -> ripples travel out to edges
+      const float TRAIL      = 0.006;   // trailing falloff behind the wavefront
+      const float BRIGHT     = 1.05;
+      const float BG_FLOW    = 1.6;     // how much movement brightens the scene
+
+      void main(){
+        vec2 fc = gl_FragCoord.xy;
+        vec2 p = vec2(fc.x, uRes.y - fc.y);
+
+        float h = 0.0;
+        for (int i = 0; i < RIPPLES; i++){
+          if (i >= uRCount) break;
+          vec4 r = uR[i];
+          float d = length(p - r.xy);
+          float radius = r.z * WAVE_SPEED;
+          float s = d - radius;                        // signed distance from the wavefront
+          float ring = sin(s * WAVE_FREQ);
+          // fade rings whose wavelength is near pixel size (cheap analytic AA)
+          float ds = max(length(vec2(dFdx(s), dFdy(s))), 0.001);
+          ring *= smoothstep(0.0, 2.4, 1.5708 / (ds * WAVE_FREQ));
+          // soften crest/trough extremes so slopes stay gentle
+          ring = ring / (1.0 + abs(ring) * 0.55);
+          float rise = 1.0 - exp(-r.z / 0.6);          // smooth birth so ripples never pop in
+          float envAge = rise * exp(-r.z * AGE_DECAY);
+          float envDist = exp(-d * DIST_DECAY);
+          // spatial envelope: empty ahead of the expanding front, gentle trailing
+          // falloff behind it -> the ring emanates from the point out to the edges
+          float ahead  = 1.0 - smoothstep(0.0, 90.0, s);
+          float behind = exp(min(s, 0.0) * TRAIL);
+          h += ring * r.w * envAge * envDist * ahead * behind;
+        }
+        // compress tall peaks in the height field before taking slopes
+        h = h / (1.0 + abs(h) * 0.38);
+
+        // gradient (slope) of the ripple height field -> refraction direction
+        vec2 grad = vec2(dFdx(h), dFdy(h));
+        // soft-cap steep slopes so refraction doesn't tear the webcam into jaggies
+        float gradMag = length(grad);
+        grad *= 0.048 / max(gradMag, 0.048);
+
+        // cover-fit the webcam to fill the screen (crops overflow), optional mirror
+        vec2 uv = (fc / uRes - uVideoRect.xy) / uVideoRect.zw;
+        if (uMirror > 0.5) uv.x = 1.0 - uv.x;
+        vec2 uvR = uv + grad * REFRACT;
+        // adaptive 4-tap blur only where refraction is strong (cheap edge soften)
+        vec3 camC = texture2D(uTex, clamp(uvR, 0.001, 0.999)).rgb;
+        vec2 tPx = 0.85 / uTexRes;
+        vec3 camB = (
+          texture2D(uTex, clamp(uvR + vec2( tPx.x, 0.0), 0.001, 0.999)).rgb +
+          texture2D(uTex, clamp(uvR + vec2(-tPx.x, 0.0), 0.001, 0.999)).rgb +
+          texture2D(uTex, clamp(uvR + vec2(0.0,  tPx.y), 0.001, 0.999)).rgb +
+          texture2D(uTex, clamp(uvR + vec2(0.0, -tPx.y), 0.001, 0.999)).rgb
+        ) * 0.25;
+        float refr = clamp(length(grad * REFRACT) * 55.0, 0.0, 1.0);
+        vec3 cam = mix(camC, camB, refr * 0.72);
+
+        // movement gently swells vibrancy across the live feed
+        float vib = uFlow;
+        vec3 bg = cam * (1.0 + vib * BG_FLOW * 0.15);
+
+        // ethereal colour shared by the ripples and the text glow
+        vec3 glowCol = mix(vec3(0.47059, 0.83922, 1.0),
+                           vec3(0.65098, 0.90980, 1.0),
+                           clamp(0.5 + 0.5 * h, 0.0, 1.0));
+
+        // watery sheen: crests catch the ethereal glow + a bright specular lift
+        float e    = abs(h);
+        float glow = clamp(e * 0.58, 0.0, 1.0);
+        float spec = pow(clamp(h, 0.0, 1.0), 2.0) * 0.22;
+        float crest = smoothstep(0.0, 1.05, clamp(h, 0.0, 1.0));
+        vec3  outc = bg * (BRIGHT + spec) + glowCol * glow * GLOW + glowCol * crest * 1.1;
+
+        // subtle vignette for framing depth
+        float vig = smoothstep(1.25, 0.30, length(fc / uRes - 0.5));
+        outc *= mix(0.72, 1.0, vig);
+
+        // white message rides on top, refracted by the very same ripple slope
+        vec2 tuv = fc / uRes;
+        tuv += grad * REFRACT;
+        vec4 txt = texture2D(uTextTex, clamp(tuv, 0.0, 1.0));
+        // fwidth AA on the supersampled text alpha -> smooth letter edges
+        float txtW = fwidth(txt.a) * 1.55;
+        txt.a = smoothstep(0.5 - txtW, 0.5 + txtW, txt.a);
+
+        // ethereal glow: gaussian blur of the message alpha on a golden-angle spiral
+        float halo = 0.0;
+        float wsum = 0.0;
+        const float GA = 2.3999632;
+        float jitter = fract(sin(dot(fc, vec2(12.9898, 78.233))) * 43758.5453) * 6.2831853;
+        for (int gi = 0; gi < 80; gi++){
+          float fi = float(gi);
+          float rr = sqrt((fi + 0.5) / 80.0);
+          float ang = fi * GA + jitter;
+          vec2 off = vec2(cos(ang), sin(ang)) * rr * (20.0 / uRes);
+          float w = exp(-rr * rr * 3.4);
+          halo += texture2D(uTextTex, clamp(tuv + off, 0.0, 1.0)).a * w;
+          wsum += w;
+        }
+        halo = clamp(halo / wsum, 0.0, 1.0);
+        float glowPulse = 1.0 + uFlow * 0.6;
+        outc += glowCol * halo * 0.4 * glowPulse;
+
+        // letters stay white; blue glow rings the edges
+        vec3 txtCol = vec3(1.0) * (BRIGHT + spec);
+        outc = mix(outc, txtCol, txt.a);
+
+        gl_FragColor = vec4(outc, 1.0);
+      }`;
+
+    function compile(type, src){
+      const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    }
+    let program, U = {}, tex = null, textTex = null;
+
+    // ---------- Message overlay (SVG artwork) ----------
+    // The SVG is drawn to an offscreen 2D canvas, uploaded as a texture, and
+    // refracted by the ripple slope in the shader so it ripples with the scene.
+    // It is inlined as a self-contained data: URI so drawing it never taints
+    // the canvas (an externally-loaded SVG would, breaking the WebGL upload).
+    const SVG_MARKUP = `<svg width="811" height="568" viewBox="0 0 811 568" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M762.699 459.59V480.078C759.26 479.031 755.671 479.031 748.193 479.031H725.013V549.918C725.013 557.395 725.013 560.984 726.06 564.424H694.355C695.402 560.984 695.402 557.395 695.402 549.918V479.031H671.474C663.997 479.031 660.408 479.031 656.968 480.078V459.59H762.699Z" fill="white"/>
+<path d="M531.084 509.688C531.084 476.488 559.349 456 589.707 456C608.999 456 626.347 462.281 640.703 479.18L620.813 496.827C617.673 490.396 610.046 477.086 591.651 477.086C572.06 477.086 561.143 495.481 561.143 509.838C561.143 527.933 573.556 544.234 591.651 544.234C609.448 544.234 619.318 529.578 622.01 523.746L643.545 534.962C637.563 549.767 620.514 567.414 589.707 567.414C559.349 567.414 531.084 547.973 531.084 509.688Z" fill="white"/>
+<path d="M478.488 472.302L522.605 555.9C524.4 559.489 526.045 561.882 528.139 564.274H493.443C492.695 560.835 490.602 557.245 486.713 549.768L483.423 543.637H479.834H432.876H429.137L426.445 549.768C423.155 557.245 421.51 560.835 421.061 564.274H391.6C393.395 561.882 394.741 559.489 396.386 555.9L433.324 472.302C436.166 466.02 437.512 462.73 437.96 459.59H472.656C473.404 462.73 475.049 466.02 478.488 472.302ZM453.962 487.705L437.661 524.345H473.254L453.962 487.705Z" fill="white"/>
+<path d="M327.529 459.59C370.748 459.59 395.274 468.862 395.274 495.631C395.274 525.092 368.655 534.065 336.053 534.065H326.482V549.768C326.482 557.245 326.482 560.835 327.529 564.274H295.824C296.871 560.835 296.871 557.245 296.871 549.768V474.096C296.871 466.619 296.871 463.029 295.824 459.59H327.529ZM326.482 512.68H335.903C345.475 512.68 365.066 511.035 365.066 497.426C365.066 483.966 345.475 482.321 335.903 482.321H326.482V512.68Z" fill="white"/>
+<path d="M274.113 564.274H242.408C242.857 561.134 242.259 557.844 241.212 551.563L231.94 498.473L213.097 551.563C210.853 557.844 209.806 561.134 209.657 564.274H174.214C174.064 561.134 173.017 557.844 170.774 551.563L152.08 498.473L142.659 551.563C141.612 557.844 141.014 561.134 141.462 564.274H115.74C117.385 560.835 117.983 557.245 119.329 549.768L132.789 474.096C134.135 466.619 134.733 463.029 134.284 459.59H168.98C169.129 463.029 170.325 466.619 173.017 474.096L195.3 537.056L217.733 474.096C220.424 466.619 221.621 463.029 221.77 459.59H255.718C255.269 463.029 255.868 466.619 257.214 474.096L270.523 549.768C271.869 557.245 272.468 560.835 274.113 564.274Z" fill="white"/>
+<path d="M94.0099 459.59C92.963 463.029 92.963 466.619 92.963 474.096V549.768C92.963 557.245 92.963 560.835 94.0099 564.274H62.3054C63.3523 560.835 63.3523 557.245 63.3523 549.768V474.096C63.3523 466.619 63.3523 463.029 62.3054 459.59H94.0099Z" fill="white"/>
+<path d="M590.536 392.833H641.382C648.86 392.833 652.449 392.833 655.889 391.786V412.274H559.878C560.925 408.835 560.925 405.245 560.925 397.768V322.096C560.925 314.619 560.925 311.029 559.878 307.59H654.393V328.078C650.953 327.031 647.364 327.031 639.887 327.031H590.536V347.52H625.38C632.858 347.52 636.447 347.52 639.887 346.473V367.858C636.447 366.811 632.858 366.811 625.38 366.811H590.536V392.833Z" fill="white"/>
+<path d="M512.416 307.59H541.877C540.082 309.983 538.736 312.375 537.091 315.965L500.153 399.563C497.311 405.844 495.965 409.134 495.517 412.274H460.821C460.373 409.134 459.027 405.844 456.185 399.563L419.396 315.965C417.901 312.375 416.405 309.983 414.611 307.59H449.306C449.755 311.029 451.4 314.619 454.69 322.096L480.861 381.318L507.032 322.096C510.322 314.619 511.967 311.029 512.416 307.59Z" fill="white"/>
+<path d="M379.961 320.302L424.078 403.9C425.872 407.489 427.518 409.882 429.611 412.274H394.916C394.168 408.835 392.074 405.245 388.186 397.768L384.896 391.637H381.307H334.348H330.61L327.918 397.768C324.628 405.245 322.983 408.835 322.534 412.274H293.073C294.867 409.882 296.213 407.489 297.858 403.9L334.797 320.302C337.638 314.02 338.984 310.73 339.433 307.59H374.128C374.876 310.73 376.521 314.02 379.961 320.302ZM355.435 335.705L339.134 372.345H374.727L355.435 335.705Z" fill="white"/>
+<path d="M272.581 322.096V397.768C272.581 405.245 272.581 408.835 273.628 412.274H241.923C242.97 408.835 242.97 405.245 242.97 397.768V368.008H192.273V397.768C192.273 405.245 192.273 408.835 193.32 412.274H161.615C162.662 408.835 162.662 405.245 162.662 397.768V322.096C162.662 314.619 162.662 311.029 161.615 307.59H193.32C192.273 311.029 192.273 314.619 192.273 322.096V348.716H242.97V322.096C242.97 314.619 242.97 311.029 241.923 307.59H273.628C272.581 311.029 272.581 314.619 272.581 322.096Z" fill="white"/>
+<path d="M779.362 230.663C779.362 211.82 713.859 226.625 713.859 182.957C713.859 162.618 737.488 152 758.874 152C779.661 152 792.373 156.786 804.636 169.647L784.596 184.452C782.502 180.265 778.315 174.133 759.472 174.133C750.349 174.133 743.62 177.573 743.62 182.957C743.62 197.463 810.02 185.349 810.02 229.018C810.02 254.441 782.353 263.414 760.369 263.414C730.16 263.414 713.56 249.955 706.831 238.589L728.067 222.288C730.011 226.775 742.722 239.486 760.818 239.486C769.193 239.486 779.362 237.841 779.362 230.663Z" fill="white"/>
+<path d="M690.088 170.096V245.768C690.088 253.245 690.088 256.835 691.135 260.274H654.944C653.598 257.134 651.504 253.844 647.018 247.563L607.836 192.08V245.768C607.836 253.245 607.836 256.835 608.883 260.274H583.16C584.207 256.835 584.207 253.245 584.207 245.768V170.096C584.207 166.806 584.207 164.264 584.058 162.17C582.861 159.029 581.665 156.038 580.917 155.59H617.108C618.454 159.029 620.996 162.619 626.23 170.096L666.459 226.775V170.096C666.459 162.619 666.459 159.029 665.412 155.59H691.135C690.088 159.029 690.088 162.619 690.088 170.096Z" fill="white"/>
+<path d="M502.724 263.414C467.281 263.414 442.456 243.375 442.456 206.137C442.456 172.638 467.281 152 502.724 152C538.167 152 562.992 172.638 562.992 206.137C562.992 243.375 538.167 263.414 502.724 263.414ZM475.057 206.885C475.057 235.299 492.255 241.73 502.724 241.73C513.192 241.73 530.391 235.299 530.391 206.885C530.391 179.368 513.192 172.638 502.724 172.638C492.255 172.638 475.057 179.368 475.057 206.885Z" fill="white"/>
+<path d="M420.725 155.59C419.678 159.029 419.678 162.619 419.678 170.096V245.768C419.678 253.245 419.678 256.835 420.725 260.274H389.021C390.068 256.835 390.068 253.245 390.068 245.768V170.096C390.068 162.619 390.068 159.029 389.021 155.59H420.725Z" fill="white"/>
+<path d="M369.604 155.59V176.078C366.164 175.031 362.575 175.031 355.098 175.031H331.917V245.918C331.917 253.395 331.917 256.984 332.964 260.424H301.26C302.307 256.984 302.307 253.395 302.307 245.918V175.031H278.379C270.901 175.031 267.312 175.031 263.873 176.078V155.59H369.604Z" fill="white"/>
+<path d="M139.484 205.688C139.484 172.488 167.749 152 198.107 152C217.399 152 234.747 158.281 249.103 175.18L229.213 192.827C226.073 186.396 218.446 173.086 200.051 173.086C180.46 173.086 169.543 191.481 169.543 205.838C169.543 223.933 181.956 240.234 200.051 240.234C217.848 240.234 227.718 225.578 230.41 219.746L251.945 230.962C245.963 245.767 228.914 263.414 198.107 263.414C167.749 263.414 139.484 243.973 139.484 205.688Z" fill="white"/>
+<path d="M86.8881 168.302L131.005 251.9C132.8 255.489 134.445 257.882 136.538 260.274H101.843C101.095 256.835 99.0016 253.245 95.1133 245.768L91.8232 239.637H88.234H41.2756H37.5369L34.845 245.768C31.5549 253.245 29.9099 256.835 29.4612 260.274H0C1.79459 257.882 3.14053 255.489 4.78558 251.9L41.7242 168.302C44.5657 162.02 45.9116 158.73 46.3603 155.59H81.0557C81.8034 158.73 83.4485 162.02 86.8881 168.302ZM62.362 183.705L46.0612 220.345H81.6539L62.362 183.705Z" fill="white"/>
+<path d="M627.459 63.4095L645.255 97.8059C647.2 101.694 648.097 103.339 651.536 108.274H617.439C616.991 105.433 615.196 101.096 613.551 97.8059L598.596 68.6438C595.755 68.7933 592.764 68.7933 589.773 68.7933H580.202V93.768C580.202 101.245 580.202 104.835 581.248 108.274H549.544C550.591 104.835 550.591 101.245 550.591 93.768V18.0961C550.591 10.6187 550.591 7.02948 549.544 3.58984H581.248C624.468 3.58984 648.994 11.8151 648.994 35.1447C648.994 49.5015 640.619 58.4744 627.459 63.4095ZM589.623 23.4799H580.202V50.0997H589.623C599.194 50.0997 618.785 48.6042 618.785 36.7898C618.785 24.9754 599.194 23.4799 589.623 23.4799Z" fill="white"/>
+<path d="M526.772 18.0961V64.6059C526.922 95.8617 501.947 109.77 476.673 109.919C451.848 109.77 424.78 93.9176 424.63 62.6618V18.0961C424.63 10.6187 424.63 7.02948 423.583 3.58984H455.288C454.241 7.02948 454.241 10.6187 454.241 18.0961V62.6618C455.288 75.523 463.364 84.7951 476.673 84.7951C490.133 84.7951 498.956 77.4672 500.153 64.6059V18.0961C500.153 10.6187 500.153 7.02948 499.106 3.58984H527.819C526.772 7.02948 526.772 10.6187 526.772 18.0961Z" fill="white"/>
+<path d="M343.895 111.414C308.452 111.414 283.626 91.3746 283.626 54.1368C283.626 20.6378 308.452 0 343.895 0C379.338 0 404.163 20.6378 404.163 54.1368C404.163 91.3746 379.338 111.414 343.895 111.414ZM316.228 54.8846C316.228 83.2989 333.426 89.7295 343.895 89.7295C354.363 89.7295 371.561 83.2989 371.561 54.8846C371.561 27.3675 354.363 20.6378 343.895 20.6378C333.426 20.6378 316.228 27.3675 316.228 54.8846Z" fill="white"/>
+<path d="M234.271 65.6528V93.768C234.271 101.245 234.271 104.835 235.318 108.274H203.613C204.66 104.835 204.66 101.245 204.66 93.768V69.0924L163.384 11.9646C160.693 8.37542 158.599 5.98264 156.206 3.58984H190.752C192.247 7.02948 194.939 10.6187 200.174 18.0961L220.363 46.66L240.552 18.0961C245.786 10.7682 248.328 7.02948 249.674 3.58984H279.136C276.892 5.98264 274.799 8.37542 272.256 11.9646L234.271 65.6528Z" fill="white"/>
+</svg>`;
+    const MSG_SRC = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(SVG_MARKUP);
+    const FILL_VH = 0.50;   // the artwork fills 50% of the viewport height
+    const SIDE    = 0.94;   // ...but never wider than 94% of the width
+    const TEXT_SS = 3;      // supersample SVG raster -> LINEAR minify smooths edges
+    const SVG_ASP = 811 / 568; // intrinsic SVG aspect (width / height)
+    const textCanvas = document.createElement('canvas');
+    const textCtx = textCanvas.getContext('2d');
+    const msgImg = new Image();
+    let msgReady = false;
+    msgImg.onload = () => { msgReady = true; buildTextTexture(); };
+    msgImg.onerror = (e) => console.error('SVG load failed', e);
+
+    function buildTextTexture(){
+      const W = canvas.width, H = canvas.height;
+      if (!W || !H || !msgReady) return;
+      const ss = TEXT_SS;
+      // Keep exact screen aspect ratio so shader screen-uv maps 1:1 to texture
+      const texW = W * ss, texH = H * ss;
+      textCanvas.width = texW;
+      textCanvas.height = texH;
+      const ctx = textCtx;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, texW, texH);
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Uniform scale only — never stretch; clamp to FILL_VH / SIDE bounds
+      let drawH = FILL_VH * texH;
+      let drawW = drawH * SVG_ASP;
+      if (drawW > SIDE * texW){
+        drawW = SIDE * texW;
+        drawH = drawW / SVG_ASP;
+      }
+      const dx = (texW - drawW) * 0.5, dy = (texH - drawH) * 0.5;
+      ctx.drawImage(msgImg, dx, dy, drawW, drawH);
+
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, textTex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      try {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      }
+      catch (e) { console.error('Overlay texture upload failed', e); }
+    }
+
+    function initGL(){
+      gl.getExtension('OES_standard_derivatives');   // needed for dFdx/dFdy in the shader
+      program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAG));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+      gl.useProgram(program);
+      const buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(program, 'aPos');
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      for (const n of ['uRes','uTime','uFlow','uRCount','uR','uSrcPos','uSrcAmp','uAmbC','uTex','uTexRes','uTextTex','uVideoRect','uMirror']) U[n] = gl.getUniformLocation(program, n);
+
+      // webcam frame texture (non-power-of-two -> clamp + linear, no mips)
+      tex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);   // match gl_FragCoord (origin bottom-left)
+
+      // message overlay texture (rendered on its own 2D canvas, unit 1)
+      textTex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, textTex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    }
+
+    // ---------- Sizing & mapping ----------
+    // Cap the backing-store size so fragment cost is bounded regardless of how
+    // large / high-DPI the display is (the soft ripple field hides the downscale).
+    const MAX_DIM = 1680;
+    let stageW = 0, stageH = 0, dpr = 1, viewport = null;
+    let videoRect = new Float32Array([0, 0, 1, 1]); // cover-fit crop in screen UV
+    function resize(){
+      stageW = window.innerWidth; stageH = window.innerHeight;
+      let scale = Math.min(window.devicePixelRatio || 1, 1.75);
+      const longest = Math.max(stageW, stageH) * scale;
+      if (longest > MAX_DIM) scale *= MAX_DIM / longest;
+      dpr = scale;
+      canvas.width = Math.max(1, Math.round(stageW * scale));
+      canvas.height = Math.max(1, Math.round(stageH * scale));
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      updateViewport();
+      buildTextTexture();
+    }
+    function updateViewport(){
+      const vw = video.videoWidth, vh = video.videoHeight;
+      if (!vw || !vh || !stageW || !stageH){ viewport = null; return; }
+      // cover-fit: crop the camera frame so it always fills the screen
+      const fitScale = Math.max(stageW / vw, stageH / vh);
+      const drawW = vw * fitScale, drawH = vh * fitScale;
+      const offsetX = (stageW - drawW) * 0.5, offsetY = (stageH - drawH) * 0.5;
+      viewport = { vw, vh, fitScale, offsetX, offsetY };
+      videoRect[0] = offsetX / stageW;
+      videoRect[1] = offsetY / stageH;
+      videoRect[2] = drawW / stageW;
+      videoRect[3] = drawH / stageH;
+    }
+    function mapX(nx){
+      const x = nx * viewport.vw * viewport.fitScale + viewport.offsetX;
+      return MIRROR_CAM ? stageW - x : x;
+    }
+    function mapY(ny){ return ny * viewport.vh * viewport.fitScale + viewport.offsetY; }
+
+    // ---------- Tracking (used only to seed ripples) ----------
+    let faceLmX = new Float32Array(478), faceLmY = new Float32Array(478);
+    let faceCount = 0, hasFace = false, faceInit = false;
+    let headX = 0, headY = 0, headInit = false;
+    const handLmX = Array.from({ length: MAX_HANDS }, () => new Float32Array(HAND_LM_COUNT));
+    const handLmY = Array.from({ length: MAX_HANDS }, () => new Float32Array(HAND_LM_COUNT));
+    const handActive = new Uint8Array(MAX_HANDS);
+    const handInit = new Uint8Array(MAX_HANDS);
+
+    const trackX = new Float32Array(MAX_SOURCES), trackY = new Float32Array(MAX_SOURCES);
+    const trackActive = new Uint8Array(MAX_SOURCES), trackInit = new Uint8Array(MAX_SOURCES);
+    const trackSize = new Float32Array(MAX_SOURCES); // bbox area for distant-face boost
+
+    const srcPosX = new Float32Array(MAX_SOURCES), srcPosY = new Float32Array(MAX_SOURCES), srcAmp = new Float32Array(MAX_SOURCES);
+    const srcData = new Float32Array(MAX_SOURCES * 2);
+    const srcAmpData = new Float32Array(MAX_SOURCES);
+    function updateSource(i, active, x, y){
+      if (active){
+        if (srcAmp[i] < 0.02){ srcPosX[i] = x; srcPosY[i] = y; }
+        else { srcPosX[i] = lerp(srcPosX[i], x, 0.12); srcPosY[i] = lerp(srcPosY[i], y, 0.12); }
+        srcAmp[i] = lerp(srcAmp[i], 1, 0.06);
+      } else {
+        srcAmp[i] = lerp(srcAmp[i], 0, 0.06);
+      }
+    }
+    function setTrack(i, active, x, y, smooth = 0.18){
+      if (!active){ trackActive[i] = 0; return; }
+      if (!trackInit[i]){ trackX[i] = x; trackY[i] = y; trackInit[i] = 1; }
+      else { trackX[i] = lerp(trackX[i], x, smooth); trackY[i] = lerp(trackY[i], y, smooth); }
+      trackActive[i] = 1;
+    }
+    function updateSources(){
+      for (let i = 0; i < MAX_SOURCES; i++){
+        updateSource(i, trackActive[i], trackX[i], trackY[i]);
+        srcData[i*2] = srcPosX[i] * dpr; srcData[i*2+1] = srcPosY[i] * dpr;
+        srcAmpData[i] = srcAmp[i];
+      }
+    }
+
+    const lerp = (a,b,t) => a + (b-a)*t;
+    const SMOOTH = 0.2;
+
+    // ---------- Ripple pool ----------
+    const rX = new Float32Array(RIPPLES), rY = new Float32Array(RIPPLES);
+    const rAge = new Float32Array(RIPPLES), rStr = new Float32Array(RIPPLES);
+    const rData = new Float32Array(RIPPLES * 4);
+    const ambData = new Float32Array(8);   // 4 animated ambient-source centres (px)
+    const SPAWN_DIST = GALLERY ? 10 : 28;
+    const SPEED_MIN = GALLERY ? 0.35 : 1.0;
+    const SPAWN_MAX = 90, MAX_AGE = 10;
+    // emit only from the localised source points (head + hands), rate-limited
+    const semLastX = new Float32Array(MAX_SOURCES), semLastY = new Float32Array(MAX_SOURCES), semInit = new Uint8Array(MAX_SOURCES);
+    let lastSpawnMs = 0;
+    const SPAWN_COOLDOWN = 130;   // ms between successive ripple emissions
+    let activity = 0, flow = 0;   // movement energy -> smoothed field swell
+    function spawnRipple(x, y, strength){
+      let slot = -1, oldest = -1, oldestAge = -1;
+      for (let i = 0; i < RIPPLES; i++){
+        if (rStr[i] <= 0.02){ slot = i; break; }
+        if (rAge[i] > oldestAge){ oldestAge = rAge[i]; oldest = i; }
+      }
+      if (slot < 0) slot = oldest;
+      rX[slot] = x; rY[slot] = y; rAge[slot] = 0; rStr[slot] = strength;
+    }
+
+    // ---------- Cursor ripples ----------
+    let cursorX = 0, cursorY = 0, cursorActive = false;
+    let cursorSemLastX = 0, cursorSemLastY = 0, cursorSemInit = false;
+
+    function setCursorPos(clientX, clientY){
+      const rect = canvas.getBoundingClientRect();
+      cursorX = clientX - rect.left;
+      cursorY = clientY - rect.top;
+      cursorActive = true;
+    }
+    function updateCursorRipples(nowMs){
+      if (!cursorActive){ cursorSemInit = 0; return; }
+      const px = cursorX, py = cursorY;
+      if (!cursorSemInit){
+        cursorSemLastX = px; cursorSemLastY = py; cursorSemInit = 1;
+        return;
+      }
+      const dx = px - cursorSemLastX, dy = py - cursorSemLastY, dist = Math.hypot(dx, dy);
+      if (dist > SPAWN_MAX){
+        cursorSemLastX = px; cursorSemLastY = py;
+      } else if (dist > SPAWN_DIST && dist > SPEED_MIN && (nowMs - lastSpawnMs) > SPAWN_COOLDOWN){
+        spawnRipple(px, py, Math.min(dist / (GALLERY ? 22 : 40), 0.7));
+        cursorSemLastX = px; cursorSemLastY = py; lastSpawnMs = nowMs;
+        activity = Math.min(activity + 0.12, 1);
+      }
+    }
+
+    let handLandmarker = null, faceLandmarker = null;
+    let lastVideoTime = -1, detectTs = 0;
+    let lastDetectMs = 0, handDetSkip = 0;
+    const DETECT_MIN_MS = GALLERY ? 33 : 40;
+
+    function processFace(res){
+      const faces = res.faceLandmarks || [];
+      if (!faces.length){
+        hasFace = false; faceInit = false; headInit = false;
+        trackActive[SRC.HEAD] = 0; trackInit[SRC.HEAD] = 0;
+        return;
+      }
+
+      const pick = GALLERY
+        ? faces.map((lms) => {
+            let minX = 1, minY = 1, maxX = 0, maxY = 0;
+            for (const lm of lms){
+              if (lm.x < minX) minX = lm.x; if (lm.y < minY) minY = lm.y;
+              if (lm.x > maxX) maxX = lm.x; if (lm.y > maxY) maxY = lm.y;
+            }
+            return { lms, area: (maxX - minX) * (maxY - minY) };
+          }).sort((a, b) => b.area - a.area)[0].lms
+        : faces[0];
+
+      const lms = pick;
+      const n = lms.length; faceCount = n;
+      for (let i = 0; i < n; i++){
+        const mx = mapX(lms[i].x), my = mapY(lms[i].y);
+        if (!faceInit){ faceLmX[i] = mx; faceLmY[i] = my; }
+        else { faceLmX[i] = lerp(faceLmX[i], mx, SMOOTH); faceLmY[i] = lerp(faceLmY[i], my, SMOOTH); }
+      }
+      faceInit = true; hasFace = true;
+
+      let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+      for (let i = 0; i < n; i++){
+        if (faceLmX[i] < minX) minX = faceLmX[i]; if (faceLmY[i] < minY) minY = faceLmY[i];
+        if (faceLmX[i] > maxX) maxX = faceLmX[i]; if (faceLmY[i] > maxY) maxY = faceLmY[i];
+      }
+      const hx = (minX + maxX) * 0.5, hy = (minY + maxY) * 0.5;
+      setTrack(SRC.HEAD, true, hx, hy, GALLERY ? 0.18 : 0.15);
+      trackSize[SRC.HEAD] = Math.max((maxX - minX) * (maxY - minY), 1);
+      headX = trackX[SRC.HEAD]; headY = trackY[SRC.HEAD]; headInit = true;
+    }
+    function processHands(res){
+      const hands = res.landmarks || [];
+      const handedness = res.handedness || [];
+      const seenL = new Uint8Array(2);
+      for (let h = 0; h < MAX_HANDS; h++){
+        handActive[h] = 0; handInit[h] = 0;
+      }
+      for (let h = 0; h < hands.length && h < MAX_HANDS; h++){
+        const lms = hands[h];
+        if (!lms) continue;
+        const xs = handLmX[h], ys = handLmY[h];
+        for (let i = 0; i < HAND_LM_COUNT; i++){
+          const mx = mapX(lms[i].x), my = mapY(lms[i].y);
+          if (!handInit[h]){ xs[i] = mx; ys[i] = my; }
+          else { xs[i] = lerp(xs[i], mx, SMOOTH); ys[i] = lerp(ys[i], my, SMOOTH); }
+        }
+        handInit[h] = 1; handActive[h] = 1;
+        const label = handedness[h]?.[0]?.categoryName;
+        const slot = label === 'Left' ? SRC.HAND_L : label === 'Right' ? SRC.HAND_R : (h === 0 ? SRC.HAND_L : SRC.HAND_R);
+        const cx = (xs[0] + xs[5] + xs[9] + xs[13] + xs[17]) / 5;
+        const cy = (ys[0] + ys[5] + ys[9] + ys[13] + ys[17]) / 5;
+        setTrack(slot, true, cx, cy);
+        seenL[slot === SRC.HAND_L ? 0 : 1] = 1;
+      }
+      if (!seenL[0]){ trackActive[SRC.HAND_L] = 0; trackInit[SRC.HAND_L] = 0; }
+      if (!seenL[1]){ trackActive[SRC.HAND_R] = 0; trackInit[SRC.HAND_R] = 0; }
+    }
+    function runTracking(){
+      if (video.readyState < 2) return;
+      const detNow = performance.now();
+      if (detNow - lastDetectMs < DETECT_MIN_MS) return;
+      if (video.currentTime === lastVideoTime) return;
+      lastVideoTime = video.currentTime;
+      lastDetectMs = detNow;
+      updateViewport(); if (!viewport) return;
+      detectTs = Math.max(detectTs + 33, detNow);
+      try {
+        if (faceLandmarker) processFace(faceLandmarker.detectForVideo(video, detectTs));
+        handDetSkip ^= 1;
+        if (handDetSkip && handLandmarker) processHands(handLandmarker.detectForVideo(video, detectTs));
+      } catch (e) { console.error(e); }
+
+      // Emit expanding ripples from head + hands.
+      const nowMs = performance.now();
+      for (let sIdx = 0; sIdx < MAX_SOURCES; sIdx++){
+        const active = trackActive[sIdx];
+        const px = trackX[sIdx], py = trackY[sIdx];
+        let sizeBoost = 1;
+        if (sIdx === SRC.HEAD && active && GALLERY){
+          sizeBoost = 1.15 + Math.min(2200 / trackSize[SRC.HEAD], 2.2);
+        }
+        if (!active){ semInit[sIdx] = 0; continue; }
+        if (!semInit[sIdx]){
+          semLastX[sIdx] = px; semLastY[sIdx] = py; semInit[sIdx] = 1;
+          if (GALLERY) spawnRipple(px, py, Math.min(0.42 * sizeBoost, 0.85));
+          continue;
+        }
+        const dx = px - semLastX[sIdx], dy = py - semLastY[sIdx], dist = Math.hypot(dx, dy);
+        if (dist > SPAWN_MAX){
+          semLastX[sIdx] = px; semLastY[sIdx] = py;
+        } else if (dist > SPAWN_DIST && dist > SPEED_MIN && (nowMs - lastSpawnMs) > SPAWN_COOLDOWN){
+          spawnRipple(px, py, Math.min(Math.min(dist / (GALLERY ? 22 : 40), 0.7) * sizeBoost, 0.85));
+          semLastX[sIdx] = px; semLastY[sIdx] = py; lastSpawnMs = nowMs;
+          activity = Math.min(activity + 0.12, 1);
+        }
+      }
+    }
+
+    // ---------- Loop ----------
+    let startTime = performance.now(), lastFrame = startTime;
+    function frame(now){
+      requestAnimationFrame(frame);
+      const dt = Math.min((now - lastFrame) / 1000, 0.05);
+      lastFrame = now;
+
+      runTracking();
+      updateCursorRipples(now);
+      updateSources();
+
+      // movement energy decays, then feeds a heavily-smoothed "flow" so the
+      // field swells and settles gently instead of popping when you move
+      activity *= 0.94;
+      flow = lerp(flow, activity, 0.08);
+
+      // age ripples and pack only the live ones to the front so the shader
+      // loop can early-out at uRCount instead of scanning all RIPPLES slots
+      let rCount = 0;
+      for (let i = 0; i < RIPPLES; i++){
+        if (rStr[i] <= 0.001){ rStr[i] = 0; continue; }
+        rAge[i] += dt;
+        if (rAge[i] > MAX_AGE){ rStr[i] = 0; continue; }
+        const o = rCount * 4;
+        rData[o] = rX[i] * dpr; rData[o+1] = rY[i] * dpr; rData[o+2] = rAge[i]; rData[o+3] = rStr[i];
+        rCount++;
+      }
+
+      const t = (now - startTime) / 1000;
+      const cw = canvas.width, ch = canvas.height;
+      ambData[0] = cw * (0.22 + 0.10 * Math.sin(t * 0.070)); ambData[1] = ch * (0.30 + 0.10 * Math.cos(t * 0.090));
+      ambData[2] = cw * (0.80 + 0.10 * Math.cos(t * 0.060)); ambData[3] = ch * (0.24 + 0.10 * Math.sin(t * 0.080));
+      ambData[4] = cw * (0.66 + 0.10 * Math.sin(t * 0.050)); ambData[5] = ch * (0.82 + 0.10 * Math.cos(t * 0.075));
+      ambData[6] = cw * (0.16 + 0.10 * Math.cos(t * 0.085)); ambData[7] = ch * (0.80 + 0.10 * Math.sin(t * 0.065));
+
+      gl.useProgram(program);
+
+      // push the current webcam frame into the texture the shader refracts
+      if (video.readyState >= 2){
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video); } catch (_) {}
+      }
+
+      gl.uniform2f(U.uRes, cw, ch);
+      gl.uniform1f(U.uTime, t);
+      gl.uniform1f(U.uFlow, flow);
+      gl.uniform1i(U.uRCount, rCount);
+      if (rCount > 0) gl.uniform4fv(U.uR, rData.subarray(0, rCount * 4));
+      gl.uniform2fv(U.uSrcPos, srcData.subarray(0, 6));
+      gl.uniform1fv(U.uSrcAmp, srcAmpData.subarray(0, 3));
+      gl.uniform2fv(U.uAmbC, ambData);
+      gl.uniform1i(U.uTex, 0);
+      gl.uniform2f(U.uTexRes, video.videoWidth || 640, video.videoHeight || 480);
+      gl.uniform1i(U.uTextTex, 1);
+      gl.uniform4fv(U.uVideoRect, videoRect);
+      gl.uniform1f(U.uMirror, MIRROR_CAM ? 1 : 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+
+    // ---------- Boot ----------
+    async function openCamera(){
+      // Prefer the widest, highest-res stream the device exposes (no digital zoom).
+      const attempts = [
+        {
+          audio: false,
+          video: {
+            width:  { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 },
+            frameRate: { ideal: 30, max: 30 },
+            zoom: { ideal: 1, min: 1 },
+          },
+        },
+        {
+          audio: false,
+          video: {
+            width:  { ideal: 1920 },
+            height: { ideal: 1080 },
+            facingMode: { ideal: 'environment' },
+          },
+        },
+        {
+          audio: false,
+          video: {
+            width:  { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        },
+        { audio: false, video: true },
+      ];
+      let lastErr = null;
+      for (const constraints of attempts){
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          const track = stream.getVideoTracks()[0];
+          const caps = track.getCapabilities?.();
+          if (caps?.zoom){
+            const minZoom = caps.zoom.min ?? 1;
+            try { await track.applyConstraints({ advanced: [{ zoom: minZoom }] }); } catch (_) {}
+          }
+          if (caps?.focusMode?.includes?.('continuous')){
+            try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (_) {}
+          }
+          return stream;
+        } catch (e) { lastErr = e; }
+      }
+      throw lastErr || new Error('Could not open camera');
+    }
+
+    async function boot(){
+      statusEl.textContent = 'Requesting camera…';
+      try {
+        initGL(); resize();
+
+        // kick off loading the SVG artwork; it renders once decoded (onload)
+        msgImg.src = MSG_SRC;
+
+        const stream = await openCamera();
+        video.srcObject = stream;
+        await new Promise((res, rej) => { video.onloadedmetadata = res; video.onerror = rej; });
+        await video.play();
+        updateViewport();
+        console.log(`Camera: ${video.videoWidth}×${video.videoHeight} (cover-fit, gallery=${GALLERY})`);
+
+        statusEl.textContent = 'Loading face + hand models…';
+        const { FaceLandmarker, HandLandmarker, FilesetResolver } = await import(MP_BASE);
+        const vision = await FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
+        const faceOpts = {
+          baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate: 'GPU' },
+          runningMode: 'VIDEO',
+          numFaces: GALLERY ? 5 : 1,
+          minFaceDetectionConfidence: GALLERY ? 0.25 : 0.5,
+          minFacePresenceConfidence: GALLERY ? 0.25 : 0.5,
+          minTrackingConfidence: GALLERY ? 0.25 : 0.5,
+        };
+        const handOpts = { baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'GPU' }, runningMode: 'VIDEO', numHands: MAX_HANDS };
+        try {
+          faceLandmarker = await FaceLandmarker.createFromOptions(vision, faceOpts);
+          handLandmarker = await HandLandmarker.createFromOptions(vision, handOpts);
+        } catch (_) {
+          faceLandmarker = await FaceLandmarker.createFromOptions(vision, { ...faceOpts, baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate: 'CPU' } });
+          handLandmarker = await HandLandmarker.createFromOptions(vision, { ...handOpts, baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'CPU' } });
+        }
+
+        statusEl.textContent = 'Move gently — you make the ripples.';
+        startTime = performance.now(); lastFrame = startTime;
+        requestAnimationFrame(frame);
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Failed to start: ' + (err && err.message ? err.message : err);
+      }
+    }
+
+    canvas.addEventListener('pointermove', (e) => { setCursorPos(e.clientX, e.clientY); });
+    canvas.addEventListener('pointerdown', (e) => {
+      setCursorPos(e.clientX, e.clientY);
+      spawnRipple(cursorX, cursorY, GALLERY ? 0.55 : 0.7);
+      cursorSemLastX = cursorX; cursorSemLastY = cursorY; cursorSemInit = 1;
+      activity = Math.min(activity + 0.18, 1);
+    });
+    canvas.addEventListener('pointerleave', () => { cursorActive = false; cursorSemInit = 0; });
+
+    boot();
+    window.addEventListener('resize', () => { if (gl && program) resize(); });
+  </script>
+</body>
+</html>
