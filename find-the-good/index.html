@@ -13,15 +13,11 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #061008;
+      background: #000;
     }
 
     body {
-      background:
-        radial-gradient(ellipse at 50% 55%, rgba(40, 72, 48, 0.55) 0%, transparent 55%),
-        radial-gradient(ellipse at 30% 70%, rgba(18, 38, 24, 0.9) 0%, transparent 50%),
-        radial-gradient(ellipse at 70% 30%, rgba(22, 44, 28, 0.85) 0%, transparent 45%),
-        linear-gradient(165deg, #0a1410 0%, #061008 40%, #0c1812 100%);
+      background: radial-gradient(circle at center, #061f00 0%, #000 100%);
     }
 
     #video {
@@ -162,12 +158,12 @@
       cellH: 18,
       minWeight: 100,
       maxWeight: 900,
-      maxDisp: 230,
-      maxSpeed: 4.6,
-      maxAccel: 8.5,
+      maxDisp: 360,
+      maxSpeed: 6.8,
+      maxAccel: 13,
       springK: 0.038,
       springKRest: 0.05,
-      fieldK: 17,
+      fieldK: 24,
       fieldRadiusMul: 5.8,
       fieldRangeMul: 7.6,
       faceScaleBoost: 1.28,
@@ -177,8 +173,8 @@
       faceNoseRadius: 34,
       faceEyeRadius: 32,
       faceMouthRadius: 38,
-      insideBoost: 3.4,
-      faceEdgePush: 0.24,
+      insideBoost: 4.8,
+      faceEdgePush: 0.32,
       faceClearMargin: 70,
       fieldFeather: 1.55,
       faceFieldFeather: 2.5,
@@ -190,10 +186,10 @@
       handRadiusMul: 2.85,
       handRangeMul: 4.4,
       handScaleBoost: 1.22,
-      handFieldK: 26,
+      handFieldK: 38,
       handFieldSegMul: 1.38,
       handFieldLmMul: 1.48,
-      handEdgePush: 0.3,
+      handEdgePush: 0.38,
       handNormalBlend: 60,
       handClearMargin: 52,
       handInsideDepth: 20,
@@ -204,8 +200,8 @@
       handClearThreshold: 0.04,
       handStageMargin: 18,
       handMinOnStagePts: 6,
-      damping: 0.892,
-      dampingFace: 0.902,
+      damping: 0.878,
+      dampingFace: 0.888,
       forceSmooth: 0.58,
       forceDecay: 0.9,
       dampingRest: 0.985,
@@ -218,10 +214,10 @@
       settleDist: 0.35,
       settleSpeed: 0.08,
       settleNudge: 0.035,
-      curlStrength: 4.4,
+      curlStrength: 7.5,
       curlScale: 0.0082,
       curlTimeSpeed: 0.00036,
-      windK: 0.6,
+      windK: 0.95,
       windKY: 0.22,
       windScale: 0.0032,
       windTimeSpeed: 0.00042,
@@ -230,7 +226,7 @@
       curlOctaves: 2,
       curlLacunarity: 2.05,
       curlPersistence: 0.52,
-      curlMinDisp: 999,
+      curlMinDisp: 6,
       dampingDisp: 0.905,
       weightFollow: 0.22,
       imprintFollow: 0.48,
@@ -241,7 +237,7 @@
       handPalmSegRadius: 20,
       pointSmooth: 0.5,
       handDetectStride: 1,
-      rippleK: 0.32,
+      rippleK: 0.48,
       rippleDamp: 0.985,
       boundaryStabilizeZone: 45,
       boundaryStabilizeDamp: 0.75,
@@ -249,9 +245,14 @@
       // displaces the letters. Speed is measured in px/ms of the tracked
       // centroid between detections.
       velRef: 0.72,        // px/ms that counts as a "fast" move
-      velRatioMax: 2.1,    // clamp how far speed can push the boost
-      velExaggerate: 0.46, // slight exaggeration amount (boost up to ~1.97x)
-      velSmooth: 0.55      // speed smoothing (higher = snappier response)
+      velRatioMax: 2.8,    // clamp how far speed can push the boost
+      velExaggerate: 0.72, // slight exaggeration amount (boost up to ~1.97x)
+      velSmooth: 0.55,     // speed smoothing (higher = snappier response)
+      cursorFieldK: 34,
+      cursorRadius: 88,
+      cursorReach: 200,
+      cursorFadeIn: 0.42,
+      cursorFadeOut: 0.86
     };
 
     const INV_CELL_W = 1 / CFG.cellW;
@@ -331,6 +332,13 @@
     let faceLastMs = 0;
     let facePrevValid = false;
     let faceVelBoost = 1;
+    let cursorX = 0;
+    let cursorY = 0;
+    let cursorPresence = 0;
+    let cursorOnStage = false;
+    let cursorSpeed = 0;
+    let cursorLastMs = 0;
+    let cursorVelBoost = 1;
     let lastVideoTime = -1;
     let lastFrameTime = performance.now();
     let detectTimestamp = 0;
@@ -596,6 +604,55 @@
         }
       }
       if (dirty) masksDirty = true;
+    }
+
+    function updateCursor(dtMs) {
+      if (cursorOnStage) return;
+      if (cursorPresence <= 0) return;
+      const factor = Math.pow(CFG.cursorFadeOut, dtMs / 16.67);
+      cursorPresence *= factor;
+      if (cursorPresence < 0.04) {
+        cursorPresence = 0;
+        cursorSpeed = 0;
+        cursorVelBoost = 1;
+        cursorLastMs = 0;
+      }
+    }
+
+    function onPointerMove(e) {
+      const nowMs = performance.now();
+      const nx = e.clientX;
+      const ny = e.clientY;
+
+      if (cursorLastMs > 0 && cursorPresence > 0.04) {
+        const dt = Math.max(nowMs - cursorLastMs, 1);
+        const dcx = nx - cursorX;
+        const dcy = ny - cursorY;
+        const inst = Math.sqrt(dcx * dcx + dcy * dcy) / dt;
+        cursorSpeed += (inst - cursorSpeed) * CFG.velSmooth;
+      } else {
+        cursorSpeed = 0;
+      }
+
+      cursorX = nx;
+      cursorY = ny;
+      cursorLastMs = nowMs;
+      cursorOnStage = true;
+      cursorPresence = Math.min(1, cursorPresence + CFG.cursorFadeIn);
+      cursorVelBoost = velBoost(cursorSpeed);
+    }
+
+    function onPointerEnter(e) {
+      cursorOnStage = true;
+      onPointerMove(e);
+    }
+
+    function onPointerLeave() {
+      cursorOnStage = false;
+    }
+
+    function onPointerUp(e) {
+      if (e.pointerType !== 'mouse') onPointerLeave();
     }
 
     function pointInPolygon(x, y, polyX, polyY, n) {
@@ -1374,7 +1431,10 @@
           handB = handVelBoost[h];
         }
       }
-      const motionBoost = faceB > handB ? faceB : handB;
+      const cursorB = cursorPresence > 0.04 ? cursorVelBoost : 1;
+      const motionBoost = faceB > handB
+        ? (faceB > cursorB ? faceB : cursorB)
+        : (handB > cursorB ? handB : cursorB);
 
       const maxDisp = CFG.maxDisp * mouthMul * motionBoost;
       const invMaxDisp = 1 / maxDisp;
@@ -1449,7 +1509,15 @@
           }
         }
 
-        const beingPushed = pushedByFace || pushedByHand;
+        let pushedByCursor = false;
+        if (cursorPresence > 0.04) {
+          const dxc = posX - cursorX;
+          const dyc = posY - cursorY;
+          const reach = CFG.cursorReach;
+          if (dxc * dxc + dyc * dyc < reach * reach) pushedByCursor = true;
+        }
+
+        const beingPushed = pushedByFace || pushedByHand || pushedByCursor;
 
         const ddx = posX - homeX;
         const ddy = posY - homeY;
@@ -1516,6 +1584,15 @@
             }
           }
 
+          if (pushedByCursor) {
+            const field = magneticField(
+              posX, posY, cursorX, cursorY, CFG.cursorRadius, CFG.cursorFieldK, false,
+              { mul: cursorPresence * cursorVelBoost }
+            );
+            ax += field.fx;
+            ay += field.fy;
+          }
+
           const accelMag = Math.sqrt(ax * ax + ay * ay);
           if (accelMag > maxAccel) {
             const s = maxAccel / accelMag;
@@ -1561,6 +1638,13 @@
         const windBias = CFG.windLowerBias + (1 - CFG.windLowerBias) * (homeY * invStageH);
         ax += wind.fx * windK * windBias;
         ay += wind.fy * windKY * windBias;
+
+        if (beingPushed || dispNow > CFG.curlMinDisp) {
+          const curl = curlForceAt(posX, posY, i * 0.17);
+          const curlMul = beingPushed ? 1 : dispNow / maxDisp;
+          ax += curl.fx * CFG.curlStrength * curlMul;
+          ay += curl.fy * CFG.curlStrength * curlMul;
+        }
 
         vx[i] = (vx[i] + ax * dt) * damp;
         vy[i] = (vy[i] + ay * dt) * damp;
@@ -1667,6 +1751,7 @@
       lastFrameTime = now;
       runTracking();
       updateHandInfluence(dt);
+      updateCursor(dt);
       updateParticles(dt);
       draw();
     }
@@ -1676,6 +1761,12 @@
 
       await loadFont();
       resizeStage();
+
+      window.addEventListener('pointermove', onPointerMove, { passive: true });
+      window.addEventListener('pointerenter', onPointerEnter, { passive: true });
+      window.addEventListener('pointerleave', onPointerLeave);
+      window.addEventListener('pointerup', onPointerUp, { passive: true });
+      window.addEventListener('blur', onPointerLeave);
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -1737,6 +1828,11 @@
       handSpeed.fill(0);
       handLastMs.fill(0);
       handVelBoost.fill(1);
+      cursorPresence = 0;
+      cursorOnStage = false;
+      cursorSpeed = 0;
+      cursorLastMs = 0;
+      cursorVelBoost = 1;
       masksDirty = true;
     });
 
