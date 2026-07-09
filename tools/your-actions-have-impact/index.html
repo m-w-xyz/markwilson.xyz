@@ -6,7 +6,7 @@
 <title>Your Actions Have Impact</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #04050a;
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #B4B69E;
     color: #e8ecf5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   #video { position: fixed; left: -9999px; width: 640px; height: 480px; opacity: 0; pointer-events: none; }
   #canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
@@ -67,6 +67,7 @@
       uniform sampler2D uTextTex;      // white message overlay (screen-space)
       uniform vec4      uVideoRect;    // xy = offset, zw = scale (cover-fit)
       uniform float     uMirror;       // 1 = selfie mirror, 0 = gallery camera
+      uniform float     uUseCam;       // 1 = webcam bg, 0 = colour fallback
 
       const float REFRACT = 0.22;  // how strongly the ripple slope bends the image
       const float GLOW    = 1.15;  // coloured sheen picked up by ripple crests
@@ -114,25 +115,37 @@
         float gradMag = length(grad);
         grad *= 0.048 / max(gradMag, 0.048);
 
-        // cover-fit the webcam to fill the screen (crops overflow), optional mirror
-        vec2 uv = (fc / uRes - uVideoRect.xy) / uVideoRect.zw;
-        if (uMirror > 0.5) uv.x = 1.0 - uv.x;
-        vec2 uvR = uv + grad * REFRACT;
-        // adaptive 4-tap blur only where refraction is strong (cheap edge soften)
-        vec3 camC = texture2D(uTex, clamp(uvR, 0.001, 0.999)).rgb;
-        vec2 tPx = 0.85 / uTexRes;
-        vec3 camB = (
-          texture2D(uTex, clamp(uvR + vec2( tPx.x, 0.0), 0.001, 0.999)).rgb +
-          texture2D(uTex, clamp(uvR + vec2(-tPx.x, 0.0), 0.001, 0.999)).rgb +
-          texture2D(uTex, clamp(uvR + vec2(0.0,  tPx.y), 0.001, 0.999)).rgb +
-          texture2D(uTex, clamp(uvR + vec2(0.0, -tPx.y), 0.001, 0.999)).rgb
-        ) * 0.25;
-        float refr = clamp(length(grad * REFRACT) * 55.0, 0.0, 1.0);
-        vec3 cam = mix(camC, camB, refr * 0.72);
-
-        // movement gently swells vibrancy across the live feed
-        float vib = uFlow;
-        vec3 bg = cam * (1.0 + vib * BG_FLOW * 0.15);
+        float vib = uFlow * uFlow;   // slight movement barely lifts glow
+        vec3 bg;
+        if (uUseCam > 0.5) {
+          // cover-fit the webcam to fill the screen (crops overflow), optional mirror
+          vec2 uv = (fc / uRes - uVideoRect.xy) / uVideoRect.zw;
+          if (uMirror > 0.5) uv.x = 1.0 - uv.x;
+          vec2 uvR = uv + grad * REFRACT;
+          // adaptive 4-tap blur only where refraction is strong (cheap edge soften)
+          vec3 camC = texture2D(uTex, clamp(uvR, 0.001, 0.999)).rgb;
+          vec2 tPx = 0.85 / uTexRes;
+          vec3 camB = (
+            texture2D(uTex, clamp(uvR + vec2( tPx.x, 0.0), 0.001, 0.999)).rgb +
+            texture2D(uTex, clamp(uvR + vec2(-tPx.x, 0.0), 0.001, 0.999)).rgb +
+            texture2D(uTex, clamp(uvR + vec2(0.0,  tPx.y), 0.001, 0.999)).rgb +
+            texture2D(uTex, clamp(uvR + vec2(0.0, -tPx.y), 0.001, 0.999)).rgb
+          ) * 0.25;
+          float refr = clamp(length(grad * REFRACT) * 55.0, 0.0, 1.0);
+          vec3 cam = mix(camC, camB, refr * 0.72);
+          bg = cam * (1.0 + vib * BG_FLOW * 0.09);
+        } else {
+          // radial gradient (#D5D9CA centre -> #B4B69E edges), bent by the ripples
+          vec2 uv = fc / uRes;
+          uv += grad * REFRACT;
+          vec2 cc = uv - 0.5;
+          cc.x *= uRes.x / uRes.y;
+          float rad = length(cc);
+          float g = smoothstep(0.85, 0.0, rad);
+          vec3 bgCenter = vec3(0.83529, 0.85098, 0.79216);  // #D5D9CA
+          vec3 bgEdge   = vec3(0.70588, 0.71373, 0.61961);  // #B4B69E
+          bg = mix(bgEdge, bgCenter, g) * (1.0 + vib * BG_FLOW * 0.05);
+        }
 
         // ethereal colour shared by the ripples and the text glow
         vec3 glowCol = mix(vec3(0.47059, 0.83922, 1.0),
@@ -173,8 +186,8 @@
           wsum += w;
         }
         halo = clamp(halo / wsum, 0.0, 1.0);
-        float glowPulse = 1.0 + uFlow * 0.6;
-        outc += glowCol * halo * 0.4 * glowPulse;
+        float glowPulse = 1.0 + vib * 0.22;
+        outc += glowCol * halo * 0.34 * glowPulse;
 
         // letters stay white; blue glow rings the edges
         vec3 txtCol = vec3(1.0) * (BRIGHT + spec);
@@ -189,6 +202,8 @@
       return s;
     }
     let program, U = {}, tex = null, textTex = null;
+    let cameraActive = false;
+    let animStarted = false;
 
     // ---------- Message overlay (SVG artwork) ----------
     // The SVG is drawn to an offscreen 2D canvas, uploaded as a texture, and
@@ -280,7 +295,7 @@
       const loc = gl.getAttribLocation(program, 'aPos');
       gl.enableVertexAttribArray(loc);
       gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      for (const n of ['uRes','uTime','uFlow','uRCount','uR','uSrcPos','uSrcAmp','uAmbC','uTex','uTexRes','uTextTex','uVideoRect','uMirror']) U[n] = gl.getUniformLocation(program, n);
+      for (const n of ['uRes','uTime','uFlow','uRCount','uR','uSrcPos','uSrcAmp','uAmbC','uTex','uTexRes','uTextTex','uVideoRect','uMirror','uUseCam']) U[n] = gl.getUniformLocation(program, n);
 
       // webcam frame texture (non-power-of-two -> clamp + linear, no mips)
       tex = gl.createTexture();
@@ -291,6 +306,7 @@
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);   // match gl_FragCoord (origin bottom-left)
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([180, 182, 158, 255]));
 
       // message overlay texture (rendered on its own 2D canvas, unit 1)
       textTex = gl.createTexture();
@@ -502,7 +518,7 @@
       if (!seenL[1]){ trackActive[SRC.HAND_R] = 0; trackInit[SRC.HAND_R] = 0; }
     }
     function runTracking(){
-      if (video.readyState < 2) return;
+      if (!cameraActive || video.readyState < 2) return;
       const detNow = performance.now();
       if (detNow - lastDetectMs < DETECT_MIN_MS) return;
       if (video.currentTime === lastVideoTime) return;
@@ -580,7 +596,7 @@
       gl.useProgram(program);
 
       // push the current webcam frame into the texture the shader refracts
-      if (video.readyState >= 2){
+      if (cameraActive && video.readyState >= 2){
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
         try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video); } catch (_) {}
@@ -599,6 +615,7 @@
       gl.uniform1i(U.uTextTex, 1);
       gl.uniform4fv(U.uVideoRect, videoRect);
       gl.uniform1f(U.uMirror, MIRROR_CAM ? 1 : 0);
+      gl.uniform1f(U.uUseCam, cameraActive ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
 
@@ -651,44 +668,68 @@
       throw lastErr || new Error('Could not open camera');
     }
 
-    async function boot(){
-      statusEl.textContent = 'Requesting camera…';
+    function startAnimation(){
+      if (animStarted) return;
+      animStarted = true;
+      startTime = performance.now();
+      lastFrame = startTime;
+      requestAnimationFrame(frame);
+    }
+
+    async function loadTrackers(){
+      statusEl.textContent = 'Loading face + hand models…';
+      const { FaceLandmarker, HandLandmarker, FilesetResolver } = await import(MP_BASE);
+      const vision = await FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
+      const faceOpts = {
+        baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate: 'GPU' },
+        runningMode: 'VIDEO',
+        numFaces: GALLERY ? 5 : 1,
+        minFaceDetectionConfidence: GALLERY ? 0.25 : 0.5,
+        minFacePresenceConfidence: GALLERY ? 0.25 : 0.5,
+        minTrackingConfidence: GALLERY ? 0.25 : 0.5,
+      };
+      const handOpts = { baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'GPU' }, runningMode: 'VIDEO', numHands: MAX_HANDS };
       try {
-        initGL(); resize();
+        faceLandmarker = await FaceLandmarker.createFromOptions(vision, faceOpts);
+        handLandmarker = await HandLandmarker.createFromOptions(vision, handOpts);
+      } catch (_) {
+        faceLandmarker = await FaceLandmarker.createFromOptions(vision, { ...faceOpts, baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate: 'CPU' } });
+        handLandmarker = await HandLandmarker.createFromOptions(vision, { ...handOpts, baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'CPU' } });
+      }
+    }
+
+    async function tryStartCamera(){
+      const stream = await openCamera();
+      video.srcObject = stream;
+      await new Promise((res, rej) => { video.onloadedmetadata = res; video.onerror = rej; });
+      await video.play();
+      updateViewport();
+      cameraActive = true;
+      console.log(`Camera: ${video.videoWidth}×${video.videoHeight} (cover-fit, gallery=${GALLERY})`);
+      try { await loadTrackers(); } catch (e) { console.warn('Face/hand tracking unavailable', e); }
+      return true;
+    }
+
+    async function boot(){
+      if (!gl) return;
+      try {
+        initGL();
+        resize();
 
         // kick off loading the SVG artwork; it renders once decoded (onload)
         msgImg.src = MSG_SRC;
 
-        const stream = await openCamera();
-        video.srcObject = stream;
-        await new Promise((res, rej) => { video.onloadedmetadata = res; video.onerror = rej; });
-        await video.play();
-        updateViewport();
-        console.log(`Camera: ${video.videoWidth}×${video.videoHeight} (cover-fit, gallery=${GALLERY})`);
+        startAnimation();
 
-        statusEl.textContent = 'Loading face + hand models…';
-        const { FaceLandmarker, HandLandmarker, FilesetResolver } = await import(MP_BASE);
-        const vision = await FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
-        const faceOpts = {
-          baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate: 'GPU' },
-          runningMode: 'VIDEO',
-          numFaces: GALLERY ? 5 : 1,
-          minFaceDetectionConfidence: GALLERY ? 0.25 : 0.5,
-          minFacePresenceConfidence: GALLERY ? 0.25 : 0.5,
-          minTrackingConfidence: GALLERY ? 0.25 : 0.5,
-        };
-        const handOpts = { baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'GPU' }, runningMode: 'VIDEO', numHands: MAX_HANDS };
+        statusEl.textContent = 'Requesting camera…';
         try {
-          faceLandmarker = await FaceLandmarker.createFromOptions(vision, faceOpts);
-          handLandmarker = await HandLandmarker.createFromOptions(vision, handOpts);
-        } catch (_) {
-          faceLandmarker = await FaceLandmarker.createFromOptions(vision, { ...faceOpts, baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate: 'CPU' } });
-          handLandmarker = await HandLandmarker.createFromOptions(vision, { ...handOpts, baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'CPU' } });
+          await tryStartCamera();
+          statusEl.textContent = 'Move gently — you make the ripples.';
+        } catch (err) {
+          cameraActive = false;
+          console.warn('Camera unavailable — cursor-only mode.', err);
+          statusEl.textContent = '';
         }
-
-        statusEl.textContent = 'Move gently — you make the ripples.';
-        startTime = performance.now(); lastFrame = startTime;
-        requestAnimationFrame(frame);
       } catch (err) {
         console.error(err);
         statusEl.textContent = 'Failed to start: ' + (err && err.message ? err.message : err);
