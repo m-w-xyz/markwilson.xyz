@@ -23,7 +23,7 @@
     position: fixed; inset: 0; z-index: 1;
     display: flex; align-items: center; justify-content: center;
     color: #EDFFFF;
-    font-size: 200px;
+    font-size: 10vh;
     line-height: 1;
     letter-spacing: 0.01em;
     text-transform: uppercase;
@@ -175,31 +175,6 @@
       wordEl.textContent = WORDS[wordIndex];
     }
 
-    // ---------- Fit the widest word ("YOU'LL") to the canvas width ----------
-    const REF_WORD = "YOU'LL";
-    const WIDTH_FILL = 0.94;   // leave a small breathing margin at the edges
-    const BASE_PX = 200;       // measurement reference size
-    let fittedPx = BASE_PX;
-
-    function fitText(){
-      const meas = document.createElement('span');
-      meas.textContent = REF_WORD;
-      const cs = getComputedStyle(wordEl);
-      meas.style.cssText =
-        `position:fixed;left:-9999px;top:-9999px;visibility:hidden;white-space:nowrap;` +
-        `font-family:${cs.fontFamily};font-weight:${cs.fontWeight};` +
-        `letter-spacing:${cs.letterSpacing};text-transform:${cs.textTransform};` +
-        `font-size:${BASE_PX}px;line-height:1;`;
-      document.body.appendChild(meas);
-      const refW = meas.getBoundingClientRect().width;
-      meas.remove();
-      if (refW > 0){
-        const target = window.innerWidth * WIDTH_FILL;
-        fittedPx = Math.max(24, Math.floor(BASE_PX * target / refW));
-        wordEl.style.fontSize = fittedPx + 'px';
-      }
-    }
-
     // ---------- Blink detection via face blendshapes ----------
     const BLINK_ON  = 0.48;   // eyes considered closed above this
     const BLINK_OFF = 0.46;   // eyes considered open below this — tight band for instant hide
@@ -249,11 +224,8 @@
     async function boot(){
       try {
         wordEl.textContent = WORDS[0];
-        fitText();
         resizeCanvas();
-        if (document.fonts && document.fonts.ready){ document.fonts.ready.then(fitText); }
         window.addEventListener('resize', () => {
-          fitText();
           resizeCanvas();
           if (eyesClosed && gradientSpec) drawBlinkScene();
         });
