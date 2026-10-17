@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kinetic Type</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Special+Gothic:wght@400;700&display=swap"
+  rel="stylesheet"
+/>
+<style>
+  :root {
+    --font: "Special Gothic", sans-serif;
+    --wt: 700;
+    --bg: #ee340e;
+    --fg: #000;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+    cursor: default;
+  }
+
+  /* everything is painted on one canvas — no per-letter DOM, no reflow */
+  #c {
+    position: fixed;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* invisible overlay that holds a snapshot on right-click, so the browser's
+     own context menu offers "Copy Image" of the graphic. It's kept opacity:0
+     (never painted) so the frozen snapshot doesn't cover the live animation,
+     but it's still in layout so it receives the right-click and holds the
+     image for "Copy Image". */
+  #snap {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 1;
+    opacity: 0;
+    cursor: default;
+  }
+
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    color: #000;
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    padding: 8px 16px;
+    border-radius: 6px;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+    z-index: 10;
+  }
+  #toast.show { opacity: 0.92; }
+
+  #hint {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--font);
+    font-weight: var(--wt);
+    color: var(--fg);
+    font-size: 14px;
+    letter-spacing: normal;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    z-index: 2;
+  }
+</style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <img id="snap" alt="Kinetic typography" />
+  <div id="hint">Type something</div>
+
+  <script>
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const hintEl = document.getElementById("hint");
+
+    // --- movement ------------------------------------------------------
+    // Every leg picks the "sweep" behaviour: one smooth, heavily-eased move
+    // between two randomly-generated size fields, then a clear settle (hold) so
+    // the motion visibly decelerates and comes to rest before the next leg.
+    const HOLD_MIN  = 0.45, HOLD_MAX  = 1.1;
+    const FREQ_MIN = 0.35, FREQ_MAX = 1.7;
+    const SKEW_MIN = -1.2, SKEW_MAX = 1.2;
+    const GMIN = 0.12;                    // smallest share a track can squeeze to
+    const AMP_MIN = 1.1, AMP_MAX = 2.8;   // how extreme the size contrast gets
+
+    // --- vertical warp -------------------------------------------------
+    // Vertical movement is a disproportionate internal stretch: the glyph is
+    // sliced into bands remapped by D(v), so one end compresses while the other
+    // stretches, but the letter still spans the whole line (D(0)=0, D(1)=1).
+    // Many thin slices make the piecewise warp behave like a continuous
+    // vertical resample, so curved strokes stay smooth (few, thick slices
+    // leave visible notches where adjacent bands are scaled differently).
+    const WARP_SLICES = 64;
+    const WARP_A = 2.6;
+    const SEAM = 0.06;   // fractional band overlap that hides slice seams
+
+    // --- cursor lens ---------------------------------------------------
+    const SIGMA   = 0.28;
+    const CGAIN_H = 1.8;
+    const FOLLOW  = 0.045;
+
+    // --- layout --------------------------------------------------------
+    const SPACE_FRAC = 0.4;   // a word gap is this fraction of a letter's width
+    const MAX = 8;            // most letters kept on one line
+
+    // Small punctuation shouldn't be stretched to full line height (a giant
+    // period/comma reads as a block). These are drawn at a fraction of the line
+    // height, at their natural aspect, parked at the baseline (bottom), cap
+    // (top) or middle — and given a narrower cell so they hug their word.
+    const PUNCT = {
+      ".": { h: 0.33, v: "bottom" }, ",": { h: 0.42, v: "bottom" },
+      "'": { h: 0.33, v: "top" }, '"': { h: 0.33, v: "top" }, "`": { h: 0.33, v: "top" },
+      "\u2018": { h: 0.33, v: "top" }, "\u2019": { h: 0.33, v: "top" },
+      "\u201C": { h: 0.33, v: "top" }, "\u201D": { h: 0.33, v: "top" },
+      ":": { h: 0.66, v: "mid" }, ";": { h: 0.74, v: "mid" },
+      "-": { h: 0.12, v: "mid" }, "\u2013": { h: 0.12, v: "mid" }, "\u2014": { h: 0.12, v: "mid" },
+    };
+    // one consistent gutter (~25px): outer margin and line gap.
+    // Letter tracking is tighter (g0 * 0.6), matching Kinetic Type 07.
+    const gutter = () => clamp(2.2 * Math.min(innerWidth, innerHeight) / 100, 14, 30);
+
+    let text = "";
+    let lines = [];              // [[ {ch} | {isSpace:true}, ... ], ...]
+    let tgtX = 0.5, tgtY = 0.5;  // target cursor (0..1)
+    let curX = 0.5, curY = 0.5;  // eased cursor (0..1)
+    let dpr = 1;
+
+    // Click-with-text cycles unique looks (same four as Kinetic Type 07).
+    const BG_DEFAULT = "#EE340E";
+    const VIEW_MODES = [
+      { id: "blackOnOrange", ink: "#000", matte: BG_DEFAULT },
+      { id: "whiteOnOrange", ink: "#fff", matte: BG_DEFAULT },
+      { id: "whiteOnBlack",  ink: "#fff", matte: "#000000" },
+      { id: "blackOnWhite",  ink: "#000", matte: "#ffffff" },
+    ];
+    let viewMode = 0;
+    let inkColor = VIEW_MODES[0].ink;
+
+    function currentView() {
+      return VIEW_MODES[((viewMode % VIEW_MODES.length) + VIEW_MODES.length) % VIEW_MODES.length];
+    }
+
+    function applyViewMode() {
+      if (viewMode >= VIEW_MODES.length) viewMode = 0;
+      const mode = currentView();
+      if (inkColor !== mode.ink) {
+        inkColor = mode.ink;
+        glyphCache.clear();
+      }
+      document.body.style.background = mode.matte;
+      hintEl.style.color = mode.ink;
+    }
+
+    function cycleViewMode() {
+      viewMode = (viewMode + 1) % VIEW_MODES.length;
+      applyViewMode();
+    }
+
+    function resetViewMode() {
+      viewMode = 0;
+      applyViewMode();
+    }
+
+    const rnd   = (a, b) => a + Math.random() * (b - a);
+    const lerp  = (a, b, p) => a + (b - a) * p;
+    const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+    const bump  = (a, b) => Math.exp(-((a - b) * (a - b)) / (2 * SIGMA * SIGMA));
+
+    // heavy ease-in-out (quintic): slow start, dramatic middle, slow settle
+    const easeInOutQuint = t =>
+      t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
+
+    // cubic ease-in-out: soft (zero-velocity) start and settle, but a punchier
+    // mid-section than smootherstep — snappy without snapping. Used for the
+    // vertical height sweep so it eases in/out yet still has some drive.
+    const easeInOutCubic = t =>
+      t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+    // a "field" is a wave of sizes across the letters (H) or lines (V)
+    const shapeH = (p, c, r) => 0.5 + 0.5 * Math.sin(c * p.freq + r * p.skew + p.phase); // 0..1
+    const patH   = (p, c, r) => GMIN + p.amp * shapeH(p, c, r);
+
+    function genField(ampMul) {
+      const amp = rnd(AMP_MIN, AMP_MAX) * ampMul;
+      return { amp, freq: rnd(FREQ_MIN, FREQ_MAX), skew: rnd(SKEW_MIN, SKEW_MAX), phase: rnd(0, 6.28) };
+    }
+
+    // the single sweeping behaviour — longer, heavily-eased legs so the size
+    // change is gradual and never snaps
+    const SWEEP = { ease: easeInOutQuint, sg: 0.00, amp: 1.15, dur: [2.0, 3.2] };
+
+    const mv = {
+      fromH: genField(1), toH: genField(1),
+      start: -1e9, dur: 3, hold: 0.3, dirH: 1,
+    };
+
+    // The vertical stretch/compress rides its OWN slower clock (independent of
+    // the horizontal sizing), so the height is always a big, sweeping, heavily-
+    // eased move. Each leg swings between two fields with a guaranteed strong
+    // contrast so there's always a substantial stretch<->compress to watch.
+    const VWARP_DUR = [2.2, 3.6], VWARP_HOLD = [0.4, 1.0];
+    const vwv = { from: genField(1), to: genField(1), start: -1e9, dur: 4, hold: 0.8 };
+    function nextVWarp(t) {
+      vwv.from = vwv.to;
+      vwv.to = genField(SWEEP.amp);
+      vwv.start = t;
+      vwv.dur = rnd(VWARP_DUR[0], VWARP_DUR[1]);
+      vwv.hold = rnd(VWARP_HOLD[0], VWARP_HOLD[1]);
+    }
+
+    function nextMovement(t) {
+      mv.fromH = mv.toH;
+      mv.toH = genField(SWEEP.amp);
+      mv.dirH = Math.random() < 0.5 ? 1 : -1;
+      mv.start = t;
+      mv.dur = rnd(SWEEP.dur[0], SWEEP.dur[1]);
+      mv.hold = rnd(HOLD_MIN, HOLD_MAX);
+    }
+
+    // --- per-glyph letter-push repetitions -----------------------------
+    // Each glyph holds still, then at random intervals slides a whole step (a
+    // fresh identical copy of the letter pushes the current one along inside the
+    // cell — occasionally a double step). The returned value counts steps (in
+    // whole units), so an integer means "at rest". Each new push also picks an
+    // AXIS at random: "h" wipes in from a side, "v" wipes in from above/below
+    // (the step's sign decides which of the two edges). State lives on the cell
+    // so every glyph advances on its own clock.
+    const ROT_WAIT = [1.4, 6.5];   // idle time between pushes (s)
+    const ROT_DUR  = [2.0, 3.6];   // how long a single push takes (s) — slow & smooth
+    const ROT_SPIN_DUR = 3.2;      // one push, triggered on hover-enter
+    const VERT_AXIS_PROB = 0.4;    // share of pushes that come from above/below
+    const pickAxis = () => (Math.random() < VERT_AXIS_PROB ? "v" : "h");
+    function cellAngle(cell, t, hover) {
+      if (cell.rnext === undefined) {
+        cell.rq = cell.rq0 = 0; cell.rt0 = -1e9; cell.rdur = 1;
+        cell.rnext = t + rnd(0, ROT_WAIT[1]);        // stagger the first turn
+        cell.wasHover = false; cell.axis = "h";
+      }
+      // hover ENTER (edge-triggered) -> one push, bringing the next copy in.
+      // Start from the CURRENT position (even if an auto-push is mid-flight) so
+      // the hover never snaps, then ease a clean step onto the next copy.
+      if (hover && !cell.wasHover) {
+        const p0 = clamp((t - cell.rt0) / cell.rdur, 0, 1);
+        const cur = lerp(cell.rq0, cell.rq, easeInOutQuint(p0));
+        cell.rq0 = cur;
+        cell.rq = Math.round(cur) + 1;
+        cell.rt0 = t;
+        cell.rdur = ROT_SPIN_DUR;
+        cell.axis = pickAxis();
+        cell.rnext = t + cell.rdur + rnd(ROT_WAIT[0], ROT_WAIT[1]); // hold auto-turns off until it lands
+      }
+      cell.wasHover = hover;
+
+      if (t >= cell.rnext) {                          // start a new random push
+        cell.rq0 = cell.rq;
+        const step = Math.random() < 0.85 ? 1 : 2;    // usually a single copy
+        cell.rq += (Math.random() < 0.5 ? -1 : 1) * step;
+        cell.rt0 = t;
+        cell.rdur = rnd(ROT_DUR[0], ROT_DUR[1]);
+        cell.axis = pickAxis();
+        cell.rnext = t + cell.rdur + rnd(ROT_WAIT[0], ROT_WAIT[1]);
+      }
+      const p = clamp((t - cell.rt0) / cell.rdur, 0, 1);
+      return lerp(cell.rq0, cell.rq, easeInOutQuint(p)); // step count (whole = at rest)
+    }
+
+    // --- glyph bitmap cache -------------------------------------------
+    // Each character is rasterised ONCE (white on transparent, tight ink
+    // bounds), then blitted/stretched every frame. Canvas measureText's
+    // actualBoundingBox* gives the true ink box, so the letter (not its font
+    // box) fills its cell. Crucially the raster resolution is matched to the
+    // ACTUAL on-screen size (line height in device px, with headroom for the
+    // horizontal stretch and warp), so glyphs are never upscaled from a tiny
+    // bitmap — that's what caused the low-res/aliased look. Memory stays bounded
+    // because a tall line height only happens when there are few lines (hence
+    // few letters), and many letters force short lines (small bitmaps).
+    const REF_FONT = 100;                   // size used only for metric ratios
+    const SS = 1.35;                        // headroom for stretch/warp upscaling
+    const GLYPH_MIN = 96, GLYPH_MAX = 1800; // clamp source ink height (device px)
+    const glyphCache = new Map();
+    const inkCtx = document.createElement("canvas").getContext("2d");
+    let glyphPxH = 512;                     // current target ink height (device px)
+
+    // recompute the target raster height from the live layout; re-raster only
+    // when it changes meaningfully (resize, dpr change, or line-count change)
+    function refreshGlyphRes() {
+      const g0 = gutter();
+      const L = Math.max(lines.length, 1);
+      const lineH = (innerHeight - 2 * g0 - (L - 1) * g0) / L;
+      const target = clamp(Math.round(lineH * dpr * SS), GLYPH_MIN, GLYPH_MAX);
+      if (Math.abs(target - glyphPxH) / glyphPxH > 0.02) {
+        glyphPxH = target;
+        glyphCache.clear();
+      }
+    }
+
+    function getGlyph(ch) {
+      let g = glyphCache.get(ch);
+      if (g !== undefined) return g;
+      // pass 1: metrics at a reference size to get this glyph's ink ratio
+      inkCtx.font = `700 ${REF_FONT}px "Special Gothic", sans-serif`;
+      inkCtx.textBaseline = "alphabetic";
+      let m = inkCtx.measureText(ch);
+      const refH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+      if (!(refH > 0)) { glyphCache.set(ch, null); return null; }
+      // pass 2: raster at the size that makes ink height == glyphPxH
+      const fs = clamp(REF_FONT * glyphPxH / refH, 8, 6000);
+      const font = `700 ${fs}px "Special Gothic", sans-serif`;
+      inkCtx.font = font;
+      m = inkCtx.measureText(ch);
+      const left = m.actualBoundingBoxLeft, right = m.actualBoundingBoxRight;
+      const asc = m.actualBoundingBoxAscent, desc = m.actualBoundingBoxDescent;
+      const iw = Math.ceil(left + right), ih = Math.ceil(asc + desc);
+      if (!(iw > 0 && ih > 0)) { glyphCache.set(ch, null); return null; }
+      const pad = 2; // guard band so anti-aliased edges aren't clipped
+      const cv = document.createElement("canvas");
+      cv.width = iw + pad * 2; cv.height = ih + pad * 2;
+      const cx = cv.getContext("2d");
+      cx.font = font;
+      cx.textBaseline = "alphabetic";
+      cx.fillStyle = inkColor;
+      cx.fillText(ch, pad + left, pad + asc);
+      g = { cv, x0: pad, y0: pad, iw, ih };
+      glyphCache.set(ch, g);
+      return g;
+    }
+
+    // draw a glyph stretched to fill (X,Y,CW,CH), warped vertically by amount a.
+    // Warp remaps rows via D(v)=(e^{a v}-1)/(e^a-1): monotonic 0..1 (still fills
+    // the line) but denser at one end. Bands overlap slightly to hide seams.
+    function drawGlyph(g, X, Y, CW, CH, a) {
+      const { cv, x0, y0, iw, ih } = g;
+      if (Math.abs(a) < 0.02) { // no meaningful warp -> one fast blit
+        ctx.drawImage(cv, x0, y0, iw, ih, X, Y, CW, CH);
+        return;
+      }
+      const e = Math.exp(a) - 1;
+      const D = v => (Math.exp(a * v) - 1) / e;
+      const N = WARP_SLICES;
+      let d0 = 0;
+      for (let i = 0; i < N; i++) {
+        const d1 = D((i + 1) / N);
+        const destTop = Y + d0 * CH;
+        let destH = (d1 - d0) * CH;
+        let sY = y0 + (i / N) * ih;
+        let sH = ih / N;
+        if (i < N - 1 && destH > 0) {          // bleed downward to cover seam
+          const over = Math.max(destH * SEAM, 0.6);
+          const scale = destH / sH;            // keep source/dest ratio (no distortion)
+          destH += over; sH += over / scale;
+        }
+        ctx.drawImage(cv, x0, sY, iw, sH, X, destTop, CW, Math.max(destH, 0.01));
+        d0 = d1;
+      }
+    }
+
+    // draw the glyph as a WIPE between two IDENTICAL copies: a fresh copy grows
+    // from 0% -> 100% out of one edge (so it looks like the letter is appearing
+    // from that edge of the cell), while the current copy shrinks 100% -> 0%
+    // into the OPPOSITE edge — as if the new one pushes the old one out. `axis`
+    // "h" wipes across width (from a side); "v" wipes across height (from above
+    // or below). The two copies always meet at a moving seam and together fill
+    // the cell, so nothing overlaps the neighbouring letters. At a whole `q`
+    // (the resting state) it's a single full copy, so we skip the clip/second
+    // blit for a crisp still.
+    function drawStrip(g, X, Y, CW, CH, warpA, q, axis) {
+      const frac = q - Math.floor(q);
+      if (frac < 1e-4 || CW <= 0 || CH <= 0) { drawGlyph(g, X, Y, CW, CH, warpA); return; }
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(X, Y, CW, CH);
+      ctx.clip();
+      if (axis === "v") {
+        const mid = Y + (1 - frac) * CH;   // seam: outgoing above, incoming below
+        const outH = mid - Y;              // outgoing copy, shrinking toward the top edge
+        const inH  = Y + CH - mid;         // incoming copy, growing from the bottom edge
+        if (outH > 0.5) drawGlyph(g, X, Y, CW, outH, warpA);
+        if (inH  > 0.5) drawGlyph(g, X, mid, CW, inH, warpA);
+      } else {
+        const mid = X + (1 - frac) * CW;   // seam: outgoing on its left, incoming on its right
+        const outW = mid - X;              // outgoing copy, shrinking toward the left edge
+        const inW  = X + CW - mid;         // incoming copy, growing from the right edge
+        if (outW > 0.5) drawGlyph(g, X, Y, outW, CH, warpA);
+        if (inW  > 0.5) drawGlyph(g, mid, Y, inW, CH, warpA);
+      }
+      ctx.restore();
+    }
+
+    // --- build lines from text ----------------------------------------
+    function build() {
+      hintEl.style.opacity = text.length ? "0" : "1";
+      if (!text.length) resetViewMode();
+      lines = [];
+      // Enter forces a break; otherwise words flow and pack up to MAX letters
+      // per line, wrapping between words (an over-long word is hard-broken).
+      text.toUpperCase().split("\n").forEach((segment) => {
+        const words = segment.split(/ +/).filter(Boolean);
+        if (words.length === 0) { lines.push([]); return; } // blank line
+        let cur = [], count = 0;
+        const flush = () => { lines.push(toCells(cur)); cur = []; count = 0; };
+        for (let w of words) {
+          while (w.length > MAX) {
+            if (cur.length) flush();
+            lines.push(toCells([w.slice(0, MAX)]));
+            w = w.slice(MAX);
+          }
+          if (!w) continue;
+          if (count > 0 && count + w.length > MAX) flush();
+          cur.push(w); count += w.length;
+        }
+        if (cur.length) flush();
+      });
+      refreshGlyphRes(); // line count changed -> line height (raster size) may change
+    }
+
+    function toCells(wordsInLine) {
+      const cells = [];
+      wordsInLine.forEach((word, wi) => {
+        if (wi > 0) cells.push({ isSpace: true });
+        for (const ch of word) cells.push({ ch });
+      });
+      return cells;
+    }
+
+    // --- render loop ---------------------------------------------------
+    function tick(now) {
+      const t = now / 1000;
+      curX += (tgtX - curX) * FOLLOW;
+      curY += (tgtY - curY) * FOLLOW;
+
+      if (t - mv.start > mv.dur + mv.hold) nextMovement(t);
+      const ease = SWEEP.ease, sg = SWEEP.sg, inv = 1 / (1 - sg);
+      const raw = Math.min((t - mv.start) / mv.dur, 1); // 1 while holding
+
+      // vertical stretch: own slow clock, smootherstep so it eases in/out hard
+      // and never snaps through the middle of a big height sweep
+      if (t - vwv.start > vwv.dur + vwv.hold) nextVWarp(t);
+      const eV = easeInOutCubic(Math.min((t - vwv.start) / vwv.dur, 1));
+
+      const vw = innerWidth, vh = innerHeight;
+      const pxX = tgtX * vw, pxY = tgtY * vh; // raw pointer, in CSS px, for hover
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = currentView().matte;
+      ctx.fillRect(0, 0, vw, vh);
+
+      const L = lines.length;
+      if (L > 0) {
+        const g0 = gutter();
+        const track = g0 * 0.6;   // inter-letter gap: tighter than the margin/line gutter
+        const contentW = vw - 2 * g0;
+        const contentH = vh - 2 * g0;
+        const lineH = (contentH - (L - 1) * g0) / L;
+
+        for (let r = 0; r < L; r++) {
+          const cells = lines[r];
+          const K = cells.length;
+          if (K === 0) continue;                 // blank line
+          const ry = (r + 0.5) / L;
+          const vb = bump(ry, curY);
+          const Y = g0 + r * (lineH + g0);
+
+          // per-cell horizontal weights (the flex coupling: each cell's width is
+          // its share of the row, so they squish/pull). Punctuation participates
+          // exactly like a letter — only its DRAW height differs.
+          const availW = contentW - (K - 1) * track;
+          const wts = new Array(K), eH = new Array(K);
+          let sumW = 0;
+          for (let c = 0; c < K; c++) {
+            const cx = (c + 0.5) / K;
+            const d2 = (cx - curX) * (cx - curX) + (ry - curY) * (ry - curY);
+            const hb = Math.exp(-d2 / (2 * SIGMA * SIGMA));
+            const oH = K > 1 ? (mv.dirH > 0 ? c / (K - 1) : 1 - c / (K - 1)) : 0;
+            eH[c] = ease(clamp((raw - sg * oH) * inv, 0, 1));
+            const wh = lerp(patH(mv.fromH, c, r), patH(mv.toH, c, r), eH[c]);
+            const gw = cells[c].isSpace ? SPACE_FRAC : 1;
+            const wt = (Math.max(wh, 0.02) + CGAIN_H * hb) * gw;
+            wts[c] = wt; sumW += wt;
+          }
+
+          let X = g0;
+          for (let c = 0; c < K; c++) {
+            let CW, cellX = X;
+            if (K === 1) {
+              // a lone glyph can't be sized by coupling, so vary its own width
+              const sh = lerp(shapeH(mv.fromH, c, r), shapeH(mv.toH, c, r), eH[c]);
+              const amp = lerp(mv.fromH.amp, mv.toH.amp, eH[c]);
+              const frac = clamp(0.45 + (sh - 0.5) * amp * 0.5, 0.3, 1.0);
+              CW = contentW * frac;
+              cellX = g0 + (contentW - CW) / 2;
+            } else {
+              CW = availW * wts[c] / sumW;
+            }
+
+            if (!cells[c].isSpace) {
+              const ch = cells[c].ch;
+              const g = getGlyph(ch);
+              if (g) {
+                // slide identical copies of the letter through the cell; each
+                // step pushes a fresh copy in and the current one out, clipped
+                // to the cell so it never overlaps its neighbours. Size sweep +
+                // vertical warp still apply to every copy. Hovering the cell
+                // drives one push; otherwise it auto-advances.
+                const hover = pxX >= cellX && pxX <= cellX + CW && pxY >= Y && pxY <= Y + lineH;
+                const q = cellAngle(cells[c], t, hover);
+                const pn = PUNCT[ch];
+                if (pn) {
+                  // punctuation fills its cell width (so it stretches/couples
+                  // just like a letter), parked at baseline/cap/middle with no
+                  // internal warp. Its height eases with the SAME vertical field
+                  // + curve as the letters — a gentle breathe around its reduced
+                  // base height — so it never shifts abruptly among them.
+                  const wphP = lerp(shapeH(vwv.from, c, r), shapeH(vwv.to, c, r), eV);
+                  const hfrac = clamp(pn.h * (1 + (wphP - 0.5) * 0.45 * (1 + vb * 0.6)), pn.h * 0.7, pn.h * 1.45);
+                  const gh = lineH * hfrac;
+                  const gy = pn.v === "top" ? Y
+                           : pn.v === "bottom" ? Y + lineH - gh
+                           : Y + (lineH - gh) / 2;
+                  drawStrip(g, cellX, gy, CW, gh, 0, q, cells[c].axis);
+                } else {
+                  const wph = lerp(shapeH(vwv.from, c, r), shapeH(vwv.to, c, r), eV);
+                  const vamp = lerp(vwv.from.amp, vwv.to.amp, eV);
+                  const a = clamp((wph - 0.5) * WARP_A * vamp * (1 + vb * 0.9), -3.4, 3.4);
+                  drawStrip(g, cellX, Y, CW, lineH, a, q, cells[c].axis);
+                }
+              }
+            }
+            X += CW + track;
+          }
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+
+    // --- input ---------------------------------------------------------
+    window.addEventListener("pointermove", (e) => {
+      tgtX = e.clientX / innerWidth;
+      tgtY = e.clientY / innerHeight;
+      // resume the live view when the mouse moves after the menu has been shown
+      if (armed && performance.now() - armAt > 300) clearSnapshot();
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "Backspace") { text = text.slice(0, -1); e.preventDefault(); build(); }
+      else if (e.key === "Escape") { text = ""; build(); }
+      else if (e.key === "Enter") { text += "\n"; e.preventDefault(); build(); }
+      else if (e.key === " ") { text += " "; e.preventDefault(); build(); }
+      else if (e.key.length === 1) { text += e.key; e.preventDefault(); build(); }
+    });
+
+    // left-click with text showing → cycle colour ways (same order as 07)
+    window.addEventListener("click", (e) => {
+      if (e.button !== 0) return;
+      if (text.length) cycleViewMode();
+    });
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2); // cap for fill-rate/perf
+      canvas.width = Math.round(innerWidth * dpr);
+      canvas.height = Math.round(innerHeight * dpr);
+      canvas.style.width = innerWidth + "px";
+      canvas.style.height = innerHeight + "px";
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      refreshGlyphRes(); // viewport/dpr changed -> re-match raster resolution
+    }
+    window.addEventListener("resize", resize);
+
+    // --- right-click: use the browser's own menu ("Copy Image") -------
+    // The native context menu only offers "Copy Image" over a real <img>, not
+    // a <canvas>. So a transparent full-screen <img> sits on top and, the
+    // instant the right button goes down, we snapshot the live canvas into it.
+    // The standard menu then appears over a real image whose "Copy Image"
+    // copies a transparent-background, full-resolution PNG. We restore the
+    // blank overlay on the next interaction so the animation resumes.
+    const snap = document.getElementById("snap");
+    // a guaranteed fully-transparent 1x1 PNG (an empty canvas), so the resting
+    // overlay never tints or covers the animation
+    const BLANK = (() => { const c = document.createElement("canvas"); c.width = c.height = 1; return c.toDataURL("image/png"); })();
+    let armed = false, armAt = 0;
+    snap.src = BLANK;
+
+    function armSnapshot() {
+      try { snap.src = canvas.toDataURL("image/png"); armed = true; armAt = performance.now(); } catch (_) {}
+    }
+    function clearSnapshot() { if (armed) { snap.src = BLANK; armed = false; } }
+
+    // freeze the current frame before the menu opens (mousedown fires first;
+    // contextmenu is a backup for platforms that skip the right-button down)
+    window.addEventListener("mousedown", (e) => { if (e.button === 2) armSnapshot(); });
+    window.addEventListener("contextmenu", () => { if (!armed) armSnapshot(); });
+
+    // resume the live view once the menu is dismissed / used
+    window.addEventListener("focus", clearSnapshot);
+    window.addEventListener("keydown", clearSnapshot);
+    window.addEventListener("wheel", clearSnapshot, { passive: true });
+    window.addEventListener("mousedown", (e) => { if (e.button !== 2) clearSnapshot(); });
+
+    // rebuild the glyph cache once the real webfont metrics are ready (the
+    // first raster may have used a fallback font)
+    document.fonts.load('700 100px "Special Gothic"').then(() => glyphCache.clear()).catch(() => {});
+    document.fonts.ready.then(() => glyphCache.clear());
+
+    applyViewMode();
+    resize();
+    build();
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
