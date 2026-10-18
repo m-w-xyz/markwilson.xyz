@@ -79,6 +79,8 @@
     }
 
     #text .line {
+      position: relative;
+      z-index: 0;
       display: block;
       margin: 0;
       padding: 0;
@@ -88,6 +90,21 @@
       overflow-wrap: normal;
       hyphens: none;
       -webkit-hyphens: none;
+    }
+
+    #text .ring {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      margin: 0;
+      padding: 0;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      pointer-events: none;
+      white-space: pre;
+      text-align: inherit;
+      font: inherit;
+      line-height: inherit;
     }
 
     #editor {
@@ -101,12 +118,19 @@
       border: 0;
       resize: none;
       outline: none;
-      opacity: 0;
       color: transparent;
+      -webkit-text-fill-color: transparent;
       background: transparent;
       caret-color: transparent;
       z-index: 2;
+      overflow: hidden;
       font-size: 16px;
+      touch-action: manipulation;
+    }
+
+    #editor::selection {
+      background: transparent;
+      color: transparent;
     }
 
     #caret {
@@ -173,7 +197,11 @@
     const DEAD = 8;
     const PITCH = 46;
     const MAX_SLANT = 28;
+    const STROKE_COUNT = 4;
+    const STROKE_STEP = 0.055;
     let mode = 0;
+    let tiltAmount = 0;
+    let strokeLevel = 0;
     let useAreal = false;
     let targetExpo = 0;
     let currentExpo = 0;
@@ -402,12 +430,13 @@
       const inkUnits = Math.max(1, bounds.above + bounds.below);
       const arealPad = useAreal ? arealInk(sample, expo) : null;
       const pads = (mid) => {
+        const reach = mode % 3 === 2 ? mid * STROKE_STEP * STROKE_COUNT : 0;
         if (arealPad) {
           const em = mid / AREAL_UPEM;
-          return [arealPad.bleedL * em, arealPad.bleedR * em];
+          return [arealPad.bleedL * em + reach, arealPad.bleedR * em + reach];
         }
         const em = mid / UPEM;
-        return [Math.max(0, bounds.bleedL) * em, Math.max(0, bounds.bleedR) * em];
+        return [Math.max(0, bounds.bleedL) * em + reach, Math.max(0, bounds.bleedR) * em + reach];
       };
       box.style.fontFamily = useAreal ? '"ABC Areal", sans-serif' : "Exposure, sans-serif";
       box.style.fontVariationSettings = variationFor(expo, arealWeight(expo));
@@ -425,7 +454,8 @@
         box.style.paddingLeft = pad[0] + "px";
         box.style.paddingRight = pad[1] + "px";
         wrapped = wrapWords(box, sample);
-        const inkH = Math.max(1, wrapped.lines.length) * mid * ratio;
+        const reach = mode % 3 === 2 ? mid * STROKE_STEP * STROKE_COUNT : 0;
+        const inkH = Math.max(1, wrapped.lines.length) * mid * ratio + reach * 2;
         if (inkH <= viewH && !wrapped.overflowing) {
           size = mid;
           low = mid;
@@ -450,6 +480,15 @@
       };
     }
 
+    function fillNode(el) {
+      return [...el.childNodes].find((node) => node.nodeType === Node.TEXT_NODE) || null;
+    }
+
+    function fillText(el) {
+      const node = fillNode(el);
+      return node ? node.textContent.replace(/\u200b/g, "") : "";
+    }
+
     function renderLines(lines, placeholder) {
       const next = lines.map((line) => ({
         text: line.text,
@@ -462,7 +501,8 @@
         && existing.length === next.length
         && next.every((line, index) => {
           const el = existing[index];
-          return el.textContent.replace(/\u200b/g, "") === line.text
+          return fillText(el) === line.text
+            && el.querySelectorAll(".ring").length === STROKE_COUNT
             && Number(el.dataset.start) === line.start
             && Number(el.dataset.end) === line.end
             && (el.dataset.hard === "1") === line.hard;
@@ -476,7 +516,16 @@
         el.dataset.hard = line.hard ? "1" : "0";
         el.dataset.start = String(line.start);
         el.dataset.end = String(line.end);
-        el.textContent = line.text.length ? line.text : "\u200b";
+        const shown = line.text.length ? line.text : "\u200b";
+        el.appendChild(document.createTextNode(shown));
+        for (let i = STROKE_COUNT - 1; i >= 0; i--) {
+          const ring = document.createElement("span");
+          ring.className = "ring";
+          ring.dataset.i = String(i);
+          ring.setAttribute("aria-hidden", "true");
+          ring.textContent = shown;
+          el.appendChild(ring);
+        }
         text.appendChild(el);
       });
     }
@@ -499,8 +548,27 @@
       return { line: last, local: Math.max(0, Number(last.dataset.end) - Number(last.dataset.start)) };
     }
 
+    let screenTall = 0;
+    let keyboardSeen = false;
+
+    function keyboardInset() {
+      const viewport = window.visualViewport;
+      if (!viewport) return 0;
+      const tall = Math.max(window.innerHeight, viewport.height + viewport.offsetTop);
+      if (tall > screenTall) screenTall = tall;
+      return Math.max(0, screenTall - viewport.height - viewport.offsetTop);
+    }
+
+    function showCaret() {
+      if (document.activeElement !== editor) return false;
+      if (!window.matchMedia("(pointer: coarse)").matches) return true;
+      const open = keyboardInset() > 140;
+      if (open) keyboardSeen = true;
+      return open;
+    }
+
     function placeCaret() {
-      if (document.activeElement !== editor) {
+      if (!showCaret()) {
         caret.hidden = true;
         return;
       }
@@ -509,7 +577,7 @@
         caret.hidden = true;
         return;
       }
-      const node = spot.line.firstChild;
+      const node = fillNode(spot.line);
       if (!node) {
         caret.hidden = true;
         return;
@@ -533,8 +601,31 @@
       caret.style.height = height + "px";
       caret.style.left = rect.left + "px";
       caret.style.top = (rect.top + (lineRect.height - height) / 2) + "px";
-      editor.style.left = rect.left + "px";
-      editor.style.top = rect.top + "px";
+    }
+
+    function typeRect() {
+      const rect = text.getBoundingClientRect();
+      const slop = 28;
+      const left = Math.max(0, rect.left - slop);
+      const top = Math.max(0, rect.top - slop);
+      const right = Math.min(window.innerWidth, rect.right + slop);
+      const bottom = Math.min(window.innerHeight, rect.bottom + slop);
+      return {
+        left: left,
+        top: top,
+        right: right,
+        bottom: bottom,
+        width: Math.max(64, right - left),
+        height: Math.max(64, bottom - top),
+      };
+    }
+
+    function placeEditor() {
+      const box = typeRect();
+      editor.style.left = box.left + "px";
+      editor.style.top = box.top + "px";
+      editor.style.width = box.width + "px";
+      editor.style.height = box.height + "px";
     }
 
     function placeCaretFromPoint(x, y) {
@@ -554,7 +645,7 @@
           chosen = el;
         }
       });
-      const node = chosen.firstChild;
+      const node = fillNode(chosen);
       const start = Number(chosen.dataset.start);
       if (!node || node.textContent === "\u200b") {
         editor.selectionStart = editor.selectionEnd = start;
@@ -579,8 +670,8 @@
     }
 
     function overText(x, y) {
-      const rect = text.getBoundingClientRect();
-      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+      const box = typeRect();
+      return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
     }
 
     function fit() {
@@ -596,6 +687,7 @@
       const key = [
         sample,
         useAreal ? "areal" : "exposure",
+        String(mode % 3),
         Math.round(currentExpo),
         Math.round(currentSlant),
         Math.round(viewW),
@@ -694,7 +786,8 @@
       const xColor = clamp(rollTravel / 36, -1, 1);
       const yColor = clamp(travel / 36, -1, 1);
       const amount = Math.min(1, Math.hypot(xColor, yColor));
-      targetSat = mode % 2 === 1 ? smoothstep(amount) : 0;
+      tiltAmount = amount;
+      targetSat = mode % 3 === 1 ? smoothstep(amount) : 0;
       if (amount > 0.001) {
         targetHue = mixHue([
           { w: Math.max(0, -yColor), hue: 25 },
@@ -713,12 +806,36 @@
       currentHue = approachAngle(currentHue, targetHue, 0.08);
       currentSat += (targetSat - currentSat) * 0.08;
       if (Math.abs(targetSat - currentSat) < 0.004) currentSat = targetSat;
+      const strokeGoal = mode % 3 === 2 ? tiltAmount * STROKE_COUNT : 0;
+      strokeLevel += (strokeGoal - strokeLevel) * 0.09;
+      if (Math.abs(strokeGoal - strokeLevel) < 0.012) strokeLevel = strokeGoal;
       applyFace();
+      paintStrokes();
       root.style.setProperty("--hue", currentHue.toFixed(2));
       root.style.setProperty("--sat", currentSat.toFixed(4));
       if (fontReady) fit();
+      placeEditor();
       placeCaret();
       requestAnimationFrame(tick);
+    }
+
+    function strokeColor(index) {
+      return "hsl(" + (currentHue + index * 36).toFixed(2) + ", 100%, 62%)";
+    }
+
+    function paintStrokes() {
+      const size = parseFloat(text.style.fontSize) || 16;
+      const step = size * STROKE_STEP;
+      text.querySelectorAll(".ring").forEach((ring) => {
+        const index = Number(ring.dataset.i);
+        const grow = clamp(strokeLevel - index, 0, 1);
+        const reach = step * Math.min(index + grow, strokeLevel);
+        if (reach < 0.35) {
+          ring.style.webkitTextStroke = "0px transparent";
+          return;
+        }
+        ring.style.webkitTextStroke = (reach * 2).toFixed(2) + "px " + strokeColor(index);
+      });
     }
 
     function listen() {
@@ -762,12 +879,31 @@
     }
 
     editor.addEventListener("input", readEditor);
+    editor.addEventListener("blur", () => {
+      keyboardSeen = false;
+      caret.hidden = true;
+    });
+
+    function syncKeyboard() {
+      const typing = document.activeElement === editor;
+      if (typing && keyboardSeen && keyboardInset() <= 140 && window.matchMedia("(pointer: coarse)").matches) {
+        keyboardSeen = false;
+        caret.hidden = true;
+        editor.blur();
+        return;
+      }
+      placeCaret();
+    }
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", syncKeyboard);
+      window.visualViewport.addEventListener("scroll", syncKeyboard);
+    }
+    window.addEventListener("orientationchange", () => {
+      if (keyboardInset() <= 140) screenTall = 0;
+    });
 
     let tapStart = null;
-
-    editor.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-    }, { passive: false });
 
     document.addEventListener("pointerdown", (event) => {
       if (event.target === enable) return;
@@ -796,10 +932,10 @@
         placeCaret();
         return;
       }
-      mode = (mode + 1) % 4;
-      useAreal = mode >= 2;
+      mode = (mode + 1) % 6;
+      useAreal = mode >= 3;
       if (lastOrientation) onOrientation(lastOrientation);
-      else if (mode % 2 === 0) targetSat = 0;
+      else if (mode % 3 !== 1) targetSat = 0;
       fittedKey = "";
       applyFace();
       fit();
