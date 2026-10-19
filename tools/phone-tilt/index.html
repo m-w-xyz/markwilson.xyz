@@ -199,6 +199,15 @@
     const MAX_SLANT = 28;
     const STROKE_COUNT = 4;
     const STROKE_STEP = 0.055;
+    const MODES = [
+      { areal: false, look: "bw" },
+      { areal: false, look: "colour" },
+      { areal: false, look: "strokes" },
+      { areal: true, look: "bw", against: false },
+      { areal: true, look: "bw", against: true },
+      { areal: true, look: "colour" },
+      { areal: true, look: "strokes" },
+    ];
     let mode = 0;
     let tiltAmount = 0;
     let strokeLevel = 0;
@@ -269,9 +278,13 @@
       };
     }
 
+    function currentMode() {
+      return MODES[mode] || MODES[0];
+    }
+
     function arealSlant() {
       const amount = clamp(currentSlant / MAX_SLANT, -1, 1) * 12;
-      return mode >= 6 ? amount : -amount;
+      return currentMode().against ? amount : -amount;
     }
 
     function arealInk(sample, expo) {
@@ -435,7 +448,7 @@
       const inkUnits = Math.max(1, bounds.above + bounds.below);
       const arealPad = useAreal ? arealInk(sample, expo) : null;
       const pads = (mid) => {
-        const reach = mode % 3 === 2 ? mid * STROKE_STEP * STROKE_COUNT : 0;
+        const reach = currentMode().look === "strokes" ? mid * STROKE_STEP * STROKE_COUNT : 0;
         if (arealPad) {
           const em = mid / AREAL_UPEM;
           return [arealPad.bleedL * em + reach, arealPad.bleedR * em + reach];
@@ -459,7 +472,7 @@
         box.style.paddingLeft = pad[0] + "px";
         box.style.paddingRight = pad[1] + "px";
         wrapped = wrapWords(box, sample);
-        const reach = mode % 3 === 2 ? mid * STROKE_STEP * STROKE_COUNT : 0;
+        const reach = currentMode().look === "strokes" ? mid * STROKE_STEP * STROKE_COUNT : 0;
         const inkH = Math.max(1, wrapped.lines.length) * mid * ratio + reach * 2;
         if (inkH <= viewH && !wrapped.overflowing) {
           size = mid;
@@ -692,8 +705,8 @@
       const key = [
         sample,
         useAreal ? "areal" : "exposure",
-        String(mode % 3),
-        mode >= 6 ? "against" : "with",
+        currentMode().look,
+        currentMode().against ? "against" : "with",
         Math.round(currentExpo),
         Math.round(currentSlant),
         Math.round(viewW),
@@ -793,7 +806,7 @@
       const yColor = clamp(travel / 36, -1, 1);
       const amount = Math.min(1, Math.hypot(xColor, yColor));
       tiltAmount = amount;
-      targetSat = mode % 3 === 1 ? smoothstep(amount) : 0;
+      targetSat = currentMode().look === "colour" ? smoothstep(amount) : 0;
       if (amount > 0.001) {
         targetHue = mixHue([
           { w: Math.max(0, -yColor), hue: 25 },
@@ -812,7 +825,7 @@
       currentHue = approachAngle(currentHue, targetHue, 0.08);
       currentSat += (targetSat - currentSat) * 0.08;
       if (Math.abs(targetSat - currentSat) < 0.004) currentSat = targetSat;
-      const strokeGoal = mode % 3 === 2 ? tiltAmount * STROKE_COUNT : 0;
+      const strokeGoal = currentMode().look === "strokes" ? tiltAmount * STROKE_COUNT : 0;
       strokeLevel += (strokeGoal - strokeLevel) * 0.09;
       if (Math.abs(strokeGoal - strokeLevel) < 0.012) strokeLevel = strokeGoal;
       applyFace();
@@ -938,10 +951,10 @@
         placeCaret();
         return;
       }
-      mode = (mode + 1) % 9;
-      useAreal = mode >= 3;
+      mode = (mode + 1) % MODES.length;
+      useAreal = currentMode().areal;
       if (lastOrientation) onOrientation(lastOrientation);
-      else if (mode % 3 !== 1) targetSat = 0;
+      else if (currentMode().look !== "colour") targetSat = 0;
       fittedKey = "";
       applyFace();
       fit();
