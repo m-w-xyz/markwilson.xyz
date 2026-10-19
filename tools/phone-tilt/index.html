@@ -269,10 +269,15 @@
       };
     }
 
+    function arealSlant() {
+      const amount = clamp(currentSlant / MAX_SLANT, -1, 1) * 12;
+      return mode >= 6 ? amount : -amount;
+    }
+
     function arealInk(sample, expo) {
       const weightT = clamp((arealWeight(expo) - 400) / 300, 0, 1);
-      const slantT = clamp(currentSlant / MAX_SLANT, -1, 1);
-      const toward = slantT >= 0 ? 6 : 12;
+      const slant = arealSlant();
+      const toward = slant <= 0 ? 6 : 12;
       const mix = (a, b, t) => a + (b - a) * t;
       let bleedL = 0;
       let bleedR = 0;
@@ -282,7 +287,7 @@
         const read = (part) => mix(
           mix(row[part], row[3 + part], weightT),
           mix(row[toward + part], row[toward + 3 + part], weightT),
-          Math.abs(slantT)
+          Math.abs(slant) / 12
         );
         bleedL = Math.max(bleedL, -read(1));
         bleedR = Math.max(bleedR, read(2) - read(0));
@@ -323,7 +328,7 @@
 
     function variationFor(expo, weight) {
       if (useAreal) {
-        const slant = clamp(currentSlant / MAX_SLANT, -1, 1) * -12;
+        const slant = arealSlant();
         return '"wght" ' + weight.toFixed(1) + ', "slnt" ' + slant.toFixed(2) + ', "DRKM" 0';
       }
       return '"EXPO" ' + expo.toFixed(2);
@@ -688,6 +693,7 @@
         sample,
         useAreal ? "areal" : "exposure",
         String(mode % 3),
+        mode >= 6 ? "against" : "with",
         Math.round(currentExpo),
         Math.round(currentSlant),
         Math.round(viewW),
@@ -932,7 +938,7 @@
         placeCaret();
         return;
       }
-      mode = (mode + 1) % 6;
+      mode = (mode + 1) % 9;
       useAreal = mode >= 3;
       if (lastOrientation) onOrientation(lastOrientation);
       else if (mode % 3 !== 1) targetSat = 0;
