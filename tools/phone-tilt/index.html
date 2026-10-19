@@ -200,18 +200,18 @@
     const STROKE_COUNT = 4;
     const STROKE_STEP = 0.055;
     const MODES = [
-      { areal: false, look: "bw" },
-      { areal: false, look: "colour" },
-      { areal: false, look: "strokes" },
       { areal: true, look: "bw", against: false },
       { areal: true, look: "bw", against: true },
       { areal: true, look: "colour" },
       { areal: true, look: "strokes" },
+      { areal: false, look: "bw" },
+      { areal: false, look: "colour" },
+      { areal: false, look: "strokes" },
     ];
     let mode = 0;
     let tiltAmount = 0;
     let strokeLevel = 0;
-    let useAreal = false;
+    let useAreal = true;
     let targetExpo = 0;
     let currentExpo = 0;
     let targetSlant = 0;
@@ -804,10 +804,15 @@
       const rollTravel = Math.sign(axes.lr) * Math.max(0, Math.abs(axes.lr) - DEAD);
       const xColor = clamp(rollTravel / 36, -1, 1);
       const yColor = clamp(travel / 36, -1, 1);
-      const amount = Math.min(1, Math.hypot(xColor, yColor));
+      const step = currentMode();
+      const sideDriven = step.areal && (step.look === "colour" || step.look === "strokes");
+      const lateral = Math.min(1, Math.max(0, Math.abs(axes.lr) - DEAD) / (ROLL - DEAD));
+      const amount = sideDriven ? lateral : Math.min(1, Math.hypot(xColor, yColor));
       tiltAmount = amount;
-      targetSat = currentMode().look === "colour" ? smoothstep(amount) : 0;
-      if (amount > 0.001) {
+      targetSat = step.look === "colour" ? smoothstep(amount) : 0;
+      if (sideDriven && lateral > 0.001) {
+        targetHue = axes.lr >= 0 ? 125 : 305;
+      } else if (amount > 0.001) {
         targetHue = mixHue([
           { w: Math.max(0, -yColor), hue: 25 },
           { w: Math.max(0, yColor), hue: 215 },
