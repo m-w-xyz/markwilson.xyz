@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#000000">
+  <title>Neon</title>
+  <style>
+    @font-face {
+      font-family: "ABC Areal";
+      src: url("ABCArealVariable-x2.ttf") format("truetype");
+      font-weight: 400 700;
+      font-style: oblique -12deg 12deg;
+      font-display: block;
+    }
+
+    html {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+    }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      color: #fff;
+      color-scheme: dark;
+    }
+
+    body {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
+
+    #view {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #gl {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+
+    #editor {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      resize: none;
+      outline: none;
+      background: transparent;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      caret-color: transparent;
+      font-size: 16px;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    #editor::selection {
+      background: transparent;
+      color: transparent;
+    }
+
+    #enable {
+      position: absolute;
+      left: 50%;
+      bottom: max(1.25rem, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      padding: 0.7rem 1.1rem;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      border-radius: 999px;
+      background: transparent;
+      color: #fff;
+      font-family: system-ui, sans-serif;
+      font-size: 0.95rem;
+      letter-spacing: 0.01em;
+      touch-action: manipulation;
+      z-index: 4;
+    }
+
+    #enable[hidden] {
+      display: none;
+    }
+
+    #error {
+      position: absolute;
+      left: 1rem;
+      right: 1rem;
+      bottom: max(1.25rem, env(safe-area-inset-bottom));
+      z-index: 5;
+      font-family: system-ui, sans-serif;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div id="view">
+    <canvas id="gl"></canvas>
+    <textarea id="editor" aria-label="Word" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" enterkeyhint="done" rows="1"></textarea>
+    <button id="enable" type="button" hidden>Enable tilt</button>
+    <div id="error" hidden></div>
+  </div>
+  <script>
+    const view = document.querySelector("#view");
+    const canvas = document.querySelector("#gl");
+    const editor = document.querySelector("#editor");
+    const enable = document.querySelector("#enable");
+    const errorBox = document.querySelector("#error");
+    const glyphs = document.createElement("canvas");
+    const stamps = document.createElement("canvas");
+    const aura = document.createElement("canvas");
+    const ink = document.createElement("canvas");
+    const gctx = glyphs.getContext("2d", { alpha: true });
+    const sctx = stamps.getContext("2d", { alpha: true });
+    const actx = aura.getContext("2d", { alpha: true });
+    const ctx = ink.getContext("2d", { alpha: true });
+
+    const gl = canvas.getContext("webgl", {
+      alpha: false,
+      antialias: false,
+      depth: false,
+      stencil: false,
+      premultipliedAlpha: false,
+      powerPreference: "high-performance",
+    });
+
+    const VERT = `
+      attribute vec2 aPos;
+      varying vec2 vUv;
+      void main() {
+        vUv = aPos * 0.5 + 0.5;
+        gl_Position = vec4(aPos, 0.0, 1.0);
+      }
+    `;
+
+    const FRAG = `
+      precision highp float;
+      varying vec2 vUv;
+      uniform sampler2D uSharp;
+      uniform sampler2D uGlow;
+      uniform vec2 uFall;
+      uniform vec2 uResolution;
+      uniform float uAmount;
+      uniform float uTime;
+
+      float hash(vec2 p) {
+        p = fract(p * vec2(123.34, 345.45));
+        p += dot(p, p + 34.345);
+        return fract(p.x * p.y);
+      }
+
+      float valueNoise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float a = hash(i);
+        float b = hash(i + vec2(1.0, 0.0));
+        float c = hash(i + vec2(0.0, 1.0));
+        float d = hash(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+
+      float sampleMask(sampler2D tex, vec2 uv) {
+        vec2 inside = step(vec2(0.0), uv) * step(uv, vec2(1.0));
+        return texture2D(tex, clamp(uv, 0.0, 1.0)).a * inside.x * inside.y;
+      }
+
+      float fbm(vec2 p) {
+        float v = valueNoise(p) * 0.65;
+        p = p * 1.85 + vec2(1.7, 9.2);
+        v += valueNoise(p) * 0.35;
+        return v;
+      }
+
+      float disk(vec2 uv, float radius) {
+        float sum = sampleMask(uGlow, uv);
+        vec2 aspect = vec2(uResolution.y / max(uResolution.x, 1.0), 1.0);
+        for (int i = 0; i < 8; i++) {
+          float ang = float(i) * 0.78539816;
+          vec2 d = vec2(cos(ang), sin(ang)) * radius * aspect;
+          sum += sampleMask(uGlow, uv + d * 0.5);
+          sum += sampleMask(uGlow, uv + d);
+        }
+        return sum / 17.0;
+      }
+
+      void main() {
+        vec2 inside = step(vec2(0.0), vUv) * step(vUv, vec2(1.0));
+        vec4 texel = texture2D(uSharp, clamp(vUv, 0.0, 1.0));
+        float sharp = texel.a * inside.x * inside.y;
+        vec2 flow = vec2(uTime * 0.06, -uTime * 0.18);
+        vec2 uv = vUv * vec2(1.7, 2.2);
+        vec2 q = vec2(
+          fbm(uv + flow),
+          fbm(uv + flow + vec2(5.2, 1.3))
+        );
+        vec2 r = vec2(
+          fbm(uv * 1.4 + q * 1.75 + flow * 0.65),
+          fbm(uv * 1.4 + q * 1.75 + vec2(8.3, 2.1) + flow.yx * 0.45)
+        );
+        float amp = mix(0.22, 0.26, uAmount);
+        vec2 disp = (r - 0.5) * amp;
+        float pulse = fbm(uv * 0.55 + vec2(0.0, -uTime * 0.1));
+        float breathe = 0.9 + pulse * 0.18;
+        float tight = disk(vUv + disp * 0.9, 0.014);
+        float mid = disk(vUv - uFall * 0.4 + disp * 1.45, 0.032);
+        float wide = disk(vUv - uFall * 0.82 + disp * 2.0, 0.06);
+        float glow = tight * 0.9 + mid * 0.38 + wide * 0.28;
+        glow *= breathe;
+
+        float gain = mix(1.2, 1.8, uAmount);
+        float g = clamp(glow, 0.0, 1.0);
+        vec3 rgb = vec3(1.0, 0.28, 0.0) * pow(g, 1.02) * 1.55;
+        rgb += vec3(1.0, 0.5, 0.05) * pow(g, 1.6) * 2.45 * gain;
+        rgb += vec3(1.0, 0.88, 0.46) * pow(g, 2.9) * 1.5;
+        rgb = vec3(1.0) - exp(-rgb);
+        vec3 ink = mix(texel.rgb, vec3(1.0, 0.97, 0.9), smoothstep(0.45, 0.95, texel.r));
+        float body = smoothstep(0.22, 0.58, sharp);
+        gl_FragColor = vec4(mix(rgb, ink, body), 1.0);
+      }
+    `;
+
+    function showError(message) {
+      errorBox.hidden = false;
+      errorBox.textContent = message;
+    }
+
+    if (!gl || !ctx || !gctx || !actx || !sctx) {
+      showError("WebGL isn’t available in this browser.");
+    }
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader) || "Shader failed");
+      }
+      return shader;
+    }
+
+    let program = null;
+    let uniforms = null;
+    let sharpTex = null;
+    let glowTex = null;
+
+    function makeTexture() {
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      return tex;
+    }
+
+    function upload(tex, sourceCanvas, unit) {
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sourceCanvas);
+    }
+
+    if (gl) {
+      try {
+        const vs = compile(gl.VERTEX_SHADER, VERT);
+        const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+        program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          throw new Error(gl.getProgramInfoLog(program) || "Link failed");
+        }
+        gl.useProgram(program);
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+          -1, -1, 1, -1, -1, 1, 1, 1,
+        ]), gl.STATIC_DRAW);
+        const loc = gl.getAttribLocation(program, "aPos");
+        gl.enableVertexAttribArray(loc);
+        gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+        uniforms = {
+          sharp: gl.getUniformLocation(program, "uSharp"),
+          glow: gl.getUniformLocation(program, "uGlow"),
+          fall: gl.getUniformLocation(program, "uFall"),
+          resolution: gl.getUniformLocation(program, "uResolution"),
+          amount: gl.getUniformLocation(program, "uAmount"),
+          time: gl.getUniformLocation(program, "uTime"),
+        };
+        sharpTex = makeTexture();
+        glowTex = makeTexture();
+        gl.uniform1i(uniforms.sharp, 0);
+        gl.uniform1i(uniforms.glow, 1);
+        gl.clearColor(0, 0, 0, 1);
+      } catch (error) {
+        showError(error.message);
+        program = null;
+      }
+    }
+
+    let source = "";
+    let inkBlack = false;
+    let fontReady = false;
+    let wordDirty = true;
+    let sharpDirty = true;
+    let auraKey = "";
+    let placed = { lines: [], caretX: 0, baseline: 0, ascent: 0, descent: 0, size: 16 };
+    let usingOrientation = false;
+    let listening = false;
+    let tx = 0;
+    let ty = 1;
+    let ta = 0;
+    let sx = 0;
+    let sy = 1;
+    let sa = 0;
+    let tSlant = 0;
+    let sSlant = 0;
+    let drawnSlant = 0;
+    let slantWithVariation = false;
+    let viewWidth = 1;
+    let viewHeight = 1;
+    let dpr = 1;
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function damp(current, target, epsilon) {
+      const next = current + (target - current) * 0.14;
+      return Math.abs(target - next) < epsilon ? target : next;
+    }
+
+    function smoothstep(value) {
+      const t = clamp(value, 0, 1);
+      return t * t * (3 - 2 * t);
+    }
+
+    function readSafe() {
+      const style = getComputedStyle(document.documentElement);
+      const read = (name) => parseFloat(style.getPropertyValue(name)) || 0;
+      return {
+        top: read("--safe-top"),
+        right: read("--safe-right"),
+        bottom: read("--safe-bottom"),
+        left: read("--safe-left"),
+      };
+    }
+
+    function screenAngle() {
+      if (typeof window.orientation === "number") return window.orientation;
+      if (screen.orientation && typeof screen.orientation.angle === "number") {
+        return screen.orientation.angle;
+      }
+      return 0;
+    }
+
+    function screenAxes(beta, gamma) {
+      const angle = screenAngle();
+      if (angle === 90) return { lr: beta, fb: -gamma };
+      if (angle === -90 || angle === 270) return { lr: -beta, fb: gamma };
+      if (angle === 180) return { lr: -gamma, fb: -beta };
+      return { lr: gamma, fb: beta };
+    }
+
+    function onOrientation(event) {
+      if (event.beta == null || event.gamma == null) return;
+      usingOrientation = true;
+      const axes = screenAxes(event.beta, event.gamma);
+      const x = axes.lr;
+      const y = axes.fb;
+      const mag = Math.hypot(x, y);
+      const dead = 7;
+      const full = 52;
+      const travel = Math.max(0, mag - dead);
+      ta = smoothstep(travel / (full - dead));
+      if (mag > 0.001) {
+        tx = x / mag;
+        ty = y / mag;
+      }
+      const rollFull = 30;
+      const rollDead = 6;
+      const roll = Math.sign(x) * Math.max(0, Math.abs(x) - rollDead);
+      tSlant = -clamp(roll / (rollFull - rollDead), -1, 1) * 12;
+    }
+
+    function listen() {
+      if (listening) return;
+      listening = true;
+      window.addEventListener("deviceorientation", onOrientation);
+    }
+
+    function arm() {
+      const needsGesture = window.DeviceOrientationEvent
+        && typeof DeviceOrientationEvent.requestPermission === "function";
+      if (!needsGesture) {
+        listen();
+        return;
+      }
+      enable.hidden = false;
+      enable.addEventListener("click", (event) => {
+        event.stopPropagation();
+        DeviceOrientationEvent.requestPermission()
+          .then((state) => {
+            if (state === "granted") {
+              enable.hidden = true;
+              listen();
+            }
+          })
+          .catch(() => {});
+      });
+    }
+
+    function resize() {
+      const vv = window.visualViewport;
+      viewWidth = vv ? vv.width : window.innerWidth;
+      viewHeight = vv ? vv.height : window.innerHeight;
+      view.style.left = (vv ? vv.offsetLeft : 0) + "px";
+      view.style.top = (vv ? vv.offsetTop : 0) + "px";
+      view.style.width = viewWidth + "px";
+      view.style.height = viewHeight + "px";
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.max(1, Math.round(viewWidth * dpr));
+      const h = Math.max(1, Math.round(viewHeight * dpr));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        glyphs.width = w;
+        glyphs.height = h;
+        ink.width = w;
+        ink.height = h;
+        stamps.width = Math.max(1, Math.round(w / 2));
+        stamps.height = Math.max(1, Math.round(h / 2));
+        aura.width = stamps.width;
+        aura.height = stamps.height;
+        if (gl) gl.viewport(0, 0, w, h);
+        wordDirty = true;
+        auraKey = "";
+      }
+    }
+
+    function textInk(text) {
+      const metrics = gctx.measureText(text || "");
+      const left = metrics.actualBoundingBoxLeft || 0;
+      const right = metrics.actualBoundingBoxRight || metrics.width || 0;
+      return { left, right, width: Math.max(metrics.width || 0, left + right) };
+    }
+
+    function wrapLines(maxWidth) {
+      if (!source) return [];
+      const tokens = [];
+      const pattern = /\s+|\S+/g;
+      let match;
+      while ((match = pattern.exec(source))) {
+        tokens.push({
+          text: match[0],
+          start: match.index,
+          space: !match[0].trim(),
+        });
+      }
+      const widthOf = (items) => {
+        let text = "";
+        for (let i = 0; i < items.length; i++) text += items[i].text;
+        return textInk(text.replace(/\s+$/, "")).width;
+      };
+      const groups = [];
+      let current = [];
+      for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        if (token.space) {
+          if (!current.length) continue;
+          const next = current.concat(token);
+          if (widthOf(next) <= maxWidth) current = next;
+          continue;
+        }
+        if (!current.length) {
+          current = [token];
+          continue;
+        }
+        const next = current.concat(token);
+        if (widthOf(next) <= maxWidth) current = next;
+        else {
+          groups.push(current);
+          current = [token];
+        }
+      }
+      if (current.length) groups.push(current);
+      return groups.map((items) => {
+        const text = items.map((item) => item.text).join("").replace(/\s+$/, "");
+        return { text, start: items[0].start };
+      });
+    }
+
+    function faceBounds(context) {
+      const metrics = context.measureText("HMW");
+      return (metrics.actualBoundingBoxLeft || 0) + (metrics.actualBoundingBoxRight || 0);
+    }
+
+    function chooseSlantMode() {
+      const context = document.createElement("canvas").getContext("2d");
+      if (!context) return;
+      context.font = '500 160px "ABC Areal", sans-serif';
+      const upright = faceBounds(context);
+      context.font = 'oblique 12deg 500 160px "ABC Areal", sans-serif';
+      const oblique = faceBounds(context);
+      let variation = upright;
+      if ("fontVariationSettings" in context) {
+        context.font = '500 160px "ABC Areal", sans-serif';
+        context.fontVariationSettings = '"wght" 500, "slnt" -12, "DRKM" 0';
+        variation = faceBounds(context);
+      }
+      const obliqueWorks = Math.abs(oblique - upright) > 0.75;
+      const variationWorks = Math.abs(variation - upright) > 0.75;
+      slantWithVariation = variationWorks && !obliqueWorks;
+    }
+
+    function setFace(context, size) {
+      const slnt = clamp(sSlant, -12, 12);
+      const px = size.toFixed(2) + "px";
+      if (slantWithVariation && "fontVariationSettings" in context) {
+        context.font = `500 ${px} "ABC Areal", sans-serif`;
+        context.fontVariationSettings = `"wght" 500, "slnt" ${slnt.toFixed(2)}, "DRKM" 0`;
+        return;
+      }
+      context.font = `oblique ${(-slnt).toFixed(2)}deg 500 ${px} "ABC Areal", sans-serif`;
+    }
+
+    function paintGlyphs() {
+      const w = glyphs.width;
+      const h = glyphs.height;
+      const safe = readSafe();
+      gctx.clearRect(0, 0, w, h);
+      gctx.fillStyle = "#fff";
+      gctx.textAlign = "left";
+      gctx.textBaseline = "alphabetic";
+      gctx.filter = "none";
+      const marginX = Math.max(viewWidth * 0.045, 16) * dpr;
+      const marginY = Math.max(viewHeight * 0.05, 16) * dpr;
+      const boxLeft = safe.left * dpr + marginX;
+      const boxTop = safe.top * dpr + marginY;
+      const boxW = Math.max(32, w - marginX * 2 - (safe.left + safe.right) * dpr);
+      const boxH = Math.max(32, h - marginY * 2 - (safe.top + safe.bottom) * dpr);
+      const centerX = boxLeft + boxW * 0.5;
+      const centerY = boxTop + boxH * 0.5;
+
+      if (!source) {
+        const size = Math.min(boxH, boxW) * 0.18;
+        setFace(gctx, size);
+        const probe = gctx.measureText("H");
+        const ascent = probe.actualBoundingBoxAscent || size * 0.74;
+        const descent = probe.actualBoundingBoxDescent || size * 0.2;
+        placed = {
+          lines: [],
+          size,
+          ascent,
+          descent,
+          caretX: centerX,
+          baseline: centerY + (ascent - descent) * 0.5,
+        };
+        return;
+      }
+
+      const layoutAt = (size) => {
+        setFace(gctx, size);
+        const lines = wrapLines(boxW);
+        let maxLine = 0;
+        for (let i = 0; i < lines.length; i++) {
+          maxLine = Math.max(maxLine, textInk(lines[i].text).width);
+        }
+        const probe = gctx.measureText(source || "Hgp");
+        const ascent = probe.actualBoundingBoxAscent || size * 0.76;
+        const descent = probe.actualBoundingBoxDescent || size * 0.22;
+        const gap = size * 0.14;
+        const count = Math.max(1, lines.length);
+        const block = count * (ascent + descent) + (count - 1) * gap;
+        return { lines, maxLine, ascent, descent, gap, block };
+      };
+
+      let lo = 1;
+      let hi = Math.max(boxW, boxH);
+      for (let i = 0; i < 20; i++) {
+        const mid = (lo + hi) * 0.5;
+        const layout = layoutAt(mid);
+        const wide = layout.maxLine > boxW + 0.5;
+        const tall = layout.block > boxH + 0.5;
+        if (!wide && !tall) lo = mid;
+        else hi = mid;
+      }
+
+      const layout = layoutAt(lo);
+      const stride = layout.ascent + layout.descent + layout.gap;
+      const top = centerY - layout.block * 0.5;
+      const lines = layout.lines.map((line, index) => {
+        const ink = textInk(line.text);
+        return {
+          text: line.text,
+          start: line.start,
+          x: centerX - (ink.right - ink.left) * 0.5,
+          baseline: top + index * stride + layout.ascent,
+        };
+      });
+      placed = {
+        lines,
+        size: lo,
+        ascent: layout.ascent,
+        descent: layout.descent,
+        caretX: centerX,
+        baseline: centerY + (layout.ascent - layout.descent) * 0.5,
+      };
+      for (let i = 0; i < lines.length; i++) gctx.fillText(lines[i].text, lines[i].x, lines[i].baseline);
+    }
+
+    function resetDraw(context) {
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.globalAlpha = 1;
+      context.globalCompositeOperation = "source-over";
+      context.filter = "none";
+      context.imageSmoothingEnabled = true;
+    }
+
+    function blurOnto(context, destination, sourceCanvas, radius) {
+      resetDraw(context);
+      context.clearRect(0, 0, destination.width, destination.height);
+      context.filter = `blur(${radius.toFixed(1)}px)`;
+      context.drawImage(sourceCanvas, 0, 0, destination.width, destination.height);
+      context.filter = "none";
+    }
+
+    function paintAura(reach, dirX, dirY, amount) {
+      const w = stamps.width;
+      const h = stamps.height;
+      const mag = Math.hypot(dirX, dirY) || 1;
+      const dx = dirX / mag;
+      const dy = dirY / mag;
+      const scale = w / Math.max(1, glyphs.width);
+      const fontPx = Math.max(8, placed.size * scale);
+
+      blurOnto(sctx, stamps, glyphs, clamp(fontPx * 0.18, 10, 34));
+      resetDraw(actx);
+      actx.clearRect(0, 0, w, h);
+      if (reach < 2) {
+        actx.drawImage(stamps, 0, 0);
+      } else {
+        actx.globalCompositeOperation = "lighter";
+        const steps = 32;
+        const span = reach * scale;
+        for (let i = 0; i < steps; i++) {
+          const t = i / (steps - 1);
+          const fade = Math.pow(1 - t, 1.28);
+          actx.globalAlpha = fade * (0.062 + amount * 0.05);
+          actx.drawImage(stamps, dx * span * t, dy * span * t, w, h);
+        }
+      }
+
+      const blurPx = clamp(fontPx * (0.36 + amount * 0.5), 18, 76);
+      blurOnto(sctx, stamps, aura, blurPx);
+      blurOnto(actx, aura, stamps, blurPx * 0.8);
+      if (glowTex) upload(glowTex, aura, 1);
+    }
+
+    function caretSpot(index) {
+      const lines = placed.lines;
+      setFace(gctx, placed.size);
+      if (!lines.length) {
+        return {
+          x: placed.caretX,
+          top: placed.baseline - placed.ascent,
+        };
+      }
+      let line = lines[lines.length - 1];
+      for (let i = 0; i < lines.length; i++) {
+        const nextStart = i + 1 < lines.length ? lines[i + 1].start : Infinity;
+        if (index < nextStart) {
+          line = lines[i];
+          break;
+        }
+      }
+      const offset = Math.max(0, Math.min(line.text.length, index - line.start));
+      return {
+        x: line.x + gctx.measureText(line.text.slice(0, offset)).width,
+        top: line.baseline - placed.ascent,
+      };
+    }
+
+    function paintSharp() {
+      ctx.clearRect(0, 0, ink.width, ink.height);
+      ctx.filter = "none";
+      ctx.fillStyle = inkBlack ? "#000" : "#fff";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+      setFace(ctx, placed.size);
+      for (let i = 0; i < placed.lines.length; i++) {
+        const line = placed.lines[i];
+        ctx.fillText(line.text, line.x, line.baseline);
+      }
+      const focused = document.activeElement === editor;
+      const blink = Math.floor(performance.now() / 530) % 2 === 0;
+      if (focused && blink) {
+        const caretIndex = focused ? (editor.selectionStart || 0) : source.length;
+        const spot = caretSpot(caretIndex);
+        const height = Math.max(2, placed.ascent + placed.descent);
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(spot.x, spot.top, Math.max(2, dpr * 1.5), height);
+      }
+      if (sharpTex) upload(sharpTex, ink, 0);
+    }
+
+    function readEditor() {
+      const value = editor.value.replace(/\s+/g, (chunk) => (/\n|\r/.test(chunk) ? " " : chunk));
+      if (value !== editor.value) {
+        const start = editor.selectionStart;
+        editor.value = value;
+        editor.selectionStart = editor.selectionEnd = start;
+      }
+      source = value;
+      wordDirty = true;
+    }
+
+    function frame(now) {
+      sx = damp(sx, tx, 0.0008);
+      sy = damp(sy, ty, 0.0008);
+      sa = damp(sa, ta, 0.0008);
+      sSlant = damp(sSlant, tSlant, 0.02);
+      if (Math.abs(sSlant - drawnSlant) > 0.35) {
+        drawnSlant = sSlant;
+        wordDirty = true;
+      }
+      const showCaret = document.activeElement === editor;
+      if (showCaret && Math.floor(now / 530) !== Math.floor((now - 17) / 530)) sharpDirty = true;
+      const riseX = -sx;
+      const riseY = -sy;
+      const minDim = Math.min(canvas.width, canvas.height);
+      if (fontReady && glyphs.width > 0) {
+        if (wordDirty) {
+          paintGlyphs();
+          wordDirty = false;
+          sharpDirty = true;
+          auraKey = "";
+        }
+        const travel = sa * 0.64 * minDim;
+        const key = travel.toFixed(1) + ":" + riseX.toFixed(3) + ":" + riseY.toFixed(3);
+        if (key !== auraKey) {
+          paintAura(travel, riseX, riseY, sa);
+          auraKey = key;
+        }
+        if (sharpDirty) {
+          paintSharp();
+          sharpDirty = false;
+        }
+      }
+      if (program) {
+        const mag = Math.hypot(riseX, riseY) || 1;
+        const reach = sa * 0.16 * minDim;
+        const fallX = (riseX / mag) * reach / canvas.width;
+        const fallY = -(riseY / mag) * reach / canvas.height;
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, sharpTex);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, glowTex);
+        gl.uniform2f(uniforms.fall, fallX, fallY);
+        gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+        gl.uniform1f(uniforms.amount, sa);
+        gl.uniform1f(uniforms.time, now * 0.001);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    editor.addEventListener("input", readEditor);
+    editor.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        editor.blur();
+      }
+    });
+    editor.addEventListener("focus", () => { sharpDirty = true; });
+    editor.addEventListener("blur", () => { sharpDirty = true; });
+    document.addEventListener("selectionchange", () => {
+      if (document.activeElement === editor) sharpDirty = true;
+    });
+
+    function hitsText(clientX, clientY) {
+      if (!source || glyphs.width < 2 || glyphs.height < 2) return false;
+      const rect = view.getBoundingClientRect();
+      const x = ((clientX - rect.left) / rect.width) * glyphs.width;
+      const y = ((clientY - rect.top) / rect.height) * glyphs.height;
+      const radius = Math.max(6, placed.size * 0.08);
+      const x0 = Math.max(0, Math.floor(x - radius));
+      const y0 = Math.max(0, Math.floor(y - radius));
+      const w = Math.min(glyphs.width - x0, Math.ceil(radius * 2));
+      const h = Math.min(glyphs.height - y0, Math.ceil(radius * 2));
+      if (w < 1 || h < 1) return false;
+      const pixels = gctx.getImageData(x0, y0, w, h).data;
+      for (let i = 3; i < pixels.length; i += 4) {
+        if (pixels[i] > 28) return true;
+      }
+      return false;
+    }
+
+    let tap = null;
+    window.addEventListener("pointerdown", (event) => {
+      if (event.target && event.target.id === "enable") return;
+      const background = !hitsText(event.clientX, event.clientY);
+      tap = { x: event.clientX, y: event.clientY, id: event.pointerId, background };
+      if (background) event.preventDefault();
+    });
+    window.addEventListener("pointerup", (event) => {
+      if (!tap || event.pointerId !== tap.id) return;
+      const dx = event.clientX - tap.x;
+      const dy = event.clientY - tap.y;
+      const background = tap.background;
+      tap = null;
+      if (dx * dx + dy * dy > 144) return;
+      if (!background || !source) {
+        editor.focus();
+        return;
+      }
+      inkBlack = !inkBlack;
+      sharpDirty = true;
+      editor.blur();
+    });
+    window.addEventListener("pointercancel", () => {
+      tap = null;
+    });
+
+    window.addEventListener("pointermove", (event) => {
+      if (usingOrientation || event.pointerType === "touch") return;
+      const rect = view.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = ((event.clientY - rect.top) / rect.height) * 2 - 1;
+      const mag = Math.hypot(x, y);
+      ta = clamp(mag / 0.82, 0, 1);
+      if (mag > 0.001) {
+        tx = x / mag;
+        ty = y / mag;
+      }
+      tSlant = -clamp(x / 0.82, -1, 1) * 12;
+    });
+    window.addEventListener("pointerleave", () => {
+      if (!usingOrientation) {
+        ta = 0;
+        tSlant = 0;
+      }
+    });
+
+    window.addEventListener("resize", resize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", resize);
+      window.visualViewport.addEventListener("scroll", resize);
+    }
+    function markFont() {
+      chooseSlantMode();
+      fontReady = true;
+      wordDirty = true;
+    }
+    Promise.all([
+      document.fonts.load('500 64px "ABC Areal"'),
+      document.fonts.load('oblique 12deg 500 64px "ABC Areal"'),
+      document.fonts.load('oblique -12deg 500 64px "ABC Areal"'),
+    ]).then(markFont, markFont);
+
+    resize();
+    arm();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
