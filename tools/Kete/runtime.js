@@ -23,6 +23,7 @@
 
   let db = null;
   let lib = null;
+  let account = null;
   const texts = {};
   const blobUrls = new Map();
   let chain = Promise.resolve();
@@ -147,35 +148,44 @@
     });
   }
 
-  async function boot() {
-    db = await openDb();
-    lib = await idbGet("kv", "library");
+  function storedAccount() {
+    try {
+      const raw = sessionStorage.getItem("kete-account");
+      return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function loadAccountLib() {
+    Object.keys(texts).forEach(function (key) { delete texts[key]; });
+    lib = await idbGet("kv", "library:" + account.sub);
     if (!lib || !Array.isArray(lib.brands)) {
-      try {
-        const response = await native(new URL("data/library.json", ROOT));
-        lib = response.ok ? await response.json() : emptyLib();
-      } catch (error) {
+      const claimed = await idbGet("kv", "claimed");
+      const legacy = await idbGet("kv", "library");
+      if (!claimed && legacy && Array.isArray(legacy.brands)) {
+        lib = legacy;
+        await idbPut("kv", "claimed", account.sub);
+      } else {
         lib = emptyLib();
       }
-      if (!Array.isArray(lib.brands) || !lib.brands.length) lib = emptyLib();
-      const jobs = [];
-      lib.brands.forEach(function (brand) {
-        (brand.assets.sources || []).forEach(function (source) {
-          jobs.push(native(new URL("data/text/" + source.id + ".txt", ROOT)).then(function (response) {
-            return response.ok ? response.text() : "";
-          }).then(function (body) {
-            if (body) texts[source.id] = body;
-          }).catch(function () {}));
-        });
-      });
-      await Promise.all(jobs);
-      await idbPut("kv", "library", lib);
-      await Promise.all(Object.keys(texts).map(function (id) { return idbPut("texts", id, texts[id]); }));
-    } else {
-      const keys = await idbKeys("texts");
-      await Promise.all(keys.map(function (key) {
-        return idbGet("texts", key).then(function (body) { if (body) texts[key] = body; });
-      }));
+      await save();
+    }
+    const ids = [];
+    lib.brands.forEach(function (brand) {
+      (brand.assets.sources || []).forEach(function (source) { ids.push(source.id); });
+    });
+    await Promise.all(ids.map(function (id) {
+      return idbGet("texts", id).then(function (body) { if (body) texts[id] = body; });
+    }));
+  }
+
+  async function boot() {
+    db = await openDb();
+    const stored = storedAccount();
+    if (stored && stored.sub) {
+      account = stored;
+      await loadAccountLib();
     }
   }
 
@@ -708,7 +718,10 @@
     return { text: chosen.map(function (item) { return item[1]; }).join(" "), why: titles.length ? "From " + titles.join(", ") + "." : "" };
   }
 
-  async function save() { await idbPut("kv", "library", lib); }
+  async function save() {
+    if (!account || !lib) return;
+    await idbPut("kv", "library:" + account.sub, lib);
+  }
 
   async function clearSource(assets, sourceId) {
     COLLECTIONS.forEach(function (key) {
@@ -1199,6 +1212,7 @@
       assets: assets,
       memory: { conversation: (active.memory.conversation || []).slice(), kept: (active.memory.kept || []).slice(), portrait: portrait },
       paths: { manifest: "", online: true },
+      account: account ? { email: account.email, name: account.name, captureToken: account.captureToken } : null,
     };
   }
 
@@ -1278,9 +1292,81 @@
     await save();
   }
 
+  function decodeJwt(credential) {
+    const parts = String(credential || "").split(".");
+    if (parts.length < 2) return null;
+    const body = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = body + "===".slice((body.length + 3) % 4);
+    try {
+      return JSON.parse(atob(padded));
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function googleUser(credential) {
+    const clientId = localStorage.getItem("kete-google-client") || "";
+    if (!clientId) throw new Error("Add a Google client ID first.");
+    let payload = null;
+    try {
+      const response = await native("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(credential));
+      if (response.ok) payload = await response.json();
+    } catch (error) { /* the token payload is checked below */ }
+    if (!payload) payload = decodeJwt(credential);
+    if (!payload) throw new Error("Google did not accept that sign-in.");
+    if (payload.aud !== clientId) throw new Error("That Google sign-in is for a different app.");
+    if (String(payload.email_verified).toLowerCase() !== "true") throw new Error("That Google account is not verified.");
+    if (Number(payload.exp || 0) * 1000 < Date.now()) throw new Error("That sign-in expired. Try again.");
+    const sub = String(payload.sub || "").replace(/[^A-Za-z0-9_-]/g, "");
+    if (sub.length < 4) throw new Error("That Google account could not be read.");
+    let stored = await idbGet("kv", "account:" + sub);
+    if (!stored || !stored.captureToken) {
+      const bytes = new Uint8Array(18);
+      crypto.getRandomValues(bytes);
+      stored = { captureToken: Array.from(bytes, function (byte) { return byte.toString(16).padStart(2, "0"); }).join("") };
+    }
+    stored.email = payload.email || stored.email || "";
+    stored.name = payload.name || stored.name || stored.email || "Account";
+    stored.sub = sub;
+    await idbPut("kv", "account:" + sub, stored);
+    return { sub: sub, email: stored.email, name: stored.name, captureToken: stored.captureToken };
+  }
+
   async function route(request, url) {
     await ready;
     const path = url.pathname;
+    if (request.method === "GET" && path === "/api/auth/config") {
+      return json(200, {
+        clientId: localStorage.getItem("kete-google-client") || "",
+        account: account ? { email: account.email, name: account.name, captureToken: account.captureToken } : null,
+      });
+    }
+    if (request.method === "POST" && path === "/api/auth/client") {
+      const body = await request.json().catch(function () { return {}; });
+      const value = String(body.clientId || "").trim();
+      if (!value.endsWith(".apps.googleusercontent.com") || value.length < 20) return json(400, { error: "That is not a Google client ID." });
+      localStorage.setItem("kete-google-client", value);
+      return json(200, { clientId: value });
+    }
+    if (request.method === "POST" && path === "/api/auth/google") {
+      const body = await request.json().catch(function () { return {}; });
+      try {
+        const user = await googleUser(body.credential || "");
+        account = user;
+        sessionStorage.setItem("kete-account", JSON.stringify(user));
+        await loadAccountLib();
+        return json(200, { account: { email: user.email, name: user.name, captureToken: user.captureToken } });
+      } catch (error) {
+        return json(400, { error: (error && error.message) || "Google did not accept that sign-in." });
+      }
+    }
+    if (request.method === "POST" && path === "/api/auth/logout") {
+      account = null;
+      lib = null;
+      sessionStorage.removeItem("kete-account");
+      return json(200, { ok: true });
+    }
+    if (!account || !lib) return json(401, { error: "Sign in." });
     if (request.method === "GET" && path === "/api/library") return json(200, await publicView());
     if (request.method === "GET" && path === "/api/source") {
       return json(200, { id: url.searchParams.get("id") || "", text: (texts[url.searchParams.get("id")] || "").slice(0, 12000) });

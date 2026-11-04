@@ -1099,6 +1099,19 @@ def ingest_url(url: str, source_id: str | None = None) -> dict:
         # A direct file link, treated as text if it looks like text.
         if fetched["content_type"].startswith("text/") or final.lower().endswith((".txt", ".md")):
             return ingest_writing(os.path.basename(urlparse(final).path) or final, html, origin=final, source_id=source_id)
+    return _ingest_html(final, html, source_id, "")
+
+
+def ingest_snapshot(url: str, html: str, css: str, source_id: str | None = None) -> dict:
+    """Read a page the person already has open, including the styles the browser could see."""
+    try:
+        final = clean_url(url)
+    except ValueError:
+        final = "https://kete.local/page"
+    return _ingest_html(final, html or "", source_id, css or "", from_page=True)
+
+
+def _ingest_html(final: str, html: str, source_id: str | None, supplied_css: str, from_page: bool = False) -> dict:
     parsed = visible_text(html)
     metas = parsed["metas"]
     site = metas.get("og:site_name") or ""
@@ -1129,14 +1142,15 @@ def ingest_url(url: str, source_id: str | None = None) -> dict:
         description = social["description"]
         if description not in text:
             text = description + "\n" + text
-    css_chunks = []
-    for href in re.findall(r"href=[\"']([^\"']+\.css[^\"']*)[\"']", html, flags=re.I)[:8]:
-        try:
-            sheet = http_get(urljoin(final, href), limit=700_000, referer=final)
-            css_chunks.append(decode(sheet["body"], sheet["content_type"]))
-        except Exception:
-            continue
-    for block in re.findall(r"<style[^>]*>(.*?)</style>", html, flags=re.I | re.S)[:4]:
+    css_chunks = [supplied_css] if supplied_css.strip() else []
+    if not supplied_css.strip():
+        for href in re.findall(r"href=[\"']([^\"']+\.css[^\"']*)[\"']", html, flags=re.I)[:8]:
+            try:
+                sheet = http_get(urljoin(final, href), limit=700_000, referer=final)
+                css_chunks.append(decode(sheet["body"], sheet["content_type"]))
+            except Exception:
+                continue
+    for block in re.findall(r"<style[^>]*>(.*?)</style>", html, flags=re.I | re.S)[:6]:
         css_chunks.append(block)
     css = "\n".join(css_chunks)
     parsed_css = parse_css(css) if css else {"colors": [], "types": [], "spaces": []}
@@ -1178,6 +1192,8 @@ def ingest_url(url: str, source_id: str | None = None) -> dict:
         )
     elif platform:
         note = f"Read from {platform}."
+    elif from_page:
+        note = "Read from the open page. Type and colour come from its styles."
     source = {
         "id": source_id or new_id(),
         "kind": "social" if platform else "url",

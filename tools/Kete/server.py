@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import base64
+import contextvars
 import io
 import json
 import mimetypes
@@ -19,18 +20,23 @@ import urllib.error
 import urllib.request
 from urllib.parse import unquote, urlparse
 
+import accounts
 import extract
 import memory
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
-TEXT = DATA / "text"
-ASSETS = DATA / "assets"
-ORIGINALS = DATA / "originals"
-LIBRARY = DATA / "library.json"
-PENDING = DATA / "figma-pending.json"
 PORT = 4787
 LOCK = threading.Lock()
+
+
+def box():
+    return accounts.current_store()
+
+
+def spawn(target, *args) -> None:
+    ctx = contextvars.copy_context()
+    threading.Thread(target=ctx.run, args=(target, *args), daemon=True).start()
 
 BOOT_URLS = [
     "https://extendedwhanau.com/",
@@ -173,10 +179,10 @@ def migrate(data: dict) -> dict:
 
 
 def load() -> dict:
-    if not LIBRARY.exists():
+    if not box().library.exists():
         return migrate({})
     try:
-        raw = json.loads(LIBRARY.read_text())
+        raw = json.loads(box().library.read_text())
     except json.JSONDecodeError:
         raw = {}
     if not isinstance(raw, dict):
@@ -189,14 +195,14 @@ def load() -> dict:
 
 
 def save(lib: dict) -> None:
-    DATA.mkdir(exist_ok=True)
-    LIBRARY.write_text(json.dumps(lib, indent=2, ensure_ascii=False))
+    box().root.mkdir(parents=True, exist_ok=True)
+    box().library.write_text(json.dumps(lib, indent=2, ensure_ascii=False))
 
 
 def load_texts(assets: dict) -> dict[str, str]:
     found = {}
     for source in assets.get("sources") or []:
-        path = TEXT / f"{source['id']}.txt"
+        path = box().text / f"{source['id']}.txt"
         if path.exists():
             found[source["id"]] = path.read_text(errors="replace")[:100_000]
     return found
@@ -326,18 +332,19 @@ def public(lib: dict) -> dict:
             "portrait": portrait,
         },
         "paths": {"manifest": str(ROOT / "figma-plugin" / "manifest.json")},
+        "account": accounts.public_account(),
     }
 
 
 def _clear_source(assets: dict, source_id: str) -> None:
     for key in COLLECTIONS:
         assets[key] = [item for item in assets.get(key) or [] if item.get("sourceId") != source_id]
-    text_path = TEXT / f"{source_id}.txt"
+    text_path = box().text / f"{source_id}.txt"
     if text_path.exists():
         text_path.unlink()
-    for path in ASSETS.glob(source_id + "-*"):
+    for path in box().assets.glob(source_id + "-*"):
         path.unlink(missing_ok=True)
-    folder = ORIGINALS / source_id
+    folder = box().originals / source_id
     if folder.exists():
         for child in folder.iterdir():
             child.unlink(missing_ok=True)
@@ -352,15 +359,15 @@ def _write_result(brand: dict, result: dict, original: tuple[str, bytes] | None 
     source["addedAt"] = previous.get("addedAt") or now()
     _clear_source(assets, source_id)
     if original:
-        folder = ORIGINALS / source_id
+        folder = box().originals / source_id
         folder.mkdir(parents=True, exist_ok=True)
         (folder / original[0]).write_bytes(original[1])
         source["original"] = original[0]
-    TEXT.mkdir(parents=True, exist_ok=True)
-    (TEXT / f"{source_id}.txt").write_text(result.get("text") or "")
+    box().text.mkdir(parents=True, exist_ok=True)
+    (box().text / f"{source_id}.txt").write_text(result.get("text") or "")
     assets["sources"] = [item for item in assets["sources"] if item["id"] != source_id]
     assets["sources"].insert(0, source)
-    ASSETS.mkdir(parents=True, exist_ok=True)
+    box().assets.mkdir(parents=True, exist_ok=True)
     for color in result.get("colors") or []:
         if (color.get("role") or "") == "Photograph":
             continue
@@ -389,7 +396,7 @@ def _write_result(brand: dict, result: dict, original: tuple[str, bytes] | None 
         ext = image.get("ext") or "jpg"
         file_id = extract.new_id()
         filename = f"{source_id}-{file_id}.{ext}"
-        (ASSETS / filename).write_bytes(image["data"])
+        (box().assets / filename).write_bytes(image["data"])
         assets["images"].append({
             "id": file_id,
             "sourceId": source_id,
@@ -466,11 +473,31 @@ def start_url(url: str, source_id: str | None = None, brand_id: str | None = Non
         assets["sources"] = [item for item in assets["sources"] if item["id"] != source_id]
         assets["sources"].insert(0, placeholder)
         save(lib)
-    threading.Thread(
-        target=_finish,
-        args=(source_id, lambda: extract.ingest_url(url, source_id)),
-        daemon=True,
-    ).start()
+    spawn(_finish, source_id, lambda: extract.ingest_url(url, source_id))
+    return source_id
+
+
+def start_snapshot(url: str, html: str, css: str) -> str:
+    source_id = extract.new_id()
+    with LOCK:
+        lib = load()
+        brand = brand_of(lib)
+        brand["assets"]["sources"].insert(0, {
+            "id": source_id,
+            "kind": "url",
+            "title": "Reading the open page",
+            "origin": url,
+            "siteName": "",
+            "platform": "",
+            "note": "Reading the page you have open.",
+            "excerpt": "",
+            "status": "reading",
+            "words": 0,
+            "addedAt": now(),
+            "error": "",
+        })
+        save(lib)
+    spawn(_finish, source_id, lambda: extract.ingest_snapshot(url, html, css, source_id))
     return source_id
 
 
@@ -512,7 +539,7 @@ def start_file(filename: str, data: bytes, brand_id: str | None = None) -> str:
             traceback.print_exc()
             _fail(source_id, (str(exc) or "Could not read that file.")[:200])
 
-    threading.Thread(target=finish, daemon=True).start()
+    spawn(finish)
     return source_id
 
 
@@ -587,7 +614,7 @@ def figma_payload(brand: dict, only: dict | None = None) -> dict:
             "name": image.get("name") or "Image",
             "url": f"http://127.0.0.1:{PORT}/assets/{filename}",
         }
-        file_path = ASSETS / filename
+        file_path = box().assets / filename
         encoded = _image_b64(file_path)
         if encoded:
             entry["b64"] = encoded
@@ -745,7 +772,7 @@ class Handler(BaseHTTPRequestHandler):
     def _cors(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Kete-Token")
 
     def _bytes(self, code: int, body: bytes, content_type: str) -> None:
         self.send_response(code)
@@ -756,8 +783,42 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _json(self, code: int, payload: dict) -> None:
-        self._bytes(code, json.dumps(payload, ensure_ascii=False).encode(), "application/json; charset=utf-8")
+    def _json(self, code: int, payload: dict, cookie: str | None = None) -> None:
+        body = json.dumps(payload, ensure_ascii=False).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
+        self._cors()
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _cookie(self, name: str) -> str:
+        raw = self.headers.get("Cookie") or ""
+        for part in raw.split(";"):
+            if "=" not in part:
+                continue
+            key, value = part.strip().split("=", 1)
+            if key == name:
+                return value
+        return ""
+
+    def _local(self) -> bool:
+        return self.client_address[0] in {"127.0.0.1", "::1"}
+
+    def _bind(self) -> bool:
+        if accounts.bind_session(self._cookie("kete_session")):
+            return True
+        token = self.headers.get("X-Kete-Token") or ""
+        return bool(token) and accounts.bind_capture(token)
+
+    def _require(self) -> bool:
+        if self._bind():
+            return True
+        self._error(401, "Sign in.")
+        return False
 
     def _error(self, code: int, message: str) -> None:
         self._json(code, {"error": message})
@@ -788,6 +849,18 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/runtime.js":
             self._file(ROOT / "runtime.js", "text/javascript; charset=utf-8")
             return
+        if path == "/api/auth/config":
+            signed = accounts.public_account() if accounts.bind_session(self._cookie("kete_session")) else None
+            self._json(200, {"clientId": accounts.client_id(), "account": signed})
+            return
+        if path.startswith("/assets/") or path.startswith("/originals/") or path.startswith("/api/"):
+            opened = self._bind()
+            bridgeable = path == "/api/figma/pending" or path.startswith("/assets/")
+            if not opened and self._local() and bridgeable:
+                opened = accounts.bind_bridge()
+            if not opened:
+                self._error(401, "Sign in.")
+                return
         if path.startswith("/figma-plugin/"):
             name = Path(path).name
             if name in {"manifest.json", "code.js", "ui.html"}:
@@ -796,12 +869,12 @@ class Handler(BaseHTTPRequestHandler):
                 return
         if path.startswith("/assets/"):
             name = Path(path).name
-            self._file(ASSETS / name, mimetypes.guess_type(name)[0] or "application/octet-stream")
+            self._file(box().assets / name, mimetypes.guess_type(name)[0] or "application/octet-stream")
             return
         if path.startswith("/originals/"):
             bits = [bit for bit in path.split("/") if bit]
             if len(bits) >= 3 and re.fullmatch(r"[a-f0-9]{10}", bits[1]):
-                self._file(ORIGINALS / bits[1] / bits[2], mimetypes.guess_type(bits[2])[0] or "application/octet-stream")
+                self._file(box().originals / bits[1] / bits[2], mimetypes.guess_type(bits[2])[0] or "application/octet-stream")
                 return
         if path == "/api/library":
             with LOCK:
@@ -811,15 +884,15 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/source":
             query = self.path.split("?", 1)[1] if "?" in self.path else ""
             source_id = dict(part.split("=", 1) for part in query.split("&") if "=" in part).get("id", "")
-            text_path = TEXT / f"{source_id}.txt"
+            text_path = box().text / f"{source_id}.txt"
             body = text_path.read_text(errors="replace")[:12000] if text_path.exists() else ""
             self._json(200, {"id": source_id, "text": body})
             return
         if path == "/api/figma/pending":
-            if not PENDING.exists():
+            if not box().pending.exists():
                 self._json(404, {"ready": False, "error": "Nothing has been prepared. Press Import to Figma in Kete."})
                 return
-            self._file(PENDING, "application/json; charset=utf-8")
+            self._file(box().pending, "application/json; charset=utf-8")
             return
         self._error(404, "Not found")
 
@@ -843,6 +916,8 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         try:
             if path == "/api/ingest/file":
+                if not self._require():
+                    return
                 self._ingest_file()
                 return
             payload = self._read_json()
@@ -850,6 +925,37 @@ class Handler(BaseHTTPRequestHandler):
             self._error(400, "Could not read that request.")
             return
         try:
+            if path == "/api/auth/google":
+                user = accounts.verify_google(str(payload.get("credential") or ""))
+                token = accounts.open_session(user)
+                cookie = f"kete_session={token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000"
+                self._json(200, {"account": accounts.public_account()}, cookie)
+                return
+            if path == "/api/auth/client":
+                if accounts.client_id() and not self._local():
+                    self._error(403, "The Google client ID is already set on this computer.")
+                    return
+                saved = accounts.save_client_id(str(payload.get("clientId") or ""))
+                self._json(200, {"clientId": saved})
+                return
+            if path == "/api/auth/logout":
+                accounts.drop_session(self._cookie("kete_session"))
+                self._json(200, {"ok": True}, "kete_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0")
+                return
+            if path == "/api/ingest/capture":
+                if not accounts.bind_capture(self.headers.get("X-Kete-Token") or ""):
+                    self._error(401, "Sign in on this computer, then use the bookmark again.")
+                    return
+                html = str(payload.get("html") or "")[:1_200_000]
+                css = str(payload.get("css") or "")[:1_200_000]
+                if not html.strip() and not css.strip():
+                    self._error(400, "That page had nothing to read.")
+                    return
+                source_id = start_snapshot(str(payload.get("url") or ""), html, css)
+                self._json(200, {"id": source_id})
+                return
+            if not self._require():
+                return
             if path == "/api/brand":
                 with LOCK:
                     lib = load()
@@ -1007,7 +1113,8 @@ class Handler(BaseHTTPRequestHandler):
                     if payload.get("writing"):
                         study_lib, texts, portrait = study_pack(brand)
                         kit["copy"] = memory.placeholder(portrait, memory.macron_map_from(texts, study_lib))
-                    PENDING.write_text(json.dumps(kit, indent=2, ensure_ascii=False))
+                    box().pending.write_text(json.dumps(kit, indent=2, ensure_ascii=False))
+                    accounts.remember_bridge()
                     save(lib)
                 self._json(200, {"ok": True, "kit": kit, "library": public(load())})
                 return
@@ -1057,22 +1164,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def boot() -> None:
-    for folder in (DATA, TEXT, ASSETS, ORIGINALS):
-        folder.mkdir(parents=True, exist_ok=True)
-    with LOCK:
-        lib = load()
-        if lib.get("booted"):
-            return
-        brand = brand_of(lib)
-        if brand["name"] == "New brand" and not brand["assets"]["sources"]:
-            brand["name"] = "Extended Whānau"
-        lib["booted"] = True
-        save(lib)
-    for url in BOOT_URLS:
-        try:
-            start_url(url)
-        except Exception:
-            traceback.print_exc()
+    DATA.mkdir(parents=True, exist_ok=True)
+    (DATA / "users").mkdir(parents=True, exist_ok=True)
 
 
 def lan_addresses() -> list[str]:

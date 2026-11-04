@@ -1,2 +1,7 @@
 __pycache__/
 .DS_Store
+data/auth.json
+data/sessions.json
+data/bridge.json
+data/claimed
+data/users/

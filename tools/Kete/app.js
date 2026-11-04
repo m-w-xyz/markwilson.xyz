@@ -11,6 +11,9 @@ const state = {
   brandQuery: "",
   error: "",
   writing: true,
+  account: null,
+  clientId: "",
+  authError: "",
 };
 
 const VIEWS = [
@@ -91,7 +94,14 @@ function selectedCount() {
 
 async function refresh() {
   const response = await fetch("/api/library");
+  if (response.status === 401) {
+    state.account = null;
+    state.lib = null;
+    paint();
+    return;
+  }
   const data = await response.json();
+  if (data.account) state.account = data.account;
   const held = data.assets || {};
   const memory = data.memory || {};
   const sig = JSON.stringify({
@@ -146,7 +156,14 @@ async function post(url, body) {
     body: JSON.stringify(Object.assign({ brandId: brandId() }, body || {})),
   });
   const data = await response.json().catch(() => ({}));
+  if (response.status === 401) {
+    state.account = null;
+    state.lib = null;
+    paint();
+    throw new Error(data.error || "Sign in.");
+  }
   if (!response.ok) throw new Error(data.error || "Could not do that.");
+  if (data.account) state.account = data.account;
   if (data.library) {
     adopt(data.library);
     paint();
@@ -178,6 +195,12 @@ function paint() {
   const top = list ? list.scrollTop : 0;
   const restore = keepFocus();
   const root = document.getElementById("app");
+  if (!state.account) {
+    root.replaceChildren(loginGate());
+    state.painted = true;
+    mountGoogle();
+    return;
+  }
   root.replaceChildren(sidebar(), main());
   if (state.modal) root.append(modal());
   const next = document.querySelector(".pick-list");
@@ -228,7 +251,8 @@ function sidebar() {
       ),
     ]),
     el("div", { class: "sidebar-bottom" }, [
-      el("p", { class: "quiet", text: "Assets and memory stay in this brand" }),
+      el("p", { class: "quiet", text: (state.account && state.account.email) || "Signed in" }),
+      el("button", { class: "text-btn", type: "button", text: "Sign out", onclick: signOut }),
     ]),
   ]);
 }
@@ -377,7 +401,14 @@ function sourcesView() {
         el("button", { class: "bubble", type: "button", onclick: () => file.click(), text: "File" }),
       ]),
       file,
-      el("p", { class: "helper", text: "Each link is added to this workspace. Kete reads the words, the type, the colour, and the pictures a page will give up, including a public social post. A PDF link works the same way as a file." }),
+      el("p", { class: "helper", text: "Each link is added to this workspace. A page that refuses a pasted link can still be read from the tab you have open." }),
+      el("a", {
+        class: "bookmark",
+        href: readerScript(),
+        onclick: (event) => event.preventDefault(),
+        text: "Read into Kete",
+      }),
+      el("p", { class: "helper", text: "Drag Read into Kete to the bookmarks bar. On any page it reads the type and the colour from the styles the browser can see, then keeps them in this account." }),
       el("button", {
         class: "text-btn", type: "button",
         onclick: () => { state.pasteOpen = !state.pasteOpen; paint(); },
@@ -1044,7 +1075,7 @@ document.addEventListener("dragleave", (event) => {
   if (event.clientX === 0 && event.clientY === 0) document.body.classList.remove("dropping");
 });
 document.addEventListener("drop", (event) => {
-  if (!event.dataTransfer.files.length) return;
+  if (!state.account || !event.dataTransfer.files.length) return;
   event.preventDefault();
   document.body.classList.remove("dropping");
   upload(event.dataTransfer.files);
@@ -1064,6 +1095,110 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-refresh().catch(() => {
-  document.getElementById("app").append(el("p", { class: "empty", text: "Kete is not running." }));
-});
+function loginGate() {
+  const missing = !state.clientId;
+  return el("div", { class: "gate" }, [
+    el("div", { class: "gate-card" }, [
+      el("div", { class: "logo", text: "Kete" }),
+      el("p", { class: "page-subtitle", text: "Sign in with Google. Everything kept here stays with that account." }),
+      missing
+        ? el("form", { class: "stack", onsubmit: saveClient }, [
+          el("p", { class: "helper", text: "Paste the Web client ID from Google Cloud. Add " + location.origin + " as an authorised JavaScript origin." }),
+          el("input", { id: "client-id", class: "field", placeholder: "1234567890-abc.apps.googleusercontent.com", autocomplete: "off" }),
+          el("button", { class: "primary", type: "submit", text: "Save client ID" }),
+        ])
+        : el("div", { id: "google-slot" }),
+      state.authError ? el("p", { class: "error-line", text: state.authError }) : null,
+    ]),
+  ]);
+}
+
+async function saveClient(event) {
+  event.preventDefault();
+  const field = document.getElementById("client-id");
+  state.authError = "";
+  try {
+    const data = await post("/api/auth/client", { clientId: field ? field.value : "" });
+    state.clientId = data.clientId || "";
+    paint();
+  } catch (error) {
+    state.authError = error.message;
+    paint();
+  }
+}
+
+function mountGoogle() {
+  const slot = document.getElementById("google-slot");
+  if (!slot || !state.clientId) return;
+  const draw = () => {
+    const place = document.getElementById("google-slot");
+    if (!place || !window.google || !google.accounts) return;
+    google.accounts.id.initialize({
+      client_id: state.clientId,
+      callback: async (response) => {
+        state.authError = "";
+        try {
+          await post("/api/auth/google", { credential: response.credential });
+          await refresh();
+        } catch (error) {
+          state.authError = error.message;
+          paint();
+        }
+      },
+    });
+    google.accounts.id.renderButton(place, { theme: "outline", size: "large", text: "continue_with", shape: "rectangular" });
+  };
+  if (window.google && window.google.accounts) {
+    draw();
+    return;
+  }
+  let script = document.getElementById("gis");
+  if (!script) {
+    script = document.createElement("script");
+    script.id = "gis";
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    document.head.append(script);
+  }
+  script.addEventListener("load", draw);
+}
+
+async function signOut() {
+  await fetch("/api/auth/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  state.account = null;
+  state.lib = null;
+  state.sig = "";
+  paint();
+}
+
+function readerScript() {
+  const token = (state.account && state.account.captureToken) || "";
+  const here = location.hostname === "127.0.0.1" || location.hostname === "localhost" || location.port === "4787";
+  const origin = here ? location.origin : "http://127.0.0.1:4787";
+  const code = "(function(){var o=" + JSON.stringify(origin) + ",t=" + JSON.stringify(token) + ";"
+    + "function css(){var out=[],links=[].slice.call(document.querySelectorAll('link[rel~=\"stylesheet\"]'));"
+    + "return Promise.all(links.map(function(link){try{var rules=link.sheet&&link.sheet.cssRules;if(rules){for(var i=0;i<rules.length;i++)out.push(rules[i].cssText);return;}}catch(e){}"
+    + "if(!link.href)return;return fetch(link.href).then(function(r){return r.text()}).then(function(text){out.push(text)}).catch(function(){})}))"
+    + ".then(function(){[].slice.call(document.querySelectorAll('style')).forEach(function(node){out.push(node.textContent||'')});"
+    + "['body','h1','h2','h3','p','a','button','nav'].forEach(function(sel){var node=document.querySelector(sel);if(!node)return;var s=getComputedStyle(node);"
+    + "out.push(sel+'{font-family:'+s.fontFamily+';font-size:'+s.fontSize+';font-weight:'+s.fontWeight+';letter-spacing:'+s.letterSpacing+';line-height:'+s.lineHeight+';color:'+s.color+';background-color:'+s.backgroundColor+';}');});"
+    + "return out.join('\\n')})}"
+    + "css().then(function(sheet){return fetch(o+'/api/ingest/capture',{method:'POST',headers:{'Content-Type':'application/json','X-Kete-Token':t},"
+    + "body:JSON.stringify({url:location.href,title:document.title,html:(document.documentElement.outerHTML||'').slice(0,1200000),css:(sheet||'').slice(0,1200000)})})})"
+    + ".then(function(r){if(!r.ok)throw new Error('refused');alert('Kept in your kete.')}).catch(function(){alert('Kete is not running on this computer.')})})()";
+  return "javascript:" + encodeURIComponent(code);
+}
+
+async function start() {
+  try {
+    const config = await fetch("/api/auth/config").then((response) => response.json());
+    state.clientId = config.clientId || "";
+    state.account = config.account || null;
+    if (state.account) await refresh();
+    else paint();
+  } catch (error) {
+    document.getElementById("app").append(el("p", { class: "empty", text: "Kete is not running." }));
+  }
+}
+
+start();
