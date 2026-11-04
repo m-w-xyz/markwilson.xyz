@@ -1,0 +1,995 @@
+{
+  "booted": true,
+  "activeId": "4639002fe5",
+  "brands": [
+    {
+      "id": "4639002fe5",
+      "name": "Checks Downtown",
+      "createdAt": "2026-11-04T13:28:31+13:00",
+      "assets": {
+        "sources": [
+          {
+            "id": "b3f196b9a1",
+            "kind": "url",
+            "title": "CHECKS INC",
+            "origin": "https://checksdowntown.com/?srsltid=AYCX9vL-zpeSEN4QbRv2xEq21TsNJINwndq3yuH1ZvLMWJJEmiibVt4e",
+            "siteName": "Checks Downtown",
+            "platform": "",
+            "note": "",
+            "excerpt": "The home of Checks Inc, unisex fashion brand from Aotearoa, New Zealand. Shop our full range online, Afterpay and global shipping available.",
+            "status": "ready",
+            "words": 445,
+            "addedAt": "2026-11-04T13:18:25+13:00"
+          }
+        ],
+        "colors": [
+          {
+            "id": "292559da8e",
+            "sourceId": "b3f196b9a1",
+            "name": "Wash",
+            "hex": "#282C2E",
+            "opacity": 0.7,
+            "role": "Wash",
+            "note": "A translucent fill.",
+            "picked": true
+          },
+          {
+            "id": "04ee2a392b",
+            "sourceId": "b3f196b9a1",
+            "name": "Ink 2",
+            "hex": "#303030",
+            "opacity": 1.0,
+            "role": "Ink",
+            "note": "A dark text colour.",
+            "picked": true
+          },
+          {
+            "id": "886c893ccc",
+            "sourceId": "b3f196b9a1",
+            "name": "Colour",
+            "hex": "#F5F2EC",
+            "opacity": 1.0,
+            "role": "Colour",
+            "note": "A repeating colour.",
+            "picked": true
+          },
+          {
+            "id": "d806d4261e",
+            "sourceId": "b3f196b9a1",
+            "name": "Wash 2",
+            "hex": "#282C2E",
+            "opacity": 0.5,
+            "role": "Wash",
+            "note": "A translucent fill.",
+            "picked": true
+          },
+          {
+            "id": "61c13b700d",
+            "sourceId": "b3f196b9a1",
+            "name": "Signal",
+            "hex": "#AB8C52",
+            "opacity": 1.0,
+            "role": "Signal",
+            "note": "A saturated colour.",
+            "picked": true
+          },
+          {
+            "id": "a59a666b4e",
+            "sourceId": "b3f196b9a1",
+            "name": "Signal 2",
+            "hex": "#806430",
+            "opacity": 1.0,
+            "role": "Signal",
+            "note": "A saturated colour.",
+            "picked": true
+          },
+          {
+            "id": "9da3e220b4",
+            "sourceId": "b3f196b9a1",
+            "name": "Signal 3",
+            "hex": "#E8D4AE",
+            "opacity": 1.0,
+            "role": "Signal",
+            "note": "A saturated colour.",
+            "picked": true
+          },
+          {
+            "id": "37c06a14a1",
+            "sourceId": "b3f196b9a1",
+            "name": "Signal 4",
+            "hex": "#FF7135",
+            "opacity": 1.0,
+            "role": "Signal",
+            "note": "A saturated colour.",
+            "picked": true
+          },
+          {
+            "id": "b9b5364402",
+            "sourceId": "b3f196b9a1",
+            "name": "Signal 5",
+            "hex": "#005BD3",
+            "opacity": 1.0,
+            "role": "Signal",
+            "note": "A saturated colour.",
+            "picked": true
+          },
+          {
+            "id": "04eda965b5",
+            "sourceId": "b3f196b9a1",
+            "name": "Colour 2",
+            "hex": "#A49C8B",
+            "opacity": 1.0,
+            "role": "Colour",
+            "note": "A repeating colour.",
+            "picked": true
+          },
+          {
+            "id": "9b76b28dac",
+            "sourceId": "b3f196b9a1",
+            "name": "Wash 4",
+            "hex": "#FFFFFF",
+            "opacity": 0.7,
+            "role": "Wash",
+            "note": "A translucent fill.",
+            "picked": true
+          },
+          {
+            "id": "c34828017e",
+            "sourceId": "b3f196b9a1",
+            "name": "From a photograph",
+            "hex": "#1B3B38",
+            "opacity": 1,
+            "role": "Photograph",
+            "note": "Sampled from an image in this source.",
+            "picked": false
+          },
+          {
+            "id": "6899196101",
+            "sourceId": "b3f196b9a1",
+            "name": "From a photograph",
+            "hex": "#487C88",
+            "opacity": 1,
+            "role": "Photograph",
+            "note": "Sampled from an image in this source.",
+            "picked": false
+          },
+          {
+            "id": "8d482e37f6",
+            "sourceId": "b3f196b9a1",
+            "name": "From a photograph",
+            "hex": "#2C5753",
+            "opacity": 1,
+            "role": "Photograph",
+            "note": "Sampled from an image in this source.",
+            "picked": false
+          },
+          {
+            "id": "79f51f701a",
+            "sourceId": "b3f196b9a1",
+            "name": "From a photograph",
+            "hex": "#E1C982",
+            "opacity": 1,
+            "role": "Photograph",
+            "note": "Sampled from an image in this source.",
+            "picked": false
+          }
+        ],
+        "typeStyles": [
+          {
+            "id": "4317230e91",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "name": "Body",
+            "family": "Helvetica Neue",
+            "weight": 400,
+            "size": 14.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 16.0,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "CHECKS INC"
+          },
+          {
+            "id": "405168257b",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "name": "Meta",
+            "family": "Helvetica Neue",
+            "weight": 400,
+            "size": 12.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 16.2,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "CHECKS INC"
+          },
+          {
+            "id": "e9fcc98692",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "name": "Body 16",
+            "family": "Helvetica Neue",
+            "weight": 400,
+            "size": 16.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 21.6,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "CHECKS INC"
+          },
+          {
+            "id": "62ec91fb1e",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "name": "Body 13",
+            "family": "Helvetica Neue",
+            "weight": 400,
+            "size": 13.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 17.6,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "CHECKS INC"
+          },
+          {
+            "id": "fb7ac898ca",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "name": "Body 20",
+            "family": "Helvetica Neue",
+            "weight": 400,
+            "size": 20.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 27.0,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "CHECKS INC"
+          },
+          {
+            "id": "2980d458d5",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "name": "Meta 12",
+            "family": "Helvetica Neue",
+            "weight": 500,
+            "size": 12.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 14.4,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "CHECKS INC"
+          },
+          {
+            "id": "35af46decc",
+            "sourceId": "b3f196b9a1",
+            "picked": false,
+            "name": "Display",
+            "family": "Helvetica Neue",
+            "weight": 400,
+            "size": 48.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 64.8,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "CHECKS INC"
+          },
+          {
+            "id": "3fe60b6270",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "name": "Body 26",
+            "family": "Helvetica Neue",
+            "weight": 400,
+            "size": 26.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 35.1,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "CHECKS INC"
+          },
+          {
+            "id": "127844b659",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "name": "Body 18",
+            "family": "Helvetica Neue",
+            "weight": 400,
+            "size": 18.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 24.3,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "CHECKS INC"
+          }
+        ],
+        "spaces": [
+          {
+            "id": "6ba9b48fb6",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "name": "Space 10",
+            "value": 10.0,
+            "unit": "px",
+            "use": "A repeating interval in padding and gaps."
+          },
+          {
+            "id": "8b9b5e8616",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "name": "Space 30",
+            "value": 30.0,
+            "unit": "px",
+            "use": "A repeating interval in padding and gaps."
+          },
+          {
+            "id": "d75318ed2e",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "name": "Radius",
+            "value": 6.0,
+            "unit": "px",
+            "use": "The corner radius that shows up most often."
+          },
+          {
+            "id": "b3d2cafe15",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "name": "Side column",
+            "value": 288.0,
+            "unit": "px",
+            "use": "Width of the side navigation."
+          }
+        ],
+        "principles": [
+          {
+            "id": "41723b4d97",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "title": "One family",
+            "body": "The pages set type in Helvetica Neue. Hierarchy comes from size, weight, and tracking."
+          },
+          {
+            "id": "ab8abf6e70",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "title": "Colour",
+            "body": "The chromatic colours that repeat are Colour #F5F2EC, Signal #AB8C52, Signal 2 #806430, Signal 3 #E8D4AE."
+          },
+          {
+            "id": "e3ad416969",
+            "sourceId": "b3f196b9a1",
+            "picked": true,
+            "title": "Corners",
+            "body": "Corners sit at 6px. Cards and controls share that radius."
+          }
+        ],
+        "images": [
+          {
+            "id": "fc93f624dc",
+            "sourceId": "b3f196b9a1",
+            "name": "028A4785",
+            "file": "b3f196b9a1-fc93f624dc.jpg",
+            "width": 2000,
+            "height": 2500,
+            "picked": true
+          },
+          {
+            "id": "c3d5b83e66",
+            "sourceId": "b3f196b9a1",
+            "name": "LayeredShirtPink 2",
+            "file": "b3f196b9a1-c3d5b83e66.png",
+            "width": 1001,
+            "height": 1500,
+            "picked": true
+          },
+          {
+            "id": "b08de336d9",
+            "sourceId": "b3f196b9a1",
+            "name": "HooperShortTeal",
+            "file": "b3f196b9a1-b08de336d9.png",
+            "width": 1001,
+            "height": 1500,
+            "picked": true
+          },
+          {
+            "id": "d4bbd83b58",
+            "sourceId": "b3f196b9a1",
+            "name": "028A4296",
+            "file": "b3f196b9a1-d4bbd83b58.jpg",
+            "width": 2000,
+            "height": 2500,
+            "picked": true
+          },
+          {
+            "id": "b947fb56a3",
+            "sourceId": "b3f196b9a1",
+            "name": "nz",
+            "file": "b3f196b9a1-b947fb56a3.svg",
+            "width": null,
+            "height": null,
+            "picked": true
+          }
+        ],
+        "content": [
+          {
+            "id": "0f034d73dd",
+            "sourceId": "b3f196b9a1",
+            "kind": "Description",
+            "title": "CHECKS INC",
+            "body": "The home of Checks Inc, unisex fashion brand from Aotearoa, New Zealand. Shop our full range online, Afterpay and global shipping available.",
+            "picked": true
+          },
+          {
+            "id": "70996c313e",
+            "sourceId": "b3f196b9a1",
+            "kind": "Heading",
+            "title": "Currency",
+            "body": "Currency",
+            "picked": false
+          },
+          {
+            "id": "9cbf0c6ed3",
+            "sourceId": "b3f196b9a1",
+            "kind": "Heading",
+            "title": "Cart 0",
+            "body": "Cart 0",
+            "picked": false
+          },
+          {
+            "id": "70bf4fc669",
+            "sourceId": "b3f196b9a1",
+            "kind": "Heading",
+            "title": "New Arrivals",
+            "body": "New Arrivals",
+            "picked": false
+          },
+          {
+            "id": "e5afd36427",
+            "sourceId": "b3f196b9a1",
+            "kind": "Heading",
+            "title": "Newsletter",
+            "body": "Newsletter",
+            "picked": false
+          }
+        ]
+      },
+      "memory": {
+        "conversation": [],
+        "dismissed": [],
+        "kept": []
+      }
+    },
+    {
+      "id": "26b267c660",
+      "name": "Extended Whānau",
+      "createdAt": "2026-11-04T13:28:31+13:00",
+      "assets": {
+        "sources": [
+          {
+            "id": "d61031778e",
+            "kind": "url",
+            "title": "About Us",
+            "origin": "https://extendedwhanau.com/about-us",
+            "siteName": "",
+            "platform": "",
+            "note": "",
+            "excerpt": "Extended Whānau is an independent, Māori-owned creative consultancy exploring how indigenous knowledge can shape the future through design.",
+            "status": "ready",
+            "words": 312,
+            "addedAt": "2026-11-04T13:09:15+13:00"
+          },
+          {
+            "id": "9c43262f2f",
+            "kind": "url",
+            "title": "Extended Whānau",
+            "origin": "https://extendedwhanau.com/",
+            "siteName": "",
+            "platform": "",
+            "note": "",
+            "excerpt": "The first dedicated public Māori art gallery in Aotearoa",
+            "status": "ready",
+            "words": 116,
+            "addedAt": "2026-11-04T13:09:15+13:00"
+          }
+        ],
+        "colors": [
+          {
+            "id": "eacfa4343a",
+            "sourceId": "9c43262f2f",
+            "name": "Paper",
+            "hex": "#FFFFFF",
+            "opacity": 1.0,
+            "role": "Paper",
+            "note": "A light ground.",
+            "picked": true
+          },
+          {
+            "id": "4e7038785c",
+            "sourceId": "9c43262f2f",
+            "name": "Ink",
+            "hex": "#000000",
+            "opacity": 1.0,
+            "role": "Ink",
+            "note": "A dark text colour.",
+            "picked": true
+          },
+          {
+            "id": "cd1d4cf34f",
+            "sourceId": "9c43262f2f",
+            "name": "Neutral",
+            "hex": "#7A7A7A",
+            "opacity": 1.0,
+            "role": "Neutral",
+            "note": "A neutral.",
+            "picked": true
+          },
+          {
+            "id": "a0551c14bd",
+            "sourceId": "9c43262f2f",
+            "name": "Neutral 2",
+            "hex": "#C4C4C4",
+            "opacity": 1.0,
+            "role": "Neutral",
+            "note": "A neutral.",
+            "picked": true
+          },
+          {
+            "id": "950a5dc2f2",
+            "sourceId": "9c43262f2f",
+            "name": "Wash",
+            "hex": "#000000",
+            "opacity": 0.5,
+            "role": "Wash",
+            "note": "A translucent fill.",
+            "picked": true
+          },
+          {
+            "id": "28e0e0eb4c",
+            "sourceId": "9c43262f2f",
+            "name": "From a photograph",
+            "hex": "#95ABC5",
+            "opacity": 1,
+            "role": "Photograph",
+            "note": "Sampled from an image in this source.",
+            "picked": false
+          },
+          {
+            "id": "7f6f0b0640",
+            "sourceId": "9c43262f2f",
+            "name": "From a photograph",
+            "hex": "#ADBFCB",
+            "opacity": 1,
+            "role": "Photograph",
+            "note": "Sampled from an image in this source.",
+            "picked": false
+          },
+          {
+            "id": "0c095fd0e6",
+            "sourceId": "9c43262f2f",
+            "name": "From a photograph",
+            "hex": "#4A3F2C",
+            "opacity": 1,
+            "role": "Photograph",
+            "note": "Sampled from an image in this source.",
+            "picked": false
+          },
+          {
+            "id": "75d65a9610",
+            "sourceId": "9c43262f2f",
+            "name": "From a photograph",
+            "hex": "#594D35",
+            "opacity": 1,
+            "role": "Photograph",
+            "note": "Sampled from an image in this source.",
+            "picked": false
+          },
+          {
+            "id": "2594c8377e",
+            "sourceId": "d61031778e",
+            "name": "From a photograph",
+            "hex": "#0D1015",
+            "opacity": 1,
+            "role": "Photograph",
+            "note": "Sampled from an image in this source.",
+            "picked": true
+          },
+          {
+            "id": "7122939dd3",
+            "sourceId": "d61031778e",
+            "name": "From a photograph",
+            "hex": "#293844",
+            "opacity": 1,
+            "role": "Photograph",
+            "note": "Sampled from an image in this source.",
+            "picked": false
+          },
+          {
+            "id": "6d915d5b86",
+            "sourceId": "d61031778e",
+            "name": "From a photograph",
+            "hex": "#281F18",
+            "opacity": 1,
+            "role": "Photograph",
+            "note": "Sampled from an image in this source.",
+            "picked": false
+          },
+          {
+            "id": "b1dd37f901",
+            "sourceId": "d61031778e",
+            "name": "From a photograph",
+            "hex": "#342E20",
+            "opacity": 1,
+            "role": "Photograph",
+            "note": "Sampled from an image in this source.",
+            "picked": false
+          }
+        ],
+        "typeStyles": [
+          {
+            "id": "a83448711e",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Small",
+            "family": "Die Grotesk A",
+            "weight": 400,
+            "size": 18.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 24.0,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "Extended Whānau"
+          },
+          {
+            "id": "b9236ca6c2",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Large",
+            "family": "Die Grotesk A",
+            "weight": 400,
+            "size": 45.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 47.0,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "Extended Whānau"
+          },
+          {
+            "id": "2e27e3a740",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Display",
+            "family": "Die Grotesk A",
+            "weight": 400,
+            "size": 120.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 122.0,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "Extended Whānau"
+          },
+          {
+            "id": "76680a90be",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Display 95",
+            "family": "Die Grotesk A",
+            "weight": 400,
+            "size": 95.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 97.0,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "Extended Whānau"
+          },
+          {
+            "id": "51861fa713",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Title",
+            "family": "Die Grotesk A",
+            "weight": 400,
+            "size": 55.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 57.0,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "Extended Whānau"
+          },
+          {
+            "id": "409a5a3a48",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Medium",
+            "family": "Die Grotesk A",
+            "weight": 400,
+            "size": 32.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 34.0,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "Extended Whānau"
+          },
+          {
+            "id": "9bcd2d717c",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Meta",
+            "family": "Die Grotesk A",
+            "weight": 400,
+            "size": 12.0,
+            "italic": false,
+            "tracking": 2.0,
+            "trackingUnit": "PERCENT",
+            "leading": 16.2,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "Extended Whānau"
+          },
+          {
+            "id": "aee3df1e3d",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Body",
+            "family": "Die Grotesk A",
+            "weight": 400,
+            "size": 16,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 21.6,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "Extended Whānau"
+          },
+          {
+            "id": "5a3f6c7f4e",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Body 16",
+            "family": "Stellage",
+            "weight": 400,
+            "size": 16,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 21.6,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "Extended Whānau"
+          },
+          {
+            "id": "3f39f0ca77",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Display 50",
+            "family": "Die Grotesk A",
+            "weight": 400,
+            "size": 50.0,
+            "italic": false,
+            "tracking": 0,
+            "trackingUnit": "PERCENT",
+            "leading": 67.5,
+            "leadingUnit": "PIXELS",
+            "textCase": "ORIGINAL",
+            "sample": "Extended Whānau"
+          }
+        ],
+        "spaces": [
+          {
+            "id": "e834662f40",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Space 64",
+            "value": 64.0,
+            "unit": "px",
+            "use": "A repeating interval in padding and gaps."
+          },
+          {
+            "id": "adad1cae47",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Space 16",
+            "value": 16.0,
+            "unit": "px",
+            "use": "A repeating interval in padding and gaps."
+          },
+          {
+            "id": "1afcc17c13",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Space 20",
+            "value": 20.0,
+            "unit": "px",
+            "use": "A repeating interval in padding and gaps."
+          },
+          {
+            "id": "219bf7ced7",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "name": "Space 24",
+            "value": 24.0,
+            "unit": "px",
+            "use": "A repeating interval in padding and gaps."
+          }
+        ],
+        "principles": [
+          {
+            "id": "ff5a8d913b",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "title": "Typefaces",
+            "body": "The pages use Die Grotesk A, Stellage."
+          },
+          {
+            "id": "de164f1225",
+            "sourceId": "9c43262f2f",
+            "picked": true,
+            "title": "Ink and paper",
+            "body": "The neutral range runs from Ink #000000 to Paper #FFFFFF. Saturated colour is the exception, not the ground."
+          }
+        ],
+        "images": [
+          {
+            "id": "9d526dccbf",
+            "sourceId": "9c43262f2f",
+            "name": "Frame 97",
+            "file": "9c43262f2f-9d526dccbf.jpg",
+            "width": 2090,
+            "height": 2090,
+            "picked": true
+          },
+          {
+            "id": "67a7345775",
+            "sourceId": "9c43262f2f",
+            "name": "Frame 115",
+            "file": "9c43262f2f-67a7345775.jpg",
+            "width": 2090,
+            "height": 2090,
+            "picked": true
+          },
+          {
+            "id": "21fb548e1e",
+            "sourceId": "9c43262f2f",
+            "name": "Frame 100",
+            "file": "9c43262f2f-21fb548e1e.jpg",
+            "width": 2090,
+            "height": 2090,
+            "picked": true
+          },
+          {
+            "id": "e184800431",
+            "sourceId": "9c43262f2f",
+            "name": "Frame 111",
+            "file": "9c43262f2f-e184800431.jpg",
+            "width": 2090,
+            "height": 2090,
+            "picked": true
+          },
+          {
+            "id": "997ce4bb50",
+            "sourceId": "9c43262f2f",
+            "name": "Frame 104",
+            "file": "9c43262f2f-997ce4bb50.jpg",
+            "width": 2090,
+            "height": 2090,
+            "picked": true
+          },
+          {
+            "id": "36d57c4350",
+            "sourceId": "d61031778e",
+            "name": "Frame 97",
+            "file": "d61031778e-36d57c4350.jpg",
+            "width": 2090,
+            "height": 2090,
+            "picked": true
+          },
+          {
+            "id": "3efa520586",
+            "sourceId": "d61031778e",
+            "name": "Frame 115",
+            "file": "d61031778e-3efa520586.jpg",
+            "width": 2090,
+            "height": 2090,
+            "picked": true
+          },
+          {
+            "id": "7df5b5ee0c",
+            "sourceId": "d61031778e",
+            "name": "Frame 100",
+            "file": "d61031778e-7df5b5ee0c.jpg",
+            "width": 2090,
+            "height": 2090,
+            "picked": true
+          },
+          {
+            "id": "007c243dab",
+            "sourceId": "d61031778e",
+            "name": "Frame 111",
+            "file": "d61031778e-007c243dab.jpg",
+            "width": 2090,
+            "height": 2090,
+            "picked": true
+          },
+          {
+            "id": "c32651b1f5",
+            "sourceId": "d61031778e",
+            "name": "Frame 104",
+            "file": "d61031778e-c32651b1f5.jpg",
+            "width": 2090,
+            "height": 2090,
+            "picked": true
+          }
+        ],
+        "content": [
+          {
+            "id": "e679aadbe8",
+            "sourceId": "d61031778e",
+            "kind": "Description",
+            "title": "About Us",
+            "body": "Extended Whānau is an independent, Māori-owned creative consultancy exploring how indigenous knowledge can shape the future through design.",
+            "picked": true
+          },
+          {
+            "id": "6797f259f1",
+            "sourceId": "d61031778e",
+            "kind": "Heading",
+            "title": "Extended Whānau",
+            "body": "Extended Whānau",
+            "picked": false
+          },
+          {
+            "id": "a8a76c0b7e",
+            "sourceId": "d61031778e",
+            "kind": "Heading",
+            "title": "Organisations we've worked with:",
+            "body": "Organisations we've worked with:",
+            "picked": false
+          }
+        ]
+      },
+      "memory": {
+        "conversation": [
+          {
+            "id": "dded9e6f92",
+            "q": "Who have we worked with?",
+            "text": "Organisations we've worked with: Museum of New Zealand, Te Papa Tongarewa, Radio New Zealand, Te Reo Irirangi o Aotearoa, New Zealand Government, UNESCO Creative Cities, Auckland City Council, Tātāki Auckland Unlimited, Wellington City Council, WellingtonNZ, Wakatū Incorporation, Ngāti Whātua Ōrakei, Auckland Art Gallery Toi o Tāmaki, Toi Tauranga Art Gallery, Te Whare o Rehua, Sarjeant Art Gallery, HRL Morrison & Co, Nelson Airport, Nelson City Council, Taupō District Council, Whanganui District Council, Ministry of Business,, Innovation and Employment, Manatū Taonga, Ministry of Culture & Heritage, Te Papa Atawhai, Department of Conservation, Office for Maori Crown Relations, Te Arawhiti, Penguin Random House, Curionoir, Auckland Museum, Tāmaki Paenga Hira, Te Whare o Rehua Sarjeant Gallery, He Aka Ka Toro, Rewi: Āta haere, kia tere, Mānawatia a Matariki, Wairau Māori Art Gallery.",
+            "why": "From About Us.",
+            "at": "2026-11-04T13:13:26+13:00"
+          }
+        ],
+        "dismissed": [],
+        "kept": []
+      }
+    }
+  ]
+}

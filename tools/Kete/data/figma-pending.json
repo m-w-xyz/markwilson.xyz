@@ -1,0 +1,250 @@
+{
+  "preparedAt": "2026-11-04T13:37:14+13:00",
+  "brand": "Checks Downtown",
+  "colors": [
+    {
+      "name": "Checks Downtown/Colour/Wash",
+      "hex": "#282C2E",
+      "opacity": 0.7,
+      "role": "Wash",
+      "note": "A translucent fill."
+    },
+    {
+      "name": "Checks Downtown/Colour/Ink 2",
+      "hex": "#303030",
+      "opacity": 1.0,
+      "role": "Ink",
+      "note": "A dark text colour."
+    },
+    {
+      "name": "Checks Downtown/Colour/Colour",
+      "hex": "#F5F2EC",
+      "opacity": 1.0,
+      "role": "Colour",
+      "note": "A repeating colour."
+    },
+    {
+      "name": "Checks Downtown/Colour/Wash 2",
+      "hex": "#282C2E",
+      "opacity": 0.5,
+      "role": "Wash",
+      "note": "A translucent fill."
+    },
+    {
+      "name": "Checks Downtown/Colour/Signal",
+      "hex": "#AB8C52",
+      "opacity": 1.0,
+      "role": "Signal",
+      "note": "A saturated colour."
+    },
+    {
+      "name": "Checks Downtown/Colour/Signal 2",
+      "hex": "#806430",
+      "opacity": 1.0,
+      "role": "Signal",
+      "note": "A saturated colour."
+    },
+    {
+      "name": "Checks Downtown/Colour/Signal 3",
+      "hex": "#E8D4AE",
+      "opacity": 1.0,
+      "role": "Signal",
+      "note": "A saturated colour."
+    },
+    {
+      "name": "Checks Downtown/Colour/Signal 4",
+      "hex": "#FF7135",
+      "opacity": 1.0,
+      "role": "Signal",
+      "note": "A saturated colour."
+    },
+    {
+      "name": "Checks Downtown/Colour/Signal 5",
+      "hex": "#005BD3",
+      "opacity": 1.0,
+      "role": "Signal",
+      "note": "A saturated colour."
+    },
+    {
+      "name": "Checks Downtown/Colour/Colour 2",
+      "hex": "#A49C8B",
+      "opacity": 1.0,
+      "role": "Colour",
+      "note": "A repeating colour."
+    },
+    {
+      "name": "Checks Downtown/Colour/Wash 4",
+      "hex": "#FFFFFF",
+      "opacity": 0.7,
+      "role": "Wash",
+      "note": "A translucent fill."
+    }
+  ],
+  "textStyles": [
+    {
+      "name": "Checks Downtown/Type/Body",
+      "family": "Helvetica Neue",
+      "weight": 400,
+      "italic": false,
+      "size": 14.0,
+      "tracking": 0,
+      "trackingUnit": "PERCENT",
+      "leading": 16.0,
+      "textCase": "ORIGINAL",
+      "sample": "CHECKS INC"
+    },
+    {
+      "name": "Checks Downtown/Type/Meta",
+      "family": "Helvetica Neue",
+      "weight": 400,
+      "italic": false,
+      "size": 12.0,
+      "tracking": 0,
+      "trackingUnit": "PERCENT",
+      "leading": 16.2,
+      "textCase": "ORIGINAL",
+      "sample": "CHECKS INC"
+    },
+    {
+      "name": "Checks Downtown/Type/Body 16",
+      "family": "Helvetica Neue",
+      "weight": 400,
+      "italic": false,
+      "size": 16.0,
+      "tracking": 0,
+      "trackingUnit": "PERCENT",
+      "leading": 21.6,
+      "textCase": "ORIGINAL",
+      "sample": "CHECKS INC"
+    },
+    {
+      "name": "Checks Downtown/Type/Body 13",
+      "family": "Helvetica Neue",
+      "weight": 400,
+      "italic": false,
+      "size": 13.0,
+      "tracking": 0,
+      "trackingUnit": "PERCENT",
+      "leading": 17.6,
+      "textCase": "ORIGINAL",
+      "sample": "CHECKS INC"
+    },
+    {
+      "name": "Checks Downtown/Type/Body 20",
+      "family": "Helvetica Neue",
+      "weight": 400,
+      "italic": false,
+      "size": 20.0,
+      "tracking": 0,
+      "trackingUnit": "PERCENT",
+      "leading": 27.0,
+      "textCase": "ORIGINAL",
+      "sample": "CHECKS INC"
+    },
+    {
+      "name": "Checks Downtown/Type/Meta 12",
+      "family": "Helvetica Neue",
+      "weight": 500,
+      "italic": false,
+      "size": 12.0,
+      "tracking": 0,
+      "trackingUnit": "PERCENT",
+      "leading": 14.4,
+      "textCase": "ORIGINAL",
+      "sample": "CHECKS INC"
+    },
+    {
+      "name": "Checks Downtown/Type/Body 26",
+      "family": "Helvetica Neue",
+      "weight": 400,
+      "italic": false,
+      "size": 26.0,
+      "tracking": 0,
+      "trackingUnit": "PERCENT",
+      "leading": 35.1,
+      "textCase": "ORIGINAL",
+      "sample": "CHECKS INC"
+    },
+    {
+      "name": "Checks Downtown/Type/Body 18",
+      "family": "Helvetica Neue",
+      "weight": 400,
+      "italic": false,
+      "size": 18.0,
+      "tracking": 0,
+      "trackingUnit": "PERCENT",
+      "leading": 24.3,
+      "textCase": "ORIGINAL",
+      "sample": "CHECKS INC"
+    }
+  ],
+  "spaces": [
+    {
+      "name": "Space 10",
+      "value": 10.0,
+      "unit": "px",
+      "use": "A repeating interval in padding and gaps."
+    },
+    {
+      "name": "Space 30",
+      "value": 30.0,
+      "unit": "px",
+      "use": "A repeating interval in padding and gaps."
+    },
+    {
+      "name": "Radius",
+      "value": 6.0,
+      "unit": "px",
+      "use": "The corner radius that shows up most often."
+    },
+    {
+      "name": "Side column",
+      "value": 288.0,
+      "unit": "px",
+      "use": "Width of the side navigation."
+    }
+  ],
+  "principles": [
+    {
+      "title": "One family",
+      "body": "The pages set type in Helvetica Neue. Hierarchy comes from size, weight, and tracking."
+    },
+    {
+      "title": "Colour",
+      "body": "The chromatic colours that repeat are Colour #F5F2EC, Signal #AB8C52, Signal 2 #806430, Signal 3 #E8D4AE."
+    },
+    {
+      "title": "Corners",
+      "body": "Corners sit at 6px. Cards and controls share that radius."
+    }
+  ],
+  "images": [
+    {
+      "name": "028A4785",
+      "url": "http://127.0.0.1:4787/assets/b3f196b9a1-fc93f624dc.jpg"
+    },
+    {
+      "name": "LayeredShirtPink 2",
+      "url": "http://127.0.0.1:4787/assets/b3f196b9a1-c3d5b83e66.png"
+    },
+    {
+      "name": "HooperShortTeal",
+      "url": "http://127.0.0.1:4787/assets/b3f196b9a1-b08de336d9.png"
+    },
+    {
+      "name": "028A4296",
+      "url": "http://127.0.0.1:4787/assets/b3f196b9a1-d4bbd83b58.jpg"
+    },
+    {
+      "name": "nz",
+      "url": "http://127.0.0.1:4787/assets/b3f196b9a1-b947fb56a3.svg"
+    }
+  ],
+  "content": [
+    {
+      "title": "CHECKS INC",
+      "body": "The home of Checks Inc, unisex fashion brand from Aotearoa, New Zealand. Shop our full range online, Afterpay and global shipping available.",
+      "kind": "Description"
+    }
+  ]
+}

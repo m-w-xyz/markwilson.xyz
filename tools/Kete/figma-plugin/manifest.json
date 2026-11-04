@@ -1,0 +1,14 @@
+{
+  "name": "Kete Import",
+  "id": "kete-import",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["http://127.0.0.1:4787"],
+    "reasoning": "Reads the brand kit Kete prepared on this machine.",
+    "devAllowedDomains": ["http://127.0.0.1:4787"]
+  }
+}
