@@ -69,6 +69,9 @@ def _brand_name(lib: dict, texts: dict[str, str]) -> str:
             counts[site] += 12
     if counts:
         return counts.most_common(1)[0][0]
+    fallback = (lib.get("brandName") or "").strip()
+    if fallback and fallback.casefold() not in {"this brand", "kete", "new brand"}:
+        return fallback
     return "This brand"
 
 
@@ -191,9 +194,93 @@ def _facts(name: str, parts: list[tuple[dict, str]]) -> list[dict]:
     return kept
 
 
+def brand_colors(lib: dict) -> list[dict]:
+    return [color for color in lib.get("colors") or [] if (color.get("role") or "") != "Photograph"]
+
+
+def learned_from(lib: dict) -> dict:
+    colors = [
+        {"name": color.get("name") or "Colour", "hex": color.get("hex") or "", "role": color.get("role") or ""}
+        for color in brand_colors(lib)
+    ]
+    styles = [
+        {
+            "name": style.get("name") or "Type",
+            "family": style.get("family") or "",
+            "size": style.get("size") or 16,
+            "weight": style.get("weight") or 400,
+            "italic": bool(style.get("italic")),
+        }
+        for style in lib.get("typeStyles") or []
+    ]
+    spaces = [
+        {"name": space.get("name") or "Space", "value": space.get("value"), "unit": space.get("unit") or "px"}
+        for space in lib.get("spaces") or []
+    ]
+    principles = [
+        {"title": item.get("title") or "", "body": (item.get("body") or "")[:400]}
+        for item in lib.get("principles") or []
+        if (item.get("title") or item.get("body"))
+    ]
+    images = [{"name": image.get("name") or "Image"} for image in lib.get("images") or []]
+    content = []
+    for item in lib.get("content") or []:
+        body = re.sub(r"\s+", " ", item.get("body") or "").strip()
+        title = (item.get("title") or "").strip()
+        if not body and not title:
+            continue
+        content.append({"kind": item.get("kind") or "Line", "title": title, "body": body[:500]})
+    return {
+        "colors": colors,
+        "typeStyles": styles,
+        "spaces": spaces,
+        "principles": principles,
+        "images": images,
+        "content": content,
+    }
+
+
+def _asset_paragraph(learned: dict) -> str:
+    bits = []
+    colors = learned.get("colors") or []
+    styles = learned.get("typeStyles") or []
+    spaces = learned.get("spaces") or []
+    principles = learned.get("principles") or []
+    images = learned.get("images") or []
+    content = learned.get("content") or []
+    if colors:
+        shown = ", ".join(f"{color['name']} {color['hex']}" for color in colors[:12])
+        if len(colors) > 12:
+            shown += f", and {len(colors) - 12} more"
+        bits.append("Brand colour: " + shown)
+    if styles:
+        shown = [
+            f"{style['name']} is {style['family']} at {style['size']:g}px"
+            for style in styles[:8]
+        ]
+        bits.append("Type: " + "; ".join(shown))
+    if spaces:
+        bits.append("Space: " + ", ".join(
+            f"{space['name']} {space['value']:g}{space['unit']}" for space in spaces[:8]
+        ))
+    if principles:
+        bits.append("Principles: " + "; ".join(item["title"] for item in principles[:6] if item.get("title")))
+    if images:
+        names = ", ".join(image["name"] for image in images[:8])
+        bits.append(f"{len(images)} image" + ("s" if len(images) != 1 else "") + (": " + names if names else ""))
+    if content:
+        labels = []
+        for item in content:
+            label = item.get("title") or item.get("kind") or "Line"
+            if label not in labels:
+                labels.append(label)
+        bits.append("Writing pulled in: " + ", ".join(labels[:8]))
+    return ". ".join(bit for bit in bits if bit) + "." if bits else ""
+
+
 def _needs(lib: dict, voice: dict, name: str, word_count: int) -> list[dict]:
     needs = []
-    colors = lib.get("colors") or []
+    colors = brand_colors(lib)
     images = lib.get("images") or []
     styles = lib.get("typeStyles") or []
     if word_count < 220:
@@ -285,6 +372,9 @@ def _portrait(name: str, facts: list[dict], voice: dict, lib: dict, words: int) 
         paragraphs.append(f"{name} is in the kete, but no sentence yet says what it is. The sources name things. They do not define them.")
     else:
         paragraphs.append("Nothing of the voice has been read yet. Add a page, a PDF, or some writing, and this portrait will come from those words.")
+        assets = _asset_paragraph(learned_from(lib))
+        if assets:
+            paragraphs.append(assets)
         return paragraphs
 
     person = {
@@ -306,20 +396,9 @@ def _portrait(name: str, facts: list[dict], voice: dict, lib: dict, words: int) 
         f"The voice is {person}. A typical sentence is about {voice['median']} words, and it states something. {exclaim}{te}{ban}"
     )
 
-    colors = lib.get("colors") or []
-    styles = lib.get("typeStyles") or []
-    if colors or styles:
-        bits = []
-        if colors:
-            shown = ", ".join(f"{c['name']} {c['hex']}" for c in colors[:4])
-            bits.append(f"Colour so far: {shown}")
-        if styles:
-            families = []
-            for style in styles:
-                if style["family"] not in families:
-                    families.append(style["family"])
-            bits.append("Type: " + ", ".join(families[:3]))
-        paragraphs.append(". ".join(bits) + ".")
+    assets = _asset_paragraph(learned_from(lib))
+    if assets:
+        paragraphs.append(assets)
     if voice["titles"] > max(6, voice["prose"] * 2):
         paragraphs.append("What it needs now is description. The work has names. It does not yet have enough sentences.")
     return paragraphs
@@ -379,6 +458,7 @@ def study(lib: dict, texts: dict[str, str]) -> dict:
         },
         "facts": facts,
         "needs": needs,
+        "learned": learned_from(lib),
     }
 
 
@@ -420,16 +500,80 @@ def _belief(memory: dict) -> str:
     return ""
 
 
+def placeholder(memory: dict, macron_map: dict[str, str]) -> list[dict]:
+    """Website and social lines arranged from what the kete already holds."""
+    learned = memory.get("learned") or {}
+    name = memory.get("name") or "This brand"
+    facts = memory.get("facts") or []
+    content = learned.get("content") or []
+    blocks = []
+    if facts:
+        headline = " ".join(facts[0]["text"].split()[:10]).rstrip(",;:.")
+        blocks.append({"role": "Display", "text": _apply_macrons(headline, macron_map)})
+    else:
+        blocks.append({"role": "Display", "text": name})
+    title = ""
+    for piece in content:
+        piece_title = (piece.get("title") or "").strip()
+        if piece_title and piece_title.casefold() not in {name.casefold(), "description"}:
+            title = piece_title
+            break
+    blocks.append({"role": "Title", "text": title or name})
+    body_bits = []
+    for fact in facts[:3]:
+        shaped = _shape(fact["text"], memory, macron_map)
+        if shaped and shaped not in body_bits:
+            body_bits.append(shaped)
+    if not body_bits:
+        for piece in content:
+            if piece.get("body"):
+                body_bits.append(_shape(piece["body"], memory, macron_map))
+                break
+    if body_bits:
+        blocks.append({"role": "Body", "text": " ".join(body_bits)})
+
+    def plain(text: str) -> str:
+        return fold(re.sub(r"[^A-Za-zĀĒĪŌŪāēīōū0-9]+", " ", text or "")).strip()
+
+    used = {plain(block["text"]) for block in blocks}
+    for piece in content:
+        if len(blocks) >= 5:
+            break
+        body = (piece.get("body") or "").strip()
+        title = (piece.get("title") or "").strip()
+        title_key = plain(title)
+        if title_key in {"cart", "menu", "search", "login", "currency", "account", "bag"} or title_key.startswith("cart "):
+            continue
+        if title and title_key and title_key not in used:
+            blocks.append({"role": "Title", "text": title})
+            used.add(title_key)
+        if not body or plain(body) in used or (title and plain(body) == title_key):
+            continue
+        shaped = _shape(body, memory, macron_map)[:480]
+        if plain(shaped) in used:
+            continue
+        blocks.append({"role": "Body", "text": shaped})
+        used.add(plain(shaped))
+    social_source = facts[0]["text"] if facts else ((content[0].get("body") if content else "") or name)
+    social = _shape(social_source, memory, macron_map)
+    words = social.split()
+    if len(words) > 28:
+        social = " ".join(words[:28]).rstrip(",;:") + "."
+    if social:
+        blocks.append({"role": "Caption", "text": social})
+    return blocks
+
+
 def compose(memory: dict, kind: str, brief: str, macron_map: dict[str, str]) -> dict:
     brief = (brief or "").strip()
     name = memory.get("name") or "This brand"
-    if memory.get("confidence") == "early" and not brief:
+    if memory.get("confidence") == "early" and not brief and kind != "page":
         return {
             "text": "It needs a subject, and more of the brand's own writing, before it can make something worth keeping.",
             "why": "The memory is still early.",
             "sourceIds": [],
         }
-    if not brief and kind != "about":
+    if not brief and kind not in {"about", "page"}:
         return {
             "text": "Give it a subject. A name, and what the work is for.",
             "why": "New writing starts from a line you supply. The kete supplies the voice, not the facts.",
@@ -509,6 +653,14 @@ def compose(memory: dict, kind: str, brief: str, macron_map: dict[str, str]) -> 
             "sourceIds": sources[:3],
         }
 
+    if kind == "page":
+        blocks = placeholder(memory, macron_map)
+        return {
+            "text": "\n\n".join(block["text"] for block in blocks if block.get("text")),
+            "why": "Arranged from lines already in the kete, for a page that does not exist yet. Nothing was invented.",
+            "sourceIds": sources[:3],
+        }
+
     if kind == "letter":
         phrases = memory.get("phrases") or {}
         greeting = "Kia ora" if phrases.get("kiaOra") else "Hello"
@@ -553,35 +705,61 @@ def reply(memory: dict, question: str, texts: dict[str, str], lib: dict) -> dict
             "sourceIds": [],
         }
 
-    if any(word in low for word in ("colour", "color", "palette", "type", "font", "spacing", "look", "design")):
+    learned = memory.get("learned") or learned_from(lib)
+
+    if any(phrase in low for phrase in ("what do you know", "what have you learned", "what have we pulled", "what's in the kete", "what is in the kete", "brand assets", "tell me about the brand")):
+        paragraph = _asset_paragraph(learned)
+        facts = memory.get("facts") or []
+        text = (facts[0]["text"] + " " if facts else "") + (paragraph or f"The kete has the name {name}, and little else yet.")
+        return {"text": text.strip(), "why": "From the assets and the writing already pulled in.", "sourceIds": []}
+
+    if any(word in low for word in ("photograph", "photographs", "picture", "pictures", "image", "images")):
+        images = learned.get("images") or []
+        if not images:
+            return {"text": "No photographs have been pulled in yet.", "why": "Read from the images in the kete.", "sourceIds": []}
+        names = ", ".join(image["name"] for image in images[:12])
+        return {
+            "text": f"{len(images)} image" + ("s" if len(images) != 1 else "") + " in the kete: " + names + ".",
+            "why": "Names as they were pulled. Colours inside the photographs are not brand colours.",
+            "sourceIds": [],
+        }
+
+    if "principle" in low:
+        principles = learned.get("principles") or []
+        if not principles:
+            return {"text": "No principles have been read yet.", "why": "", "sourceIds": []}
+        text = " ".join((item.get("title") or "") + (". " + item["body"] if item.get("body") else "") for item in principles[:4]).strip()
+        return {"text": text, "why": "From the principles in the kete.", "sourceIds": []}
+
+    if any(word in low for word in ("colour", "color", "palette", "type", "font", "typeface", "spacing", "look", "design")):
         bits = []
-        colors = lib.get("colors") or []
-        styles = lib.get("typeStyles") or []
-        spaces = lib.get("spaces") or []
-        principles = lib.get("principles") or []
-        if "type" in low or "font" in low:
+        colors = learned.get("colors") or []
+        styles = learned.get("typeStyles") or []
+        spaces = learned.get("spaces") or []
+        principles = learned.get("principles") or []
+        if "type" in low or "font" in low or "typeface" in low:
             if styles:
                 bits.append("Type in the kete: " + "; ".join(
-                    f"{s['name']} is {s['family']} at {s['size']:g}px, weight {s['weight']}"
-                    for s in styles[:5]
+                    f"{style['name']} is {style['family']} at {style['size']:g}px, weight {style['weight']}"
+                    for style in styles[:8]
                 ) + ".")
             else:
                 bits.append("No type styles have been read yet.")
         if any(word in low for word in ("colour", "color", "palette")):
             if colors:
-                bits.append("Colour: " + ", ".join(f"{c['name']} {c['hex']}" for c in colors[:8]) + ".")
+                bits.append("Brand colour: " + ", ".join(f"{color['name']} {color['hex']}" for color in colors) + ".")
             else:
-                bits.append("No colours have been read yet.")
+                bits.append("No brand colours have been read yet. Colours sampled from photographs are left out.")
         if "spac" in low and spaces:
-            bits.append("Spacing: " + ", ".join(f"{s['name']} {s['value']:g}{s['unit']}" for s in spaces[:6]) + ".")
+            bits.append("Spacing: " + ", ".join(f"{space['name']} {space['value']:g}{space['unit']}" for space in spaces[:8]) + ".")
         if not bits:
             if principles:
                 bits.append(principles[0]["title"] + ". " + principles[0]["body"])
             elif colors or styles:
-                bits.append("The system so far is " + ", ".join(c["name"] for c in colors[:4]) + ".")
+                bits.append(_asset_paragraph(learned))
             else:
                 bits.append("The visual system is not in the kete yet. Load a page.")
-        return {"text": " ".join(bits), "why": "Read from the tokens, not from a guess.", "sourceIds": []}
+        return {"text": " ".join(bits), "why": "Read from the brand assets, not from a photograph.", "sourceIds": []}
 
     if any(phrase in low for phrase in ("how do we sound", "how should we write", "how do we write", "the voice", "how should i write", "tone")):
         voice = memory["voice"]
@@ -627,14 +805,31 @@ def reply(memory: dict, question: str, texts: dict[str, str], lib: dict) -> dict
             score = sum(1 for word in query if word in folded)
             if score:
                 best.append((score, sentence, source))
-    for item in lib.get("content") or []:
-        if item.get("kind") != "Kept":
-            continue
-        for sentence in sentences(item.get("body") or ""):
+    for item in (learned.get("content") or []):
+        blob = " ".join(part for part in (item.get("title"), item.get("body")) if part)
+        for sentence in sentences(blob) or ([blob] if blob else []):
             folded = fold(sentence)
             score = sum(1 for word in query if word in folded)
             if score:
-                best.append((score, sentence, {"id": "kept", "title": "Kept writing"}))
+                best.append((score, sentence, {"id": "content", "title": item.get("title") or item.get("kind") or "Writing"}))
+    for item in learned.get("principles") or []:
+        blob = " ".join(part for part in (item.get("title"), item.get("body")) if part)
+        folded = fold(blob)
+        score = sum(1 for word in query if word in folded)
+        if score:
+            best.append((score, blob, {"id": "principle", "title": item.get("title") or "Principle"}))
+    for color in learned.get("colors") or []:
+        sentence = f"{color['name']} is {color['hex']}."
+        folded = fold(sentence)
+        score = sum(1 for word in query if word in folded)
+        if score:
+            best.append((score, sentence, {"id": "colour", "title": "Colour"}))
+    for style in learned.get("typeStyles") or []:
+        sentence = f"{style['name']} is {style['family']} at {style['size']:g}px, weight {style['weight']}."
+        folded = fold(sentence)
+        score = sum(1 for word in query if word in folded)
+        if score:
+            best.append((score, sentence, {"id": "type", "title": "Type"}))
     best.sort(key=lambda item: -item[0])
     if not best or best[0][0] == 0:
         return {

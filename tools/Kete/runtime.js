@@ -205,6 +205,7 @@
   function collapse(assets) {
     const colors = [];
     (assets.colors || []).forEach(function (color) {
+      if ((color.role || "") === "Photograph") return;
       const opacity = color.opacity == null ? 1 : color.opacity;
       if (colors.some(function (other) {
         return closeColor(color.hex, other.hex) && Math.abs(opacity - (other.opacity == null ? 1 : other.opacity)) < 0.12;
@@ -328,7 +329,10 @@
       if (site && !["project manager", "home", "about us"].includes(site.toLowerCase())) counts[site] = (counts[site] || 0) + 12;
     });
     const best = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0];
-    return best || "This brand";
+    if (best) return best;
+    const named = (studyLib.brandName || "").trim();
+    if (named && !["this brand", "kete", "new brand"].includes(named.toLowerCase())) return named;
+    return "This brand";
   }
 
   function factsOf(name, parts) {
@@ -358,6 +362,54 @@
     return kept;
   }
 
+  function learnedFrom(studyLib) {
+    const colors = (studyLib.colors || []).filter(function (color) { return (color.role || "") !== "Photograph"; }).map(function (color) {
+      return { name: color.name || "Colour", hex: color.hex || "", role: color.role || "" };
+    });
+    const typeStyles = (studyLib.typeStyles || []).map(function (style) {
+      return { name: style.name || "Type", family: style.family || "", size: style.size || 16, weight: style.weight || 400, italic: !!style.italic };
+    });
+    const spaces = (studyLib.spaces || []).map(function (space) {
+      return { name: space.name || "Space", value: space.value, unit: space.unit || "px" };
+    });
+    const principles = (studyLib.principles || []).filter(function (item) { return item.title || item.body; }).map(function (item) {
+      return { title: item.title || "", body: String(item.body || "").slice(0, 400) };
+    });
+    const images = (studyLib.images || []).map(function (image) { return { name: image.name || "Image" }; });
+    const content = [];
+    (studyLib.content || []).forEach(function (item) {
+      const body = String(item.body || "").replace(/\s+/g, " ").trim();
+      const title = String(item.title || "").trim();
+      if (!body && !title) return;
+      content.push({ kind: item.kind || "Line", title: title, body: body.slice(0, 500) });
+    });
+    return { colors: colors, typeStyles: typeStyles, spaces: spaces, principles: principles, images: images, content: content };
+  }
+
+  function assetParagraph(learned) {
+    const bits = [];
+    if ((learned.colors || []).length) {
+      const shown = learned.colors.slice(0, 12).map(function (color) { return color.name + " " + color.hex; }).join(", ");
+      bits.push("Brand colour: " + shown + (learned.colors.length > 12 ? ", and " + (learned.colors.length - 12) + " more" : ""));
+    }
+    if ((learned.typeStyles || []).length) bits.push("Type: " + learned.typeStyles.slice(0, 8).map(function (style) { return style.name + " is " + style.family + " at " + style.size + "px"; }).join("; "));
+    if ((learned.spaces || []).length) bits.push("Space: " + learned.spaces.slice(0, 8).map(function (space) { return space.name + " " + space.value + space.unit; }).join(", "));
+    if ((learned.principles || []).length) bits.push("Principles: " + learned.principles.slice(0, 6).map(function (item) { return item.title; }).filter(Boolean).join("; "));
+    if ((learned.images || []).length) {
+      const names = learned.images.slice(0, 8).map(function (image) { return image.name; }).join(", ");
+      bits.push(learned.images.length + " image" + (learned.images.length === 1 ? "" : "s") + (names ? ": " + names : ""));
+    }
+    if ((learned.content || []).length) {
+      const labels = [];
+      learned.content.forEach(function (item) {
+        const label = item.title || item.kind || "Line";
+        if (!labels.includes(label)) labels.push(label);
+      });
+      bits.push("Writing pulled in: " + labels.slice(0, 8).join(", "));
+    }
+    return bits.length ? bits.join(". ") + "." : "";
+  }
+
   function study(studyLib, textMap) {
     const parts = [];
     (studyLib.sources || []).forEach(function (source) {
@@ -378,7 +430,8 @@
     const needs = [];
     if (wordCount < 220) needs.push({ id: "voice-thin", title: "The voice is still thin", detail: "A few hundred words of real writing — an about page, a project text, a PDF — will give the memory something to keep." });
     if (voice.titles > Math.max(6, voice.prose * 2) && voice.prose < 14) needs.push({ id: "captions", title: "The work is named more than it is described", detail: "There are many short titles and few sentences that say what a project is. Captions are the missing piece: the place, the relationship, then stop." });
-    if (!(studyLib.colors || []).length) needs.push({ id: "no-colour", title: "No colour has been read", detail: "A live page or a designed PDF will bring the palette in. A screenshot works if a site refuses to be read." });
+    const learned = learnedFrom(studyLib);
+    if (!learned.colors.length) needs.push({ id: "no-colour", title: "No colour has been read", detail: "A live page or a designed PDF will bring the palette in. A screenshot works if a site refuses to be read." });
     if (!(studyLib.images || []).length) needs.push({ id: "no-image", title: "No photographs yet", detail: "The memory can talk about the work, but it has not seen it. Add a project image or a page that carries one." });
     if (!(studyLib.typeStyles || []).length) needs.push({ id: "no-type", title: "No type styles yet", detail: "Load a page and the type styles will be read from its CSS. A PDF will not carry them." });
     if (voice.teReo) needs.push({ id: "te-reo", title: "Keep te reo in human hands", detail: "Macrons in the sources will be preserved, and lines already written can be repeated. New Māori should be written by a person, not generated here." });
@@ -387,22 +440,19 @@
     if (!(studyLib.sources || []).some(function (source) { return source.kind === "social"; })) needs.push({ id: "no-social", title: "No social link yet", detail: "A public post can be read when the platform allows it. If it does not, drop in a screenshot." });
     if (name === "This brand" && wordCount > 40) needs.push({ id: "unnamed", title: "The brand is not named in the sources", detail: "Add a page or a line that says the name, so new writing does not have to guess it." });
     const summary = [];
-    if (!full.trim() && wordCount <= 30) summary.push("Nothing of the voice has been read yet. Add a page, a PDF, or some writing, and this portrait will come from those words.");
-    else {
+    if (!full.trim() && wordCount <= 30) {
+      summary.push("Nothing of the voice has been read yet. Add a page, a PDF, or some writing, and this portrait will come from those words.");
+      const assets = assetParagraph(learned);
+      if (assets) summary.push(assets);
+    } else {
       summary.push(facts[0] ? facts[0].text : name + " is in the kete, but no sentence yet says what it is. The sources name things. They do not define them.");
       const person = { we: "first person plural", i: "first person", they: "third person", neutral: "unmarked" }[voice.person];
       const ban = voice.absent.length ? " It does not use words like " + voice.absent.slice(0, 4).join(", ") + "." : "";
       const samples = Object.values(map).slice(0, 4).join(", ");
       const te = voice.teReo ? " Te reo is in the naming — " + (samples || "the words as written") + " — and it stays quoted, not generated." : "";
       summary.push("The voice is " + person + ". A typical sentence is about " + voice.median + " words, and it states something. " + (voice.exclaim ? "It uses exclamation." : "It does not exclaim.") + te + ban);
-      const bits = [];
-      if ((studyLib.colors || []).length) bits.push("Colour so far: " + studyLib.colors.slice(0, 4).map(function (color) { return color.name + " " + color.hex; }).join(", "));
-      if ((studyLib.typeStyles || []).length) {
-        const families = [];
-        studyLib.typeStyles.forEach(function (style) { if (!families.includes(style.family)) families.push(style.family); });
-        bits.push("Type: " + families.slice(0, 3).join(", "));
-      }
-      if (bits.length) summary.push(bits.join(". ") + ".");
+      const assets = assetParagraph(learned);
+      if (assets) summary.push(assets);
       if (voice.titles > Math.max(6, voice.prose * 2)) summary.push("What it needs now is description. The work has names. It does not yet have enough sentences.");
     }
     return {
@@ -414,6 +464,7 @@
       voice: { person: voice.person, median: voice.median, exclaim: voice.exclaim, teReo: voice.teReo, lexicon: voice.lexicon, absent: voice.absent },
       facts: facts,
       needs: needs.filter(function (need) { return !dismissed.has(need.id); }),
+      learned: learned,
       _map: map,
     };
   }
@@ -429,6 +480,7 @@
       images: assets.images || [],
       content: (assets.content || []).concat((brand.memory.kept || []).map(function (item) { return { kind: "Kept", title: item.title || "", body: item.body || "" }; })),
       dismissed: brand.memory.dismissed || [],
+      brandName: brand.name || "",
     };
     return { studyLib: studyLib, portrait: study(studyLib, texts) };
   }
@@ -447,11 +499,68 @@
     return cleaned ? cleaned[0].toUpperCase() + cleaned.slice(1) : cleaned;
   }
 
+  function placeholderBlocks(memory) {
+    const learned = memory.learned || { content: [] };
+    const name = memory.name || "This brand";
+    const facts = memory.facts || [];
+    const content = learned.content || [];
+    const blocks = [];
+    if (facts.length) blocks.push({ role: "Display", text: applyMacrons(wordsOf(facts[0].text).slice(0, 10).join(" ").replace(/[,;:.]+$/, ""), memory._map || {}) });
+    else blocks.push({ role: "Display", text: name });
+    let title = "";
+    content.some(function (piece) {
+      const pieceTitle = (piece.title || "").trim();
+      if (pieceTitle && pieceTitle.toLowerCase() !== name.toLowerCase() && pieceTitle.toLowerCase() !== "description") {
+        title = pieceTitle;
+        return true;
+      }
+      return false;
+    });
+    blocks.push({ role: "Title", text: title || name });
+    const bodyBits = [];
+    facts.slice(0, 3).forEach(function (fact) {
+      const shaped = shape(fact.text, memory);
+      if (shaped && !bodyBits.includes(shaped)) bodyBits.push(shaped);
+    });
+    if (!bodyBits.length) {
+      content.some(function (piece) {
+        if (!piece.body) return false;
+        bodyBits.push(shape(piece.body, memory));
+        return true;
+      });
+    }
+    if (bodyBits.length) blocks.push({ role: "Body", text: bodyBits.join(" ") });
+    function plain(text) { return fold(String(text || "").replace(/[^A-Za-zĀĒĪŌŪāēīōū0-9]+/g, " ")).trim(); }
+    const used = new Set(blocks.map(function (block) { return plain(block.text); }));
+    content.forEach(function (piece) {
+      if (blocks.length >= 5) return;
+      const body = (piece.body || "").trim();
+      const title = (piece.title || "").trim();
+      const titleKey = plain(title);
+      if (["cart", "menu", "search", "login", "currency", "account", "bag"].includes(titleKey) || titleKey.indexOf("cart ") === 0) return;
+      if (title && titleKey && !used.has(titleKey)) {
+        blocks.push({ role: "Title", text: title });
+        used.add(titleKey);
+      }
+      if (!body || used.has(plain(body)) || (title && plain(body) === titleKey)) return;
+      const shaped = shape(body, memory).slice(0, 480);
+      if (used.has(plain(shaped))) return;
+      blocks.push({ role: "Body", text: shaped });
+      used.add(plain(shaped));
+    });
+    const socialSource = facts.length ? facts[0].text : (content[0] && content[0].body) || name;
+    let social = shape(socialSource, memory);
+    const socialWords = wordsOf(social);
+    if (socialWords.length > 28) social = socialWords.slice(0, 28).join(" ").replace(/[,;:]+$/, "") + ".";
+    if (social) blocks.push({ role: "Caption", text: social });
+    return blocks;
+  }
+
   function compose(memory, kind, brief) {
     brief = (brief || "").trim();
     const name = memory.name || "This brand";
-    if (memory.confidence === "early" && !brief) return { text: "It needs a subject, and more of the brand's own writing, before it can make something worth keeping.", why: "The memory is still early." };
-    if (!brief && kind !== "about") return { text: "Give it a subject. A name, and what the work is for.", why: "New writing starts from a line you supply. The kete supplies the voice, not the facts." };
+    if (memory.confidence === "early" && !brief && kind !== "page") return { text: "It needs a subject, and more of the brand's own writing, before it can make something worth keeping.", why: "The memory is still early." };
+    if (!brief && kind !== "about" && kind !== "page") return { text: "Give it a subject. A name, and what the work is for.", why: "New writing starts from a line you supply. The kete supplies the voice, not the facts." };
     const why = ["Sentences sit near " + (memory.voice.median || 16) + " words."];
     if (memory.voice.teReo) why.push("Macrons follow the sources. No new te reo was written.");
     if (!memory.voice.exclaim) why.push("No exclamation, because the sources don't use it.");
@@ -480,6 +589,10 @@
       if (brief) text += " " + shape("Said here for " + brief.replace(/\.+$/, ""), memory);
       return { text: text, why: "Arranged from lines already in the kete, not invented. " + why.join(" ") };
     }
+    if (kind === "page") {
+      const blocks = placeholderBlocks(memory);
+      return { text: blocks.map(function (block) { return block.text; }).filter(Boolean).join("\n\n"), why: "Arranged from lines already in the kete, for a page that does not exist yet. Nothing was invented." };
+    }
     if (kind === "letter") {
       const greeting = memory.phrases && memory.phrases.kiaOra ? "Kia ora" : "Hello";
       const sign = memory.phrases && memory.phrases.ngaMihi ? "Ngā mihi" : "";
@@ -507,17 +620,33 @@
       if (!needs.length) return { text: name + " has a voice and a system in the kete. Nothing urgent is missing. The next writing can start from a real brief.", why: "Read from the current gaps." };
       return { text: needs.slice(0, 3).map(function (need) { return need.title + ". " + need.detail; }).join(" "), why: "These are the gaps in what has been read, not a strategy invented beside it." };
     }
-    if (["colour", "color", "palette", "type", "font", "spacing", "look", "design"].some(function (word) { return low.includes(word); })) {
+    const learned = memory.learned || learnedFrom(studyLib);
+    if (["what do you know", "what have you learned", "what have we pulled", "what's in the kete", "what is in the kete", "brand assets", "tell me about the brand"].some(function (phrase) { return low.includes(phrase); })) {
+      const paragraph = assetParagraph(learned);
+      const facts = memory.facts || [];
+      return { text: ((facts[0] ? facts[0].text + " " : "") + (paragraph || ("The kete has the name " + name + ", and little else yet."))).trim(), why: "From the assets and the writing already pulled in." };
+    }
+    if (["photograph", "photographs", "picture", "pictures", "image", "images"].some(function (word) { return low.includes(word); })) {
+      const images = learned.images || [];
+      if (!images.length) return { text: "No photographs have been pulled in yet.", why: "Read from the images in the kete." };
+      return { text: images.length + " image" + (images.length === 1 ? "" : "s") + " in the kete: " + images.slice(0, 12).map(function (image) { return image.name; }).join(", ") + ".", why: "Names as they were pulled. Colours inside the photographs are not brand colours." };
+    }
+    if (low.includes("principle")) {
+      const principles = learned.principles || [];
+      if (!principles.length) return { text: "No principles have been read yet.", why: "" };
+      return { text: principles.slice(0, 4).map(function (item) { return (item.title || "") + (item.body ? ". " + item.body : ""); }).join(" ").trim(), why: "From the principles in the kete." };
+    }
+    if (["colour", "color", "palette", "type", "font", "typeface", "spacing", "look", "design"].some(function (word) { return low.includes(word); })) {
       const bits = [];
-      if (low.includes("type") || low.includes("font")) {
-        bits.push((studyLib.typeStyles || []).length ? "Type in the kete: " + studyLib.typeStyles.slice(0, 5).map(function (style) { return style.name + " is " + style.family + " at " + style.size + "px, weight " + style.weight; }).join("; ") + "." : "No type styles have been read yet.");
+      if (low.includes("type") || low.includes("font") || low.includes("typeface")) {
+        bits.push((learned.typeStyles || []).length ? "Type in the kete: " + learned.typeStyles.slice(0, 8).map(function (style) { return style.name + " is " + style.family + " at " + style.size + "px, weight " + style.weight; }).join("; ") + "." : "No type styles have been read yet.");
       }
       if (["colour", "color", "palette"].some(function (word) { return low.includes(word); })) {
-        bits.push((studyLib.colors || []).length ? "Colour: " + studyLib.colors.slice(0, 8).map(function (color) { return color.name + " " + color.hex; }).join(", ") + "." : "No colours have been read yet.");
+        bits.push((learned.colors || []).length ? "Brand colour: " + learned.colors.map(function (color) { return color.name + " " + color.hex; }).join(", ") + "." : "No brand colours have been read yet. Colours sampled from photographs are left out.");
       }
-      if (low.includes("spac") && (studyLib.spaces || []).length) bits.push("Spacing: " + studyLib.spaces.slice(0, 6).map(function (space) { return space.name + " " + space.value + (space.unit || "px"); }).join(", ") + ".");
-      if (!bits.length) bits.push((studyLib.colors || []).length ? "The system so far is " + studyLib.colors.slice(0, 4).map(function (color) { return color.name; }).join(", ") + "." : "The visual system is not in the kete yet. Load a page.");
-      return { text: bits.join(" "), why: "Read from the tokens, not from a guess." };
+      if (low.includes("spac") && (learned.spaces || []).length) bits.push("Spacing: " + learned.spaces.slice(0, 8).map(function (space) { return space.name + " " + space.value + space.unit; }).join(", ") + ".");
+      if (!bits.length) bits.push(assetParagraph(learned) || "The visual system is not in the kete yet. Load a page.");
+      return { text: bits.join(" "), why: "Read from the brand assets, not from a photograph." };
     }
     if (["how do we sound", "how should we write", "how do we write", "the voice", "how should i write", "tone"].some(function (phrase) { return low.includes(phrase); })) {
       const voice = memory.voice;
@@ -543,6 +672,26 @@
         const score = query.reduce(function (sum, word) { return sum + (folded.includes(word) ? 1 : 0); }, 0);
         if (score) best.push([score, line, source]);
       });
+    });
+    function scoreLine(sentence, source) {
+      const folded = fold(sentence);
+      const score = query.reduce(function (sum, word) { return sum + (folded.includes(word) ? 1 : 0); }, 0);
+      if (score) best.push([score, sentence, source]);
+    }
+    (learned.content || []).forEach(function (item) {
+      const blob = [item.title, item.body].filter(Boolean).join(" ");
+      (sentences(blob).length ? sentences(blob) : (blob ? [blob] : [])).forEach(function (sentence) {
+        scoreLine(sentence, { id: "content", title: item.title || item.kind || "Writing" });
+      });
+    });
+    (learned.principles || []).forEach(function (item) {
+      scoreLine([item.title, item.body].filter(Boolean).join(" "), { id: "principle", title: item.title || "Principle" });
+    });
+    (learned.colors || []).forEach(function (color) {
+      scoreLine(color.name + " is " + color.hex + ".", { id: "colour", title: "Colour" });
+    });
+    (learned.typeStyles || []).forEach(function (style) {
+      scoreLine(style.name + " is " + style.family + " at " + style.size + "px, weight " + style.weight + ".", { id: "type", title: "Type" });
     });
     best.sort(function (a, b) { return b[0] - a[0]; });
     if (!best.length) return { text: "That is not in the kete. Add the page, the PDF, or the caption that would answer it.", why: "" };
@@ -742,18 +891,76 @@
     }
   }
 
+  function instagramMedia(url) {
+    let parts = [];
+    try { parts = new URL(url).pathname.split("/").filter(Boolean); } catch (error) { return ""; }
+    const kinds = ["p", "reel", "reels", "tv"];
+    for (let index = 0; index < parts.length; index += 1) {
+      if (kinds.indexOf(parts[index]) >= 0 && parts[index + 1]) {
+        const kind = parts[index] === "reels" ? "reel" : parts[index];
+        return "https://www.instagram.com/" + kind + "/" + parts[index + 1] + "/media/?size=l";
+      }
+    }
+    return "";
+  }
+
+  async function tweetPack(url) {
+    const match = String(url).match(/\/status\/(\d+)/);
+    if (!match) return { images: [], description: "", title: "" };
+    try {
+      const tweet = (JSON.parse(await remote("https://api.fxtwitter.com/status/" + match[1], false)).tweet) || {};
+      const media = tweet.media || {};
+      const images = (media.photos || []).map(function (photo) { return photo.url; }).filter(Boolean);
+      (media.videos || []).forEach(function (video) { if (video.thumbnail_url) images.push(video.thumbnail_url); });
+      const author = (tweet.author && tweet.author.name) || "";
+      return { title: author ? author + " on X" : "", description: tweet.text || "", images: images };
+    } catch (error) {
+      return { images: [], description: "", title: "" };
+    }
+  }
+
+  async function pagePicture(url) {
+    try {
+      const raw = await remote("https://api.microlink.io/?url=" + encodeURIComponent(url), false);
+      const data = (JSON.parse(raw).data) || {};
+      const image = data.image && (data.image.url || (typeof data.image === "string" ? data.image : ""));
+      return { title: data.title || "", description: data.description || "", images: image ? [image] : [] };
+    } catch (error) {
+      return { images: [], description: "", title: "" };
+    }
+  }
+
   async function ingestUrl(url, sourceId) {
     url = (url || "").trim();
     if (!url) throw new Error("Paste a link first.");
     if (!/^https?:\/\//i.test(url)) url = "https://" + url;
     const host = new URL(url).hostname.toLowerCase();
     if (host === "169.254.169.254" || host === "metadata.google.internal") throw new Error("That link is blocked.");
+    const pathName = new URL(url).pathname;
+    if (/\.pdf($|\?)/i.test(url)) {
+      const bytes = await remote(url, true);
+      const result = await ingestFile(pathName.split("/").pop() || "document.pdf", bytes);
+      result.source.id = sourceId || result.source.id;
+      result.source.origin = url;
+      result.source.kind = "pdf";
+      result.source.note = "Read from the PDF link.";
+      return result;
+    }
+    if (/\.(png|jpe?g|gif|webp|svg)($|\?)/i.test(url)) {
+      const bytes = await remote(url, true);
+      const result = await ingestFile(pathName.split("/").pop() || "image", bytes);
+      result.source.id = sourceId || result.source.id;
+      result.source.origin = url;
+      result.source.kind = "image";
+      result.source.note = "Read from the image link.";
+      return result;
+    }
     const html = await remote(url, false);
     const parsed = visible(html);
     const metas = parsed.metas;
     const site = metas["og:site_name"] || "";
     let title = (metas["og:title"] || parsed.title || site || url).replace(/\s+[|–—-]\s+.*$/, "").trim();
-    const description = metas["og:description"] || metas.description || "";
+    let description = metas["og:description"] || metas.description || "";
     const platform = platformFor(url);
     let text = parsed.text || "";
     if (description && !text.includes(description)) text = description + "\n" + text;
@@ -766,7 +973,18 @@
     const design = readDesign(sheets.join("\n"));
     const images = [];
     const imageUrls = [];
+    const platformHost = platformFor(url);
+    let social = { images: [], description: "", title: "" };
+    if (platformHost === "X") social = await tweetPack(url);
+    const media = instagramMedia(url);
+    if (media) social.images = social.images.concat([media]);
+    if (social.description && !text.includes(social.description)) {
+      text = social.description + "\n" + text;
+      if (!description) description = social.description;
+    }
+    if (social.title && (!title || /^(instagram|facebook|login|log in|x)$/i.test(title))) title = social.title;
     if (metas["og:image"]) imageUrls.push(new URL(metas["og:image"], url).href);
+    social.images.forEach(function (imageUrl) { imageUrls.unshift(imageUrl); });
     const doc = new DOMParser().parseFromString(html, "text/html");
     doc.querySelectorAll("img[src]").forEach(function (img) {
       const src = img.getAttribute("src");
@@ -781,7 +999,26 @@
         images.push({ name: title.slice(0, 48) || "Image", ext: ext, data: new Blob([bytes], { type: ext === "png" ? "image/png" : "image/jpeg" }), palette: ext === "svg" ? [] : await paletteOf(bytes) });
       } catch (error) { /* an image can refuse */ }
     }
-    const note = platform && wordsOf(text).length < 40
+    if (platform && !images.length) {
+      const extra = await pagePicture(url);
+      if (extra.description && wordsOf(text).length < 12) {
+        text = extra.description + "\n" + text;
+        if (!description) description = extra.description;
+      }
+      if (extra.title && (!title || /^(instagram|facebook|login|log in|x)$/i.test(title))) title = extra.title;
+      for (const imageUrl of extra.images) {
+        if (images.length >= 5) break;
+        try {
+          const bytes = await remote(imageUrl, true);
+          if (!bytes || bytes.length < 4000 || bytes.length > 8000000) continue;
+          const ext = /\.png($|\?)/i.test(imageUrl) ? "png" : /\.webp($|\?)/i.test(imageUrl) ? "webp" : "jpg";
+          images.push({ name: (title || "Image").slice(0, 48), ext: ext, data: new Blob([bytes], { type: ext === "png" ? "image/png" : "image/jpeg" }), palette: await paletteOf(bytes) });
+        } catch (error) { /* the picture can refuse */ }
+      }
+    }
+    const note = platform && images.length && wordsOf(text).length < 12
+      ? "The pictures came through from " + platform + ". The caption did not."
+      : platform && wordsOf(text).length < 40
       ? platform + " does not hand the post to an anonymous reader. The link is kept. A screenshot or an export will bring the caption in."
       : platform ? "Read from " + platform + "." : "";
     const content = [];
@@ -808,7 +1045,9 @@
     let kind = "file";
     if (ext === "pdf" || (data[0] === 0x25 && data[1] === 0x50)) {
       kind = "pdf";
-      text = await pdfText(data);
+      const read = await readPdf(data);
+      text = read.text;
+      read.shots.forEach(function (shot) { images.push(shot); });
     } else if (ext === "docx") {
       text = await docxText(data);
     } else if (["txt", "md", "markdown", "csv"].includes(ext)) {
@@ -832,18 +1071,34 @@
     return result;
   }
 
-  async function pdfText(data) {
+  async function readPdf(data) {
     const pdfjs = await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs");
     pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
-    const pdf = await pdfjs.getDocument({ data: data }).promise;
+    const pdf = await pdfjs.getDocument({ data: data.slice ? data.slice() : data }).promise;
     const pages = [];
+    const shots = [];
     const last = Math.min(pdf.numPages, 20);
     for (let index = 1; index <= last; index += 1) {
       const page = await pdf.getPage(index);
       const content = await page.getTextContent();
       pages.push(content.items.map(function (item) { return item.str; }).join(" "));
+      if (shots.length >= 3) continue;
+      try {
+        const viewport = page.getViewport({ scale: 1 });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.min(1400, Math.round(viewport.width));
+        canvas.height = Math.round(viewport.height * (canvas.width / viewport.width));
+        await page.render({ canvasContext: canvas.getContext("2d"), viewport: page.getViewport({ scale: canvas.width / viewport.width }) }).promise;
+        const blob = await new Promise(function (resolve) { canvas.toBlob(resolve, "image/jpeg", 0.82); });
+        if (blob) shots.push({ name: "Page " + index, ext: "jpg", data: blob, palette: [] });
+      } catch (error) { /* a page can refuse to draw */ }
     }
-    return pages.join("\n");
+    return { text: pages.join("\n"), shots: shots };
+  }
+
+  async function pdfText(data) {
+    const read = await readPdf(data);
+    return read.text;
   }
 
   async function docxText(data) {
@@ -881,7 +1136,8 @@
     assets.sources = (assets.sources || []).filter(function (item) { return item.id !== sourceId; });
     assets.sources.unshift(source);
     (result.colors || []).forEach(function (color) {
-      assets.colors.push({ id: newId(), sourceId: sourceId, picked: color.role !== "Photograph", name: color.name, hex: color.hex, opacity: color.opacity == null ? 1 : color.opacity, role: color.role || "Colour", note: color.note || "" });
+      if ((color.role || "") === "Photograph") return;
+      assets.colors.push({ id: newId(), sourceId: sourceId, picked: true, name: color.name, hex: color.hex, opacity: color.opacity == null ? 1 : color.opacity, role: color.role || "Colour", note: color.note || "" });
     });
     (result.typeStyles || []).forEach(function (style) { assets.typeStyles.push(Object.assign({ id: newId(), sourceId: sourceId, picked: true }, style)); });
     (result.spaces || []).forEach(function (space) { assets.spaces.push(Object.assign({ id: newId(), sourceId: sourceId, picked: true }, space)); });
@@ -891,13 +1147,6 @@
       const filename = sourceId + "-" + fileId + "." + (image.ext || "jpg");
       await idbPut("blobs", filename, image.data);
       assets.images.push({ id: fileId, sourceId: sourceId, name: image.name || "Image", file: filename, local: true, picked: true });
-      let budget = 4;
-      for (const hex of image.palette || []) {
-        if (budget <= 0) break;
-        if ((assets.colors || []).some(function (color) { return closeColor(hex, color.hex); })) continue;
-        assets.colors.push({ id: newId(), sourceId: sourceId, name: "From a photograph", hex: hex, opacity: 1, role: "Photograph", note: "Sampled from an image in this source.", picked: false });
-        budget -= 1;
-      }
     }
     (result.content || []).forEach(function (piece) {
       assets.content.push({ id: newId(), sourceId: sourceId, kind: piece.kind || "Line", title: piece.title || "", body: piece.body || "", picked: piece.kind === "Description" });
@@ -957,24 +1206,63 @@
     return new Response(JSON.stringify(body), { status: status, headers: { "Content-Type": "application/json; charset=utf-8" } });
   }
 
-  async function figmaKit(brand) {
+  function bytesToB64(bytes) {
+    let binary = "";
+    const chunk = 0x8000;
+    for (let index = 0; index < bytes.length; index += chunk) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(index, index + chunk));
+    }
+    return btoa(binary);
+  }
+
+  async function kitBytes(blob) {
+    if (!blob) return null;
+    if (blob.size <= 2500000) return new Uint8Array(await blob.arrayBuffer());
+    try {
+      const bitmap = await createImageBitmap(blob);
+      const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const smaller = await new Promise(function (resolve) { canvas.toBlob(resolve, "image/jpeg", 0.82); });
+      if (!smaller || smaller.size > 2500000) return null;
+      return new Uint8Array(await smaller.arrayBuffer());
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function figmaKit(brand, only) {
     const assets = collapse(brand.assets);
     const name = (brand.name || "Kete").replace(/\//g, " ").trim() || "Kete";
-    const picked = function (items) { return (items || []).filter(function (item) { return item.picked; }); };
+    const picked = function (items, key) {
+      const rows = items || [];
+      if (only && Object.prototype.hasOwnProperty.call(only, key)) {
+        const wanted = only[key] || [];
+        return rows.filter(function (item) { return wanted.indexOf(item.id) >= 0; });
+      }
+      return rows.filter(function (item) { return item.picked; });
+    };
     const images = [];
-    for (const image of picked(assets.images)) {
-      images.push({ name: image.name || "Image", url: await imageSrc(image) });
+    for (const image of picked(assets.images, "images")) {
+      const entry = { name: image.name || "Image", url: await imageSrc(image) };
+      if (image.local && !/\.svg$/i.test(image.file || "")) {
+        const bytes = await kitBytes(await idbGet("blobs", image.file));
+        if (bytes) entry.b64 = bytesToB64(bytes);
+      }
+      images.push(entry);
     }
     return {
       preparedAt: now(),
       brand: name,
       online: true,
-      colors: picked(assets.colors).map(function (color) { return { name: name + "/Colour/" + color.name, hex: color.hex, opacity: color.opacity == null ? 1 : color.opacity, role: color.role || "", note: color.note || "" }; }),
-      textStyles: picked(assets.typeStyles).map(function (style) { return { name: name + "/Type/" + style.name, family: style.family || "Inter", weight: style.weight || 400, italic: !!style.italic, size: style.size || 16, tracking: style.tracking || 0, trackingUnit: style.trackingUnit || "PERCENT", leading: style.leading || Math.round((style.size || 16) * 1.35 * 10) / 10, textCase: style.textCase || "ORIGINAL", sample: style.sample || name }; }),
-      spaces: picked(assets.spaces).map(function (space) { return { name: space.name, value: space.value, unit: space.unit || "px", use: space.use || "" }; }),
-      principles: picked(assets.principles).map(function (item) { return { title: item.title, body: item.body }; }),
+      colors: picked(assets.colors, "colors").filter(function (color) { return (color.role || "") !== "Photograph"; }).map(function (color) { return { name: name + "/Colour/" + color.name, hex: color.hex, opacity: color.opacity == null ? 1 : color.opacity, role: color.role || "", note: color.note || "" }; }),
+      textStyles: picked(assets.typeStyles, "typeStyles").map(function (style) { return { name: name + "/Type/" + style.name, family: style.family || "Inter", weight: style.weight || 400, italic: !!style.italic, size: style.size || 16, tracking: style.tracking || 0, trackingUnit: style.trackingUnit || "PERCENT", leading: style.leading || Math.round((style.size || 16) * 1.35 * 10) / 10, textCase: style.textCase || "ORIGINAL", sample: style.sample || name }; }),
+      spaces: picked(assets.spaces, "spaces").map(function (space) { return { name: space.name, value: space.value, unit: space.unit || "px", use: space.use || "" }; }),
+      principles: picked(assets.principles, "principles").map(function (item) { return { title: item.title, body: item.body }; }),
       images: images,
-      content: picked(assets.content).filter(function (item) { return (item.body || "").trim(); }).map(function (item) { return { title: item.title || item.kind || "Writing", body: item.body || "", kind: item.kind || "" }; }),
+      content: picked(assets.content, "content").filter(function (item) { return (item.body || "").trim(); }).map(function (item) { return { title: item.title || item.kind || "Writing", body: item.body || "", kind: item.kind || "" }; }),
     };
   }
 
@@ -1119,6 +1407,17 @@
             }
           });
         });
+      } else if (path === "/api/pick") {
+        if (!PATCHABLE[payload.collection]) return json(400, { error: "Unknown group." });
+        const wanted = payload.ids || [];
+        const chosen = !!payload.picked;
+        await lock(async function () {
+          const brand = brandOf(payload.brandId);
+          (brand.assets[payload.collection] || []).forEach(function (item) {
+            if (!wanted.length || wanted.indexOf(item.id) >= 0) item.picked = chosen;
+          });
+          await save();
+        });
       } else if (path === "/api/item") {
         if (!PATCHABLE[payload.collection]) return json(400, { error: "Unknown group." });
         await lock(async function () {
@@ -1162,7 +1461,24 @@
           await save();
         });
       } else if (path === "/api/figma/prepare") {
-        const kit = await figmaKit(brandOf(payload.brandId));
+        const only = payload.only && typeof payload.only === "object" ? payload.only : null;
+        if (only) {
+          await lock(async function () {
+            const brand = brandOf(payload.brandId);
+            COLLECTIONS.forEach(function (key) {
+              if (!Object.prototype.hasOwnProperty.call(only, key)) return;
+              const wanted = only[key] || [];
+              (brand.assets[key] || []).forEach(function (item) { item.picked = wanted.indexOf(item.id) >= 0; });
+            });
+            await save();
+          });
+        }
+        const brand = brandOf(payload.brandId);
+        const kit = await figmaKit(brand, only);
+        if (payload.writing) {
+          const packed = studyPack(brand);
+          kit.copy = placeholderBlocks(packed.portrait);
+        }
         return json(200, { ok: true, kit: kit, library: await publicView() });
       } else if (path === "/api/reveal") {
         return json(200, { ok: true, library: await publicView() });

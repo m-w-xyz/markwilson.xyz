@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import base64
+import io
 import json
 import mimetypes
 import re
@@ -13,6 +15,8 @@ import traceback
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import urllib.error
+import urllib.request
 from urllib.parse import unquote, urlparse
 
 import extract
@@ -230,6 +234,7 @@ def study_pack(brand: dict) -> tuple[dict, dict, dict]:
             for item in brand["memory"].get("kept") or []
         ],
         "dismissed": brand["memory"].get("dismissed") or [],
+        "brandName": brand.get("name") or "",
     }
     return study_lib, texts, memory.study(study_lib, texts)
 
@@ -252,6 +257,8 @@ def brand_index(lib: dict) -> list:
 def collapse(lib: dict) -> dict:
     kept_colors = []
     for color in lib.get("colors") or []:
+        if (color.get("role") or "") == "Photograph":
+            continue
         opacity = color.get("opacity") if color.get("opacity") is not None else 1
         if any(
             extract._close(color["hex"], other["hex"])
@@ -354,8 +361,9 @@ def _write_result(brand: dict, result: dict, original: tuple[str, bytes] | None 
     assets["sources"] = [item for item in assets["sources"] if item["id"] != source_id]
     assets["sources"].insert(0, source)
     ASSETS.mkdir(parents=True, exist_ok=True)
-    photo_budget = 4
     for color in result.get("colors") or []:
+        if (color.get("role") or "") == "Photograph":
+            continue
         assets["colors"].append({
             "id": extract.new_id(),
             "sourceId": source_id,
@@ -364,7 +372,7 @@ def _write_result(brand: dict, result: dict, original: tuple[str, bytes] | None 
             "opacity": color.get("opacity", 1),
             "role": color.get("role") or "Colour",
             "note": color.get("note") or "",
-            "picked": color.get("role") not in {"Photograph"},
+            "picked": True,
         })
     for style in result.get("typeStyles") or []:
         assets["typeStyles"].append({
@@ -391,22 +399,6 @@ def _write_result(brand: dict, result: dict, original: tuple[str, bytes] | None 
             "height": image.get("height"),
             "picked": True,
         })
-        for hex_value in image.get("palette") or []:
-            if photo_budget <= 0:
-                break
-            if any(extract._close(hex_value, color["hex"]) for color in assets["colors"]):
-                continue
-            assets["colors"].append({
-                "id": extract.new_id(),
-                "sourceId": source_id,
-                "name": "From a photograph",
-                "hex": hex_value,
-                "opacity": 1,
-                "role": "Photograph",
-                "note": "Sampled from an image in this source.",
-                "picked": False,
-            })
-            photo_budget -= 1
     for piece in result.get("content") or []:
             assets["content"].append({
                 "id": extract.new_id(),
@@ -524,15 +516,41 @@ def start_file(filename: str, data: bytes, brand_id: str | None = None) -> str:
     return source_id
 
 
-def figma_payload(brand: dict) -> dict:
+def _image_b64(path: Path) -> str:
+    if not path.is_file() or path.suffix.lower() == ".svg":
+        return ""
+    raw = path.read_bytes()
+    if len(raw) <= 2_500_000:
+        return base64.b64encode(raw).decode("ascii")
+    try:
+        from PIL import Image
+        image = Image.open(io.BytesIO(raw)).convert("RGB")
+        image.thumbnail((1600, 1600))
+        out = io.BytesIO()
+        image.save(out, format="JPEG", quality=82)
+        data = out.getvalue()
+    except Exception:
+        return ""
+    if len(data) > 2_500_000:
+        return ""
+    return base64.b64encode(data).decode("ascii")
+
+
+def figma_payload(brand: dict, only: dict | None = None) -> dict:
     assets = collapse(brand["assets"])
     name = (brand.get("name") or "Kete").replace("/", " ").strip() or "Kete"
 
-    def picked(items):
-        return [item for item in items if item.get("picked")]
+    def picked(items, key):
+        rows = list(items or [])
+        if only is not None and key in only:
+            wanted = set(only.get(key) or [])
+            return [item for item in rows if item.get("id") in wanted]
+        return [item for item in rows if item.get("picked")]
 
     colors = []
-    for color in picked(assets.get("colors") or []):
+    for color in picked(assets.get("colors"), "colors"):
+        if (color.get("role") or "") == "Photograph":
+            continue
         colors.append({
             "name": f"{name}/Colour/{color['name']}".replace("//", "/"),
             "hex": color["hex"],
@@ -541,7 +559,7 @@ def figma_payload(brand: dict) -> dict:
             "note": color.get("note") or "",
         })
     styles = []
-    for style in picked(assets.get("typeStyles") or []):
+    for style in picked(assets.get("typeStyles"), "typeStyles"):
         styles.append({
             "name": f"{name}/Type/{style['name']}",
             "family": style.get("family") or "Inter",
@@ -556,21 +574,27 @@ def figma_payload(brand: dict) -> dict:
         })
     spaces = [
         {"name": space["name"], "value": space["value"], "unit": space.get("unit") or "px", "use": space.get("use") or ""}
-        for space in picked(assets.get("spaces") or [])
+        for space in picked(assets.get("spaces"), "spaces")
     ]
     principles = [
         {"title": item["title"], "body": item["body"]}
-        for item in picked(assets.get("principles") or [])
+        for item in picked(assets.get("principles"), "principles")
     ]
     images = []
-    for image in picked(assets.get("images") or []):
-        images.append({
+    for image in picked(assets.get("images"), "images"):
+        filename = image.get("file") or ""
+        entry = {
             "name": image.get("name") or "Image",
-            "url": f"http://127.0.0.1:{PORT}/assets/{image.get('file')}",
-        })
+            "url": f"http://127.0.0.1:{PORT}/assets/{filename}",
+        }
+        file_path = ASSETS / filename
+        encoded = _image_b64(file_path)
+        if encoded:
+            entry["b64"] = encoded
+        images.append(entry)
     content = [
         {"title": item.get("title") or item.get("kind") or "Writing", "body": item.get("body") or "", "kind": item.get("kind") or ""}
-        for item in picked(assets.get("content") or [])
+        for item in picked(assets.get("content"), "content")
         if (item.get("body") or "").strip()
     ]
     return {
@@ -600,6 +624,117 @@ def parse_multipart(body: bytes, boundary: str) -> list[tuple[str, bytes]]:
             continue
         files.append((match.group(1), data))
     return files
+
+
+FONT_UA = "Mozilla/5.0 (Windows NT 6.1; rv:1.9.2.13) Gecko/20101203 Firefox/3.6.13"
+
+
+def _ssl_context():
+    import ssl
+    for path in ("/etc/ssl/cert.pem", "/opt/homebrew/etc/ca-certificates/cert.pem", "/opt/homebrew/etc/openssl@3/cert.pem"):
+        if Path(path).is_file():
+            return ssl.create_default_context(cafile=path)
+    return ssl.create_default_context()
+
+
+def _woff_to_sfnt(data: bytes) -> bytes:
+    import math
+    import struct
+    import zlib
+
+    if len(data) < 44 or data[:4] != b"wOFF":
+        raise ValueError("Not a font file Kete can install.")
+    flavor, _length, num_tables = struct.unpack(">IIH", data[4:14])
+    entries = []
+    cursor = 44
+    for _index in range(num_tables):
+        tag, offset, comp, orig, checksum = struct.unpack(">4sIIII", data[cursor:cursor + 20])
+        cursor += 20
+        blob = data[offset:offset + comp]
+        if comp != orig:
+            blob = zlib.decompress(blob)
+        entries.append((tag, checksum, blob[:orig]))
+    entries.sort(key=lambda item: item[0])
+    power = 1 << int(math.log2(num_tables)) if num_tables else 1
+    search_range = power * 16
+    entry_selector = int(math.log2(power)) if power else 0
+    range_shift = num_tables * 16 - search_range
+    header = struct.pack(">IHHHH", flavor, num_tables, search_range, entry_selector, range_shift)
+    records = []
+    blobs = []
+    offset = 12 + num_tables * 16
+    for tag, checksum, blob in entries:
+        records.append(struct.pack(">4sIII", tag, checksum, offset, len(blob)))
+        padded = blob + b"\0" * ((4 - len(blob) % 4) % 4)
+        blobs.append(padded)
+        offset += len(padded)
+    return header + b"".join(records) + b"".join(blobs)
+
+
+def _google_css(family: str, spec: str) -> str:
+    query = family.strip().replace(" ", "+")
+    url = "https://fonts.googleapis.com/css?family=" + query + (":" + spec if spec else "")
+    request = urllib.request.Request(url, headers={"User-Agent": FONT_UA})
+    with urllib.request.urlopen(request, timeout=20, context=_ssl_context()) as response:
+        return response.read().decode("utf-8", "replace")
+
+
+def install_fonts(faces: list[dict]) -> dict:
+    folder = Path.home() / "Library" / "Fonts"
+    folder.mkdir(parents=True, exist_ok=True)
+    grouped: dict[str, set[tuple[int, bool]]] = {}
+    for face in faces:
+        family = (face.get("family") or "").strip()
+        if not family or family.lower() == "inter":
+            continue
+        grouped.setdefault(family, set()).add((int(face.get("weight") or 400), bool(face.get("italic"))))
+    installed = []
+    missing = []
+    for family, specs in grouped.items():
+        weights = sorted({weight for weight, _italic in specs}) or [400]
+        parts = []
+        for weight in weights:
+            parts.append(str(weight))
+            if any(flag for item_weight, flag in specs if item_weight == weight):
+                parts.append(f"{weight}italic")
+        css = ""
+        try:
+            css = _google_css(family, ",".join(parts))
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError):
+            try:
+                css = _google_css(family, "")
+            except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError):
+                css = ""
+        urls = []
+        for match in re.findall(r"url\((https://[^)]+)\)", css):
+            if match not in urls:
+                urls.append(match)
+        if not urls:
+            missing.append({
+                "family": family,
+                "reason": "That face is not on Google Fonts, so Kete cannot add the file. Install it yourself, then run the import again.",
+            })
+            continue
+        wrote = False
+        safe = re.sub(r"[^A-Za-z0-9]+", "-", family).strip("-") or "Font"
+        for index, font_url in enumerate(urls[:8]):
+            try:
+                request = urllib.request.Request(font_url, headers={"User-Agent": FONT_UA})
+                with urllib.request.urlopen(request, timeout=30, context=_ssl_context()) as response:
+                    raw = response.read()
+                if raw[:4] == b"wOFF":
+                    raw = _woff_to_sfnt(raw)
+                elif raw[:4] not in {b"\x00\x01\x00\x00", b"OTTO", b"true"}:
+                    continue
+                (folder / f"Kete-{safe}-{index}.ttf").write_bytes(raw)
+                wrote = True
+            except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, OSError):
+                continue
+        if wrote:
+            installed.append(family)
+        else:
+            missing.append({"family": family, "reason": "The file could not be saved into Fonts."})
+    return {"installed": installed, "missing": missing}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -650,6 +785,15 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/app.js":
             self._file(ROOT / "app.js", "text/javascript; charset=utf-8")
             return
+        if path == "/runtime.js":
+            self._file(ROOT / "runtime.js", "text/javascript; charset=utf-8")
+            return
+        if path.startswith("/figma-plugin/"):
+            name = Path(path).name
+            if name in {"manifest.json", "code.js", "ui.html"}:
+                kind = "application/json" if name.endswith(".json") else "text/html; charset=utf-8" if name.endswith(".html") else "text/javascript; charset=utf-8"
+                self._file(ROOT / "figma-plugin" / name, kind)
+                return
         if path.startswith("/assets/"):
             name = Path(path).name
             self._file(ASSETS / name, mimetypes.guess_type(name)[0] or "application/octet-stream")
@@ -765,6 +909,20 @@ class Handler(BaseHTTPRequestHandler):
                     self._error(400, "Only a link can be read again.")
                     return
                 start_url(source["origin"], source["id"])
+            elif path == "/api/pick":
+                collection = payload.get("collection")
+                if collection not in PATCHABLE:
+                    self._error(400, "Unknown group.")
+                    return
+                wanted = set(payload.get("ids") or [])
+                chosen = bool(payload.get("picked"))
+                with LOCK:
+                    lib = load()
+                    brand = brand_of(lib, payload.get("brandId"))
+                    for item in brand["assets"][collection]:
+                        if not wanted or item.get("id") in wanted:
+                            item["picked"] = chosen
+                    save(lib)
             elif path == "/api/item":
                 collection = payload.get("collection")
                 if collection not in PATCHABLE:
@@ -829,17 +987,37 @@ class Handler(BaseHTTPRequestHandler):
                         "at": now(),
                     })
                     save(lib)
+            elif path == "/api/fonts/install":
+                faces = payload.get("faces") if isinstance(payload.get("faces"), list) else []
+                self._json(200, install_fonts(faces))
+                return
             elif path == "/api/figma/prepare":
+                only = payload.get("only") if isinstance(payload.get("only"), dict) else None
                 with LOCK:
                     lib = load()
                     brand = brand_of(lib, payload.get("brandId"))
-                    kit = figma_payload(brand)
+                    if only:
+                        for key in COLLECTIONS:
+                            if key not in only:
+                                continue
+                            wanted = set(only.get(key) or [])
+                            for item in brand["assets"].get(key) or []:
+                                item["picked"] = item.get("id") in wanted
+                    kit = figma_payload(brand, only)
+                    if payload.get("writing"):
+                        study_lib, texts, portrait = study_pack(brand)
+                        kit["copy"] = memory.placeholder(portrait, memory.macron_map_from(texts, study_lib))
                     PENDING.write_text(json.dumps(kit, indent=2, ensure_ascii=False))
+                    save(lib)
                 self._json(200, {"ok": True, "kit": kit, "library": public(load())})
                 return
             elif path == "/api/reveal":
                 manifest = ROOT / "figma-plugin" / "manifest.json"
                 subprocess.Popen(["open", "-R", str(manifest)])
+                try:
+                    subprocess.Popen(["open", "-a", "Figma"])
+                except OSError:
+                    pass
             else:
                 self._error(404, "Not found")
                 return

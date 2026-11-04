@@ -83,14 +83,17 @@ def platform_for(url: str) -> str | None:
     return None
 
 
-def http_get(url: str, limit: int = 2_500_000, referer: str | None = None) -> dict:
+CRAWLER_UA = "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+
+
+def http_get(url: str, limit: int = 2_500_000, referer: str | None = None, user_agent: str | None = None) -> dict:
     url = clean_url(url)
     with tempfile.TemporaryDirectory() as tmp:
         body_path = os.path.join(tmp, "body")
         hdr_path = os.path.join(tmp, "hdr")
         cmd = [
             "curl", "-sL", "--compressed", "--max-time", "28",
-            "-A", UA, "-D", hdr_path, "-o", body_path,
+            "-A", user_agent or UA, "-D", hdr_path, "-o", body_path,
             "-w", "%{http_code} %{url_effective}",
         ]
         if referer:
@@ -923,6 +926,95 @@ def _store_image(url: str, referer: str, forced: bool = False) -> dict | None:
     }
 
 
+def _meta_lists(html: str) -> dict[str, list[str]]:
+    from html import unescape
+    found: dict[str, list[str]] = {}
+    for tag in re.findall(r"<meta\b[^>]*>", html, flags=re.I):
+        attrs = {
+            key.lower(): unescape(value)
+            for key, value in re.findall(r"([\w:-]+)\s*=\s*[\"']([^\"']*)[\"']", tag)
+        }
+        name = (attrs.get("property") or attrs.get("name") or "").lower()
+        content = (attrs.get("content") or "").strip()
+        if name and content:
+            found.setdefault(name, []).append(content)
+    return found
+
+
+def _caption(description: str) -> str:
+    from html import unescape
+    text = unescape(description or "").replace("\xa0", " ").strip()
+    quoted = re.findall(r"[\"“](.{4,700})[\"”]", text)
+    if quoted:
+        return quoted[-1].strip()
+    if re.search(r"\bfollowers\b", text, re.I) and len(text) < 200:
+        return ""
+    return text
+
+
+def _unfurl(url: str) -> dict:
+    try:
+        fetched = http_get(url, limit=900_000, user_agent=CRAWLER_UA)
+        html = decode(fetched["body"], fetched["content_type"])
+    except Exception:
+        return {}
+    metas = _meta_lists(html)
+    images = []
+    for key in ("og:image", "og:image:url", "twitter:image", "twitter:image:src"):
+        for item in metas.get(key) or []:
+            if item not in images:
+                images.append(item)
+    title = (metas.get("og:title") or [""])[0]
+    description = _caption((metas.get("og:description") or metas.get("description") or [""])[0])
+    return {"title": title, "description": description, "images": images}
+
+
+def _tweet_pack(url: str) -> dict:
+    match = re.search(r"/status/(\d+)", url)
+    if not match:
+        return {}
+    try:
+        import json
+        fetched = http_get("https://api.fxtwitter.com/status/" + match.group(1), limit=1_000_000)
+        tweet = json.loads(decode(fetched["body"], fetched["content_type"]) or "{}").get("tweet") or {}
+    except Exception:
+        return {}
+    media = tweet.get("media") or {}
+    images = [photo.get("url") for photo in media.get("photos") or [] if photo.get("url")]
+    images += [video.get("thumbnail_url") for video in media.get("videos") or [] if video.get("thumbnail_url")]
+    author = (tweet.get("author") or {}).get("name") or ""
+    return {
+        "title": (author + " on X") if author else "",
+        "description": (tweet.get("text") or "").strip(),
+        "images": images,
+    }
+
+
+def _useful_image(url: str) -> bool:
+    low = (url or "").lower()
+    return not any(bad in low for bad in (
+        "default-og", "favicon", "sprite", "emoji", "abs.twimg.com/x-web/assets", "1x1", "pixel",
+    ))
+
+
+def social_pack(url: str) -> dict:
+    host = (urlparse(url).hostname or "").lower()
+    pack = _tweet_pack(url) if "x.com" in host or "twitter.com" in host else {}
+    unfurled = _unfurl(url)
+    images = []
+    for item in (pack.get("images") or []) + (unfurled.get("images") or []):
+        if item and item not in images and _useful_image(item):
+            images.append(item)
+    title = (pack.get("title") or unfurled.get("title") or "").strip()
+    if title.casefold() in {"instagram", "facebook", "login", "log in", "x"}:
+        title = ""
+    return {
+        "title": title,
+        "description": (pack.get("description") or unfurled.get("description") or "").strip(),
+        "images": images[:8],
+    }
+
+
 def _oembed(url: str) -> dict | None:
     host = (urlparse(url).hostname or "").lower()
     endpoint = None
@@ -984,9 +1076,25 @@ def _package(source: dict, text: str, colors, styles, spaces, principles, images
 
 def ingest_url(url: str, source_id: str | None = None) -> dict:
     url = clean_url(url)
-    fetched = http_get(url, limit=2_000_000)
+    fetched = http_get(url, limit=12_000_000)
     final = fetched["url"] or url
-    html = decode(fetched["body"], fetched["content_type"])
+    body = fetched["body"]
+    ctype = (fetched["content_type"] or "").split(";")[0].strip().lower()
+    path = urlparse(final).path.lower()
+    if "pdf" in ctype or path.endswith(".pdf") or body[:4] == b"%PDF":
+        if fetched.get("truncated"):
+            raise RuntimeError("That PDF is larger than Kete will read from a link.")
+        result = ingest_file(os.path.basename(path) or "document.pdf", body, source_id)
+        result["source"]["origin"] = final
+        result["source"]["note"] = "Read from the PDF link."
+        return result
+    if ctype.startswith("image/") or re.search(r"\.(?:png|jpe?g|gif|webp|svg)$", path):
+        result = ingest_file(os.path.basename(path) or "image", body, source_id)
+        result["source"]["origin"] = final
+        result["source"]["kind"] = "image"
+        result["source"]["note"] = "Read from the image link."
+        return result
+    html = decode(body, fetched["content_type"])
     if "html" not in (fetched["content_type"] or "") and not html.lstrip().startswith("<"):
         # A direct file link, treated as text if it looks like text.
         if fetched["content_type"].startswith("text/") or final.lower().endswith((".txt", ".md")):
@@ -1013,6 +1121,14 @@ def ingest_url(url: str, source_id: str | None = None) -> dict:
     text = "\n".join(lines + ([parsed["text"]] if parsed["text"] else []))
     if description and description not in text:
         text = description + "\n" + text
+    social = social_pack(final) if platform else {}
+    bare = title.casefold() in {"instagram", "facebook", "login", "log in", "x", "twitter", "linkedin", "threads", "tiktok"}
+    if social.get("title") and (bare or title == final or not title):
+        title = re.sub(r"\s+[|–—-]\s+.*$", "", social["title"]).strip() or social["title"]
+    if social.get("description"):
+        description = social["description"]
+        if description not in text:
+            text = description + "\n" + text
     css_chunks = []
     for href in re.findall(r"href=[\"']([^\"']+\.css[^\"']*)[\"']", html, flags=re.I)[:8]:
         try:
@@ -1031,22 +1147,34 @@ def ingest_url(url: str, source_id: str | None = None) -> dict:
     spaces = cluster_spaces(parsed_css["spaces"])
     principles = read_principles(colors, styles, spaces)
     images = []
+    seen_images = set()
+
+    def keep_image(image_url: str, forced: bool) -> None:
+        if not image_url or image_url in seen_images or len(images) >= (8 if platform else 5):
+            return
+        seen_images.add(image_url)
+        image = _store_image(image_url, final, forced=forced)
+        if not image:
+            return
+        if platform and not images and title:
+            image["name"] = title[:48]
+        images.append(image)
+
     if embed and embed.get("thumbnail_url"):
-        image = _store_image(str(embed["thumbnail_url"]), final, forced=True)
-        if image:
-            image["name"] = title[:48] or image["name"]
-            images.append(image)
+        keep_image(str(embed["thumbnail_url"]), True)
+    for image_url in social.get("images") or []:
+        keep_image(image_url, True)
+    og = metas.get("og:image") or ""
     for image_url in _image_urls(html, final, metas):
-        if len(images) >= 5:
-            break
-        image = _store_image(image_url, final, forced=bool(metas.get("og:image") and image_url.startswith(metas.get("og:image", "___"))))
-        if image:
-            images.append(image)
+        keep_image(image_url, bool(og and image_url.startswith(og)))
     note = ""
-    if platform and len(text.split()) < 40:
+    words = len(text.split())
+    if platform and images and words < 12:
+        note = f"The pictures came through from {platform}. The caption did not."
+    elif platform and not images and words < 40:
         note = (
             f"{platform} does not hand the post to an anonymous reader. "
-            "The link is kept. A screenshot or an export will bring the caption in."
+            "The link is kept. A screenshot still brings the caption and the pictures in."
         )
     elif platform:
         note = f"Read from {platform}."

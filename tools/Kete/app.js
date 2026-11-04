@@ -10,6 +10,7 @@ const state = {
   drafts: {},
   brandQuery: "",
   error: "",
+  writing: true,
 };
 
 const VIEWS = [
@@ -29,6 +30,7 @@ const KINDS = [
   ["caption", "Caption", "Name the work, and what it is for"],
   ["about", "About", "Who this telling is for"],
   ["social", "Social", "The occasion of the post"],
+  ["page", "Page", "Leave this blank to draft a page from the memory"],
   ["letter", "Letter", "Who you are writing to, and why"],
 ];
 
@@ -172,10 +174,14 @@ function keepFocus() {
 }
 
 function paint() {
+  const list = document.querySelector(".pick-list");
+  const top = list ? list.scrollTop : 0;
   const restore = keepFocus();
   const root = document.getElementById("app");
   root.replaceChildren(sidebar(), main());
   if (state.modal) root.append(modal());
+  const next = document.querySelector(".pick-list");
+  if (next) next.scrollTop = top;
   state.painted = true;
   restore();
 }
@@ -309,7 +315,7 @@ function subtitle() {
   if (state.view === "toolkit") return "Colour, type, space, image, and writing for " + name + ". Tick what should become a style or a component.";
   if (state.view === "memory") return "What " + name + " has learned. This memory is not shared with another brand.";
   if (state.view === "make") return "New writing from the memory of " + name + ".";
-  return "Files, pages, and links for " + name + ". They stay in this workspace.";
+  return "Files, pages, and links for " + name + ". Another link adds to what is already here.";
 }
 
 function main() {
@@ -371,7 +377,7 @@ function sourcesView() {
         el("button", { class: "bubble", type: "button", onclick: () => file.click(), text: "File" }),
       ]),
       file,
-      el("p", { class: "helper", text: "Kete reads the words, the type, the colour, and the images it is allowed to see, and keeps them with this brand. Instagram and the like often keep the caption back — a screenshot still works." }),
+      el("p", { class: "helper", text: "Each link is added to this workspace. Kete reads the words, the type, the colour, and the pictures a page will give up, including a public social post. A PDF link works the same way as a file." }),
       el("button", {
         class: "text-btn", type: "button",
         onclick: () => { state.pasteOpen = !state.pasteOpen; paint(); },
@@ -484,19 +490,49 @@ function toolkit() {
   ));
 }
 
-function tick(collection, item) {
-  return el("button", {
-    class: "tick" + (item.picked ? " on" : ""),
+function markPath(d) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", d);
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-width", "1.7");
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
+  svg.append(path);
+  return svg;
+}
+
+function tickButton(on, mixed, label, onclick) {
+  const button = el("button", {
+    class: "tick" + (on ? " on" : "") + (!on && mixed ? " mixed" : ""),
     type: "button",
-    "aria-pressed": item.picked ? "true" : "false",
-    "aria-label": item.picked ? "Selected" : "Not selected",
-    onclick: (event) => {
-      event.stopPropagation();
-      post("/api/item", { collection, id: item.id, patch: { picked: !item.picked } }).catch((error) => {
-        state.error = error.message;
-        paint();
-      });
-    },
+    "aria-pressed": on ? "true" : "false",
+    "aria-label": label,
+    onclick,
+  });
+  if (on) button.append(markPath("M3.5 8.2l3 3.1 6-6.4"));
+  else if (mixed) button.append(markPath("M3.5 8h9"));
+  return button;
+}
+
+function setPicked(collection, item, next) {
+  const previous = !!item.picked;
+  item.picked = next;
+  paint();
+  post("/api/item", { collection, id: item.id, patch: { picked: next } }).catch((error) => {
+    item.picked = previous;
+    state.error = error.message;
+    paint();
+  });
+}
+
+function tick(collection, item) {
+  return tickButton(!!item.picked, false, item.picked ? "Selected" : "Not selected", (event) => {
+    event.stopPropagation();
+    setPicked(collection, item, !item.picked);
   });
 }
 
@@ -698,17 +734,259 @@ async function keepDraft() {
   paint();
 }
 
-async function openImport() {
-  state.modal = { type: "import", loading: true };
+const PICKS = [
+  ["colors", "Colour"],
+  ["typeStyles", "Type"],
+  ["images", "Image"],
+  ["content", "Writing"],
+  ["spaces", "Space"],
+  ["principles", "Principles"],
+];
+
+function pickTitle(item) {
+  return item.name || item.title || item.kind || "Untitled";
+}
+
+function pickMeta(collection, item) {
+  if (collection === "colors") return item.hex || "";
+  if (collection === "typeStyles") return [item.family, item.size].filter(Boolean).join("  ");
+  if (collection === "spaces") return String(item.value) + (item.unit || "px");
+  if (collection === "content") return item.kind || "";
+  if (collection === "images" && item.width && item.height) return item.width + " × " + item.height;
+  return "";
+}
+
+function toggleGroup(collection) {
+  const items = assets()[collection] || [];
+  const next = items.some((item) => !item.picked);
+  items.forEach((item) => { item.picked = next; });
+  paint();
+  post("/api/pick", { collection, ids: items.map((item) => item.id), picked: next }).catch((error) => {
+    state.error = error.message;
+    paint();
+  });
+}
+
+function pickGroup(collection, label) {
+  const items = assets()[collection] || [];
+  if (!items.length) return null;
+  const on = items.every((item) => item.picked);
+  const mixed = !on && items.some((item) => item.picked);
+  return el("section", { class: "pick-group" }, [
+    el("div", { class: "pick-head" }, [
+      tickButton(on, mixed, label, (event) => { event.stopPropagation(); toggleGroup(collection); }),
+      el("span", { class: "pick-name", text: label }),
+      el("em", { class: "pick-meta", text: String(items.filter((item) => item.picked).length) + " / " + items.length }),
+    ]),
+    ...items.map((item) => {
+      const row = el("div", {
+        class: "pick-row",
+        onclick: () => setPicked(collection, item, !item.picked),
+      }, [
+        tick(collection, item),
+      ]);
+      if (collection === "colors") {
+        const swatch = el("span", { class: "pick-swatch" });
+        swatch.style.background = item.hex;
+        row.append(swatch);
+      } else if (collection === "images" && item.src) {
+        row.append(el("img", { class: "pick-thumb", src: item.src, alt: "" }));
+      }
+      row.append(el("span", { class: "pick-name", text: pickTitle(item) }));
+      const meta = pickMeta(collection, item);
+      if (meta) row.append(el("em", { class: "pick-meta", text: meta }));
+      return row;
+    }),
+  ]);
+}
+
+function selectionMap() {
+  const data = assets();
+  const only = {};
+  for (const [key] of PICKS) only[key] = (data[key] || []).filter((item) => item.picked).map((item) => item.id);
+  return only;
+}
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (let index = 0; index < bytes.length; index += 1) {
+    crc ^= bytes[index];
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+  }
+  return (~crc) >>> 0;
+}
+
+function zipStore(files) {
+  const parts = [];
+  const central = [];
+  let offset = 0;
+  const enc = new TextEncoder();
+  for (const file of files) {
+    const name = enc.encode(file.name);
+    const data = file.data;
+    const crc = crc32(data);
+    const local = new Uint8Array(30 + name.length);
+    const view = new DataView(local.buffer);
+    view.setUint32(0, 0x04034b50, true);
+    view.setUint16(4, 20, true);
+    view.setUint32(14, crc, true);
+    view.setUint32(18, data.length, true);
+    view.setUint32(22, data.length, true);
+    view.setUint16(26, name.length, true);
+    local.set(name, 30);
+    parts.push(local, data);
+    const head = new Uint8Array(46 + name.length);
+    const centralView = new DataView(head.buffer);
+    centralView.setUint32(0, 0x02014b50, true);
+    centralView.setUint16(4, 20, true);
+    centralView.setUint16(6, 20, true);
+    centralView.setUint32(16, crc, true);
+    centralView.setUint32(20, data.length, true);
+    centralView.setUint32(24, data.length, true);
+    centralView.setUint16(28, name.length, true);
+    centralView.setUint32(42, offset, true);
+    head.set(name, 46);
+    central.push(head);
+    offset += local.length + data.length;
+  }
+  const centralSize = central.reduce((sum, part) => sum + part.length, 0);
+  const end = new Uint8Array(22);
+  const endView = new DataView(end.buffer);
+  endView.setUint32(0, 0x06054b50, true);
+  endView.setUint16(8, files.length, true);
+  endView.setUint16(10, files.length, true);
+  endView.setUint32(12, centralSize, true);
+  endView.setUint32(16, offset, true);
+  return new Blob(parts.concat(central, [end]), { type: "application/zip" });
+}
+
+async function downloadPlugin() {
+  const names = ["manifest.json", "code.js", "ui.html"];
+  const files = [];
+  for (const name of names) {
+    const response = await fetch("figma-plugin/" + name);
+    if (!response.ok) throw new Error("The plugin files are not on this site.");
+    files.push({ name: "Kete Import/" + name, data: new Uint8Array(await response.arrayBuffer()) });
+  }
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(zipStore(files));
+  link.download = "Kete Import.zip";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+}
+
+function openImport() {
+  state.modal = { type: "import", step: "choose" };
+  paint();
+}
+
+async function sendToFigma() {
+  const only = selectionMap();
+  const count = Object.values(only).reduce((sum, ids) => sum + ids.length, 0);
+  if (!count) return;
+  state.modal = { type: "import", step: "send", loading: true };
   paint();
   try {
-    const data = await post("/api/figma/prepare");
-    state.modal = { type: "import", kit: data.kit };
+    const data = await post("/api/figma/prepare", { only, writing: !!state.writing });
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data.kit));
+      copied = true;
+    } catch (error) {
+      copied = false;
+    }
+    state.modal = { type: "import", step: "send", kit: data.kit, copied };
     paint();
   } catch (error) {
-    state.modal = { type: "import", error: error.message };
+    state.modal = { type: "import", step: "send", error: error.message };
     paint();
   }
+}
+
+function importModal(close) {
+  if (!state.modal || state.modal.step !== "send") return chooseModal(close);
+  return sentModal(close);
+}
+
+function chooseModal(close) {
+  const count = selectedCount();
+  const groups = PICKS.map(([key, label]) => pickGroup(key, label)).filter(Boolean);
+  const box = el("div", { class: "modal pick-modal", onclick: (event) => event.stopPropagation() }, [
+    el("h2", { text: "Import to Figma" }),
+    el("p", { text: "Tick what should go across. Only the ticked rows are sent. If a typeface isn't in Figma, you'll be asked before it is added to this Mac." }),
+    groups.length
+      ? el("div", { class: "pick-list" }, groups)
+      : el("p", { text: "Nothing has been read into this workspace yet." }),
+    el("div", { class: "pick-row" }, [
+      tickButton(state.writing, false, "Placeholder writing", () => {
+        state.writing = !state.writing;
+        paint();
+      }),
+      el("div", {}, [
+        el("div", { class: "pick-name", text: "Also add placeholder writing" }),
+        el("div", { class: "pick-meta", text: "Text boxes filled from what the memory knows, in the brand typefaces." }),
+      ]),
+    ]),
+    el("div", { class: "modal-actions" }, [
+      el("button", {
+        class: "primary",
+        type: "button",
+        text: count ? "Add " + count + " to Figma" : "Add to Figma",
+        disabled: count ? null : "true",
+        onclick: sendToFigma,
+      }),
+      el("button", { class: "text-btn", type: "button", text: "Close", onclick: close }),
+    ]),
+  ]);
+  return box;
+}
+
+function sentModal(close) {
+  if (state.modal && state.modal.loading) {
+    return el("div", { class: "modal", onclick: (event) => event.stopPropagation() }, [
+      el("h2", { text: "Import to Figma" }),
+      el("p", { text: "Preparing the selection." }),
+    ]);
+  }
+  const kit = (state.modal && state.modal.kit) || {};
+  const online = Boolean((lib().paths || {}).online);
+  const manifest = (lib().paths || {}).manifest || "";
+  const counts = [
+    kit.colors && kit.colors.length && kit.colors.length + " paint styles",
+    kit.textStyles && kit.textStyles.length && kit.textStyles.length + " text styles",
+    (kit.images || []).length && (kit.images || []).length + " images",
+    ((kit.principles || []).length + (kit.content || []).length) && ((kit.principles || []).length + (kit.content || []).length) + " pieces of writing",
+    (kit.spaces || []).length && (kit.spaces || []).length + " spaces",
+    (kit.copy || []).length && "placeholder writing",
+  ].filter(Boolean);
+  const summary = counts.join(", ") || "Nothing was ticked";
+  const box = el("div", { class: "modal", onclick: (event) => event.stopPropagation() }, [
+    el("h2", { text: "Import to Figma" }),
+    state.modal.error ? el("p", { text: state.modal.error }) : null,
+    kit.brand ? el("p", { text: (state.modal.copied ? "Copied, pictures included, so another computer can use it. " : "Ready on this computer. ") + summary + "." }) : null,
+    online
+      ? el("p", { text: "In Figma, run Kete Import and choose Use the copied kit. The first time, download the plugin, unzip it, and use Plugins → Development → Import plugin from manifest. You only do that once." })
+      : el("p", { text: "In Figma, run Kete Import. The first time, add the plugin. Figma opens with the manifest file selected: Plugins → Development → Import plugin from manifest." }),
+    !online && manifest ? el("div", { class: "path", text: manifest }) : null,
+    el("div", { class: "modal-actions" }, [
+      online
+        ? el("button", { class: "primary", type: "button", text: "Download the plugin", onclick: () => downloadPlugin().catch((error) => { state.error = error.message; paint(); }) })
+        : el("button", { class: "primary", type: "button", text: "Add the plugin", onclick: () => post("/api/reveal") }),
+      el("button", {
+        class: "text-btn",
+        type: "button",
+        text: state.modal.copied ? "Copied" : "Copy kit",
+        onclick: () => navigator.clipboard.writeText(JSON.stringify(kit)).then(() => {
+          state.modal.copied = true;
+          paint();
+        }).catch(() => {}),
+      }),
+      el("button", { class: "text-btn", type: "button", text: "Close", onclick: close }),
+    ]),
+  ]);
+  return box;
 }
 
 async function openSource(id) {
@@ -727,42 +1005,6 @@ function modal() {
   const back = el("div", { class: "modal-back", onclick: (event) => { if (event.target === back) close(); } });
   back.append(state.modal.type === "import" ? importModal(close) : sourceModal(close));
   return back;
-}
-
-function importModal(close) {
-  const kit = (state.modal && state.modal.kit) || {};
-  const manifest = (lib().paths || {}).manifest || "";
-  const counts = [
-    kit.colors && kit.colors.length && kit.colors.length + " paint styles",
-    kit.textStyles && kit.textStyles.length && kit.textStyles.length + " text styles",
-    (kit.principles || []).length + (kit.content || []).length + (kit.images || []).length
-      ? ((kit.principles || []).length + (kit.content || []).length + (kit.images || []).length) + " components of writing and image"
-      : "",
-  ].filter(Boolean);
-  const online = Boolean((lib().paths || {}).online || kit.online);
-  const box = el("div", { class: "modal", onclick: (event) => event.stopPropagation() }, [
-    el("h2", { text: "Import to Figma" }),
-    state.modal.loading ? el("p", { text: "Preparing the selection." }) : null,
-    state.modal.error ? el("p", { text: state.modal.error }) : null,
-    kit.brand ? el("p", { text: "From the " + kit.brand + " workspace. " + (counts.join(", ") || "Nothing is ticked") + ". Memory stays in Kete." }) : null,
-    online
-      ? el("p", { text: "Copy the kit. In Figma, run Kete Import and paste it into the box. It builds a page called Kete, with styles and components from the ticks." })
-      : el("p", { text: "Open the file you want these in. In Figma: Plugins, Development, Import plugin from manifest." }),
-    !online && manifest ? el("div", { class: "path", text: manifest }) : null,
-    online ? null : el("ol", {}, [
-      el("li", { text: "Choose the manifest above." }),
-      el("li", { text: "Run Kete Import. It builds a page called Kete, with styles and components from the ticks." }),
-    ]),
-    el("div", { class: "modal-actions" }, [
-      online ? null : el("button", { class: "primary", type: "button", text: "Show the file", onclick: () => post("/api/reveal") }),
-      el("button", {
-        class: online ? "primary" : "text-btn", type: "button", text: "Copy kit",
-        onclick: () => navigator.clipboard.writeText(JSON.stringify(kit, null, 2)),
-      }),
-      el("button", { class: "text-btn", type: "button", text: "Close", onclick: close }),
-    ]),
-  ]);
-  return box;
 }
 
 function sourceModal(close) {

@@ -26,24 +26,43 @@ function rgb(hex) {
   };
 }
 
-async function face(family, weight, italic) {
+function styleNames(weight, italic) {
   const styles = (WEIGHTS[nearest(weight || 400)] || WEIGHTS[400]).map((style) => italic ? style + " Italic" : style);
   if (italic) styles.push("Italic");
-  const families = [];
-  for (const name of [family, "Die Grotesk A", "Founders Grotesk", "Inter"]) {
-    if (name && !families.includes(name)) families.push(name);
+  styles.push(italic ? "Italic" : "Regular");
+  return styles.filter((style, index) => styles.indexOf(style) === index);
+}
+
+async function exactFace(family, weight, italic) {
+  if (!family) return null;
+  for (const style of styleNames(weight, italic)) {
+    try {
+      await figma.loadFontAsync({ family, style });
+      return { family, style };
+    } catch (error) { /* the next style name */ }
   }
-  for (const name of families) {
-    for (const style of styles) {
-      try {
-        await figma.loadFontAsync({ family: name, style });
-        return { family: name, style };
-      } catch (error) { /* try the next face */ }
-    }
-  }
+  return null;
+}
+
+async function face(family, weight, italic) {
+  const loaded = await exactFace(family, weight, italic);
+  if (loaded) return loaded;
   const fallback = italic ? "Italic" : "Regular";
   await figma.loadFontAsync({ family: "Inter", style: fallback });
   return { family: "Inter", style: fallback };
+}
+
+async function missingFaces(kit) {
+  const seen = new Set();
+  const missing = [];
+  for (const style of kit.textStyles || []) {
+    const family = style.family || "";
+    if (!family || seen.has(family)) continue;
+    seen.add(family);
+    const loaded = await exactFace(family, style.weight, style.italic);
+    if (!loaded) missing.push({ family, weight: style.weight || 400, italic: !!style.italic });
+  }
+  return missing;
 }
 
 function row() {
@@ -60,7 +79,19 @@ function row() {
   return frame;
 }
 
+let pendingKit = null;
+
 async function build(kit) {
+  if (!kit.fontChoice) {
+    const missing = await missingFaces(kit);
+    if (missing.length) {
+      pendingKit = kit;
+      figma.ui.resize(360, 300);
+      figma.ui.postMessage({ type: "missing-fonts", faces: missing });
+      return;
+    }
+  }
+
   const names = figma.root.children.map((page) => page.name);
   let pageName = "Kete";
   let index = 2;
@@ -104,6 +135,8 @@ async function build(kit) {
   let paints = 0;
   let texts = 0;
   let components = 0;
+  const made = [];
+  const substituted = [];
 
   if ((kit.colors || []).length) {
     root.appendChild(await kicker("Colour"));
@@ -151,6 +184,7 @@ async function build(kit) {
     const line = row();
     for (const style of kit.textStyles) {
       const loaded = await face(style.family, style.weight, style.italic);
+      if (style.family && loaded.family !== style.family && !substituted.includes(style.family)) substituted.push(style.family);
       let textStyle = null;
       try {
         textStyle = figma.createTextStyle();
@@ -193,8 +227,51 @@ async function build(kit) {
       component.appendChild(meta);
       line.appendChild(component);
       components += 1;
+      made.push({
+        size: Number(style.size) || 16,
+        font: loaded,
+        styleId: textStyle ? textStyle.id : "",
+      });
     }
     root.appendChild(line);
+  }
+
+  if ((kit.copy || []).length) {
+    root.appendChild(await kicker("Placeholder"));
+    const frame = figma.createFrame();
+    frame.name = "Placeholder";
+    frame.layoutMode = "VERTICAL";
+    frame.primaryAxisSizingMode = "AUTO";
+    frame.counterAxisSizingMode = "FIXED";
+    frame.resize(720, 80);
+    frame.itemSpacing = 16;
+    frame.paddingTop = 28;
+    frame.paddingBottom = 28;
+    frame.paddingLeft = 28;
+    frame.paddingRight = 28;
+    const ground = paper ? rgb(paper.hex) : { r: 1, g: 1, b: 1 };
+    frame.fills = [{ type: "SOLID", color: ground }];
+    const light = (0.2126 * ground.r) + (0.7152 * ground.g) + (0.0722 * ground.b) > 0.6;
+    const sorted = made.slice().sort((a, b) => b.size - a.size);
+    for (const block of kit.copy) {
+      let match = null;
+      if (sorted.length) {
+        if (block.role === "Display") match = sorted[0];
+        else if (block.role === "Caption") match = sorted[sorted.length - 1];
+        else if (block.role === "Title") match = sorted[Math.min(1, sorted.length - 1)];
+        else match = made.slice().sort((a, b) => Math.abs(a.size - 17) - Math.abs(b.size - 17))[0];
+      }
+      const node = figma.createText();
+      node.fontName = match ? match.font : bodyFace;
+      node.characters = String(block.text || "").slice(0, 800);
+      if (match && match.styleId) node.textStyleId = match.styleId;
+      else node.fontSize = match ? match.size : (block.role === "Display" ? 40 : 16);
+      node.fills = [{ type: "SOLID", color: light ? rgb("#1A1A1A") : rgb("#F7F6F4") }];
+      node.layoutAlign = "STRETCH";
+      frame.appendChild(node);
+    }
+    root.appendChild(frame);
+    components += 1;
   }
 
   if ((kit.spaces || []).length) {
@@ -280,32 +357,47 @@ async function build(kit) {
     const line = row();
     for (const image of kit.images || []) {
       if (!image.bytes) continue;
-      const component = figma.createComponent();
-      component.name = (kit.brand || "Kete") + "/Image/" + (image.name || "Image");
-      component.resize(240, 180);
-      component.clipsContent = true;
-      component.cornerRadius = 8;
-      const fill = figma.createRectangle();
-      fill.resize(240, 180);
-      const created = figma.createImage(new Uint8Array(image.bytes));
-      fill.fills = [{ type: "IMAGE", imageHash: created.hash, scaleMode: "FILL" }];
-      component.appendChild(fill);
-      line.appendChild(component);
-      components += 1;
+      try {
+        const component = figma.createComponent();
+        component.name = (kit.brand || "Kete") + "/Image/" + (image.name || "Image");
+        component.resize(240, 180);
+        component.clipsContent = true;
+        component.cornerRadius = 8;
+        const fill = figma.createRectangle();
+        fill.resize(240, 180);
+        const created = figma.createImage(new Uint8Array(image.bytes));
+        fill.fills = [{ type: "IMAGE", imageHash: created.hash, scaleMode: "FILL" }];
+        component.appendChild(fill);
+        line.appendChild(component);
+        components += 1;
+      } catch (error) { /* a picture the file cannot place */ }
     }
     root.appendChild(line);
   }
 
   figma.viewport.scrollAndZoomIntoView([root]);
-  figma.notify("Kete · " + paints + " paint styles, " + texts + " text styles, " + components + " components");
+  let note = "Kete · " + paints + " paint styles, " + texts + " text styles, " + components + " components";
+  if (substituted.length) {
+    note += ". " + substituted.join(", ") + (kit.fontChoice === "install"
+      ? " is in Fonts. Quit Figma and open it again to use it."
+      : " was not on this Mac, so Inter was used.");
+  } else if (kit.fontNote) {
+    note += ". " + kit.fontNote;
+  }
+  figma.notify(note);
   figma.closePlugin();
 }
 
-figma.showUI(__html__, { width: 340, height: 180, themeColors: true });
+figma.showUI(__html__, { width: 340, height: 230, themeColors: true });
 figma.ui.onmessage = async (message) => {
-  if (!message || message.type !== "import") return;
+  if (!message) return;
   try {
-    await build(message.kit || {});
+    if (message.type === "import") await build(message.kit || {});
+    else if (message.type === "fonts" && pendingKit) {
+      pendingKit.fontChoice = message.choice || "skip";
+      pendingKit.fontNote = message.note || "";
+      await build(pendingKit);
+    }
   } catch (error) {
     figma.notify(String(error && error.message ? error.message : error));
     figma.closePlugin();
