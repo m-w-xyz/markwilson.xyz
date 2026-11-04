@@ -739,21 +739,24 @@ function importModal(close) {
       ? ((kit.principles || []).length + (kit.content || []).length + (kit.images || []).length) + " components of writing and image"
       : "",
   ].filter(Boolean);
+  const online = Boolean((lib().paths || {}).online || kit.online);
   const box = el("div", { class: "modal", onclick: (event) => event.stopPropagation() }, [
     el("h2", { text: "Import to Figma" }),
     state.modal.loading ? el("p", { text: "Preparing the selection." }) : null,
     state.modal.error ? el("p", { text: state.modal.error }) : null,
     kit.brand ? el("p", { text: "From the " + kit.brand + " workspace. " + (counts.join(", ") || "Nothing is ticked") + ". Memory stays in Kete." }) : null,
-    el("p", { text: "Open the file you want these in. In Figma: Plugins, Development, Import plugin from manifest." }),
-    manifest ? el("div", { class: "path", text: manifest }) : null,
-    el("ol", {}, [
+    online
+      ? el("p", { text: "Copy the kit. In Figma, run Kete Import and paste it into the box. It builds a page called Kete, with styles and components from the ticks." })
+      : el("p", { text: "Open the file you want these in. In Figma: Plugins, Development, Import plugin from manifest." }),
+    !online && manifest ? el("div", { class: "path", text: manifest }) : null,
+    online ? null : el("ol", {}, [
       el("li", { text: "Choose the manifest above." }),
       el("li", { text: "Run Kete Import. It builds a page called Kete, with styles and components from the ticks." }),
     ]),
     el("div", { class: "modal-actions" }, [
-      el("button", { class: "primary", type: "button", text: "Show the file", onclick: () => post("/api/reveal") }),
+      online ? null : el("button", { class: "primary", type: "button", text: "Show the file", onclick: () => post("/api/reveal") }),
       el("button", {
-        class: "text-btn", type: "button", text: "Copy kit",
+        class: online ? "primary" : "text-btn", type: "button", text: "Copy kit",
         onclick: () => navigator.clipboard.writeText(JSON.stringify(kit, null, 2)),
       }),
       el("button", { class: "text-btn", type: "button", text: "Close", onclick: close }),

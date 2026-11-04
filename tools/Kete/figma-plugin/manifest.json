@@ -7,8 +7,8 @@
   "editorType": ["figma"],
   "documentAccess": "dynamic-page",
   "networkAccess": {
-    "allowedDomains": ["http://127.0.0.1:4787"],
-    "reasoning": "Reads the brand kit Kete prepared on this machine.",
-    "devAllowedDomains": ["http://127.0.0.1:4787"]
+    "allowedDomains": ["http://127.0.0.1:4787", "https://markwilson.xyz"],
+    "reasoning": "Reads a brand kit from Kete on this machine, or an image hosted with the site.",
+    "devAllowedDomains": ["http://127.0.0.1:4787", "https://markwilson.xyz"]
   }
 }
